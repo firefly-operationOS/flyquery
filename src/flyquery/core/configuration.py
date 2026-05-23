@@ -13,6 +13,8 @@ from flyquery.core.services.auth.agent_token_service import (
     _RateLimiter,
 )
 from flyquery.core.services.auth.redis_rate_limiter import RedisRateLimiter
+from flyquery.core.services.retrieval.embedder import OpenAiEmbedder
+from flyquery.core.services.retrieval.reranker import NoopReranker, build_reranker
 from flyquery.core.services.storage.object_store import ObjectStore
 from flyquery.core.services.storage.object_store_factory import build_object_store
 from flyquery.models.repositories.agent_token_repository import AgentTokenRepository
@@ -91,6 +93,24 @@ class FlyqueryConfiguration:
         except Exception:  # noqa: BLE001
             event_publisher = None
         return IngestPublisher(event_publisher=event_publisher)
+
+    # ------------------------------------------------------------------
+    # Retrieval infrastructure
+    # ------------------------------------------------------------------
+
+    @bean
+    def openai_embedder(self, settings: FlyquerySettings) -> OpenAiEmbedder:
+        """OpenAI text-embedding-3-small wrapper.
+
+        Returns None from all embed methods when OPENAI_API_KEY is absent.
+        """
+        model = settings.embedding_model.replace("openai:", "")
+        return OpenAiEmbedder(model=model, dim=settings.embedding_dimensions)
+
+    @bean
+    def reranker(self, settings: FlyquerySettings) -> NoopReranker:
+        """Cross-encoder reranker (falls back to NoopReranker when unavailable)."""
+        return build_reranker(settings)  # type: ignore[return-value]
 
     # ------------------------------------------------------------------
     # Idempotency store (agent surface)

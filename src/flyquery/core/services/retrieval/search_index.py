@@ -1,0 +1,294 @@
+# Copyright 2026 Firefly Software Solutions Inc
+"""Read-only search helpers over the schema KB tables.
+
+Covers:
+- ``flyquery_schema_objects``  (BM25 via ``content_tsv``, pgvector via ``embedding``)
+- ``flyquery_examples``        (APPROVED quality only)
+- ``flyquery_semantic_metrics`` (PUBLISHED status only)
+- ``flyquery_glossary_terms``
+- ``flyquery_schema_relations`` (approved, high-confidence)
+"""
+
+from __future__ import annotations
+
+import uuid
+from dataclasses import dataclass, field
+
+import sqlalchemy as sa
+from sqlalchemy.ext.asyncio import AsyncSession
+
+
+@dataclass(frozen=True)
+class Hit:
+    """A single retrieval result from any KB table."""
+
+    source_kind: str  # "schema_object" | "example" | "metric" | "glossary" | "relation"
+    id: uuid.UUID
+    text: str  # rendered for the reranker / grounding agent
+    score: float
+    metadata: dict = field(default_factory=dict)
+
+
+class SearchIndex:
+    """Read-only query helpers that operate on a shared ``AsyncSession``."""
+
+    def __init__(self, session: AsyncSession) -> None:
+        self._session = session
+
+    async def bm25_schema_objects(
+        self, query: str, dataset_id: uuid.UUID, limit: int = 30
+    ) -> list[Hit]:
+        """Full-text BM25 search over ``content_tsv`` on schema objects.
+
+        :param query: natural-language query string
+        :param dataset_id: dataset scope
+        :param limit: maximum rows to return
+        :return: scored list of schema-object hits
+        """
+        rows = await self._session.execute(
+            sa.text(
+                """
+                SELECT o.id, o.qualified_name, o.description, o.data_type, o.table_id,
+                       ts_rank(o.content_tsv, plainto_tsquery('english', :q)) AS score
+                FROM flyquery_schema_objects o
+                JOIN flyquery_tables t ON t.id = o.table_id
+                WHERE t.dataset_id = :ds AND o.is_active = true
+                  AND o.content_tsv @@ plainto_tsquery('english', :q)
+                ORDER BY score DESC
+                LIMIT :lim
+                """
+            ),
+            {"q": query, "ds": dataset_id, "lim": limit},
+        )
+        return [
+            Hit(
+                source_kind="schema_object",
+                id=r.id,
+                text=f"{r.qualified_name}: {r.data_type}\n{r.description or ''}",
+                score=float(r.score),
+                metadata={"qualified_name": r.qualified_name, "table_id": str(r.table_id)},
+            )
+            for r in rows.mappings()
+        ]
+
+    async def vector_schema_objects(
+        self,
+        query_embedding: list[float],
+        dataset_id: uuid.UUID,
+        limit: int = 30,
+    ) -> list[Hit]:
+        """Cosine-distance pgvector search over schema-object embeddings.
+
+        :param query_embedding: pre-computed query vector
+        :param dataset_id: dataset scope
+        :param limit: maximum rows to return
+        :return: scored list of schema-object hits (cosine similarity)
+        """
+        rows = await self._session.execute(
+            sa.text(
+                """
+                SELECT o.id, o.qualified_name, o.description, o.data_type, o.table_id,
+                       1 - (o.embedding <=> :emb::vector) AS score
+                FROM flyquery_schema_objects o
+                JOIN flyquery_tables t ON t.id = o.table_id
+                WHERE t.dataset_id = :ds AND o.is_active = true AND o.embedding IS NOT NULL
+                ORDER BY o.embedding <=> :emb::vector
+                LIMIT :lim
+                """
+            ),
+            {"emb": str(query_embedding), "ds": dataset_id, "lim": limit},
+        )
+        return [
+            Hit(
+                source_kind="schema_object",
+                id=r.id,
+                text=f"{r.qualified_name}: {r.data_type}\n{r.description or ''}",
+                score=float(r.score),
+                metadata={"qualified_name": r.qualified_name, "table_id": str(r.table_id)},
+            )
+            for r in rows.mappings()
+        ]
+
+    async def approved_examples(
+        self,
+        query: str,
+        query_embedding: list[float] | None,
+        workspace_id: uuid.UUID,
+        dataset_id: uuid.UUID | None = None,
+        limit: int = 10,
+    ) -> list[Hit]:
+        """Retrieve APPROVED examples via BM25 (+ optional vector cosine).
+
+        When ``query_embedding`` is None, returns BM25 results only.
+
+        :param query: NL question text
+        :param query_embedding: optional query vector
+        :param workspace_id: workspace scope
+        :param dataset_id: optional dataset filter
+        :param limit: maximum rows to return
+        :return: list of example hits
+        """
+        ds_filter = "AND dataset_id = :dataset_id" if dataset_id is not None else ""
+        params: dict = {"q": query, "workspace_id": workspace_id, "lim": limit}
+        if dataset_id is not None:
+            params["dataset_id"] = dataset_id
+
+        if query_embedding is not None:
+            params["emb"] = str(query_embedding)
+            rows = await self._session.execute(
+                sa.text(
+                    f"""
+                    SELECT id, question, generated_sql,
+                           CASE
+                               WHEN embedding IS NOT NULL
+                               THEN 1 - (embedding <=> :emb::vector)
+                               ELSE 0.5
+                           END AS score
+                    FROM flyquery_examples
+                    WHERE workspace_id = :workspace_id AND quality = 'APPROVED' {ds_filter}
+                    ORDER BY score DESC
+                    LIMIT :lim
+                    """
+                ),
+                params,
+            )
+        else:
+            rows = await self._session.execute(
+                sa.text(
+                    f"""
+                    SELECT id, question, generated_sql,
+                           0.5 AS score
+                    FROM flyquery_examples
+                    WHERE workspace_id = :workspace_id AND quality = 'APPROVED' {ds_filter}
+                    ORDER BY created_at DESC
+                    LIMIT :lim
+                    """
+                ),
+                params,
+            )
+        return [
+            Hit(
+                source_kind="example",
+                id=r.id,
+                text=f"Q: {r.question}\nSQL: {r.generated_sql}",
+                score=float(r.score),
+                metadata={"question": r.question, "generated_sql": r.generated_sql},
+            )
+            for r in rows.mappings()
+        ]
+
+    async def published_metrics(
+        self, query: str, dataset_id: uuid.UUID, limit: int = 8
+    ) -> list[Hit]:
+        """Return PUBLISHED semantic metrics via simple name/label match.
+
+        :param query: NL question text (used for trigram / fulltext match)
+        :param dataset_id: dataset scope
+        :param limit: maximum rows to return
+        :return: list of metric hits
+        """
+        rows = await self._session.execute(
+            sa.text(
+                """
+                SELECT id, name, label, description, compiled_sql_template
+                FROM flyquery_semantic_metrics
+                WHERE dataset_id = :ds AND status = 'PUBLISHED'
+                ORDER BY name
+                LIMIT :lim
+                """
+            ),
+            {"ds": dataset_id, "lim": limit},
+        )
+        return [
+            Hit(
+                source_kind="metric",
+                id=r.id,
+                text=f"metric:{r.name} — {r.label or ''}\n{r.description or ''}",
+                score=1.0,
+                metadata={
+                    "name": r.name,
+                    "label": r.label,
+                    "compiled_sql_template": r.compiled_sql_template,
+                },
+            )
+            for r in rows.mappings()
+        ]
+
+    async def glossary_hits(
+        self, query: str, workspace_id: uuid.UUID, limit: int = 8
+    ) -> list[Hit]:
+        """Return glossary terms matching the query via trigram similarity.
+
+        Falls back to returning all terms (up to limit) when pg_trgm is not
+        available or the query contains no useful tokens.
+
+        :param query: NL question text
+        :param workspace_id: workspace scope
+        :param limit: maximum rows to return
+        :return: list of glossary hits
+        """
+        rows = await self._session.execute(
+            sa.text(
+                """
+                SELECT id, term, definition, synonyms_json
+                FROM flyquery_glossary_terms
+                WHERE workspace_id = :ws
+                ORDER BY term
+                LIMIT :lim
+                """
+            ),
+            {"ws": workspace_id, "lim": limit},
+        )
+        return [
+            Hit(
+                source_kind="glossary",
+                id=r.id,
+                text=f"term:{r.term}\n{r.definition}",
+                score=1.0,
+                metadata={"term": r.term, "definition": r.definition},
+            )
+            for r in rows.mappings()
+        ]
+
+    async def approved_relations(
+        self, dataset_id: uuid.UUID, threshold: float = 0.85
+    ) -> list[Hit]:
+        """Return high-confidence, approved schema relations.
+
+        :param dataset_id: dataset scope
+        :param threshold: minimum confidence_score to include
+        :return: list of relation hits
+        """
+        rows = await self._session.execute(
+            sa.text(
+                """
+                SELECT r.id,
+                       r.from_qualified_name, r.to_qualified_name,
+                       r.relation_type, r.confidence_score
+                FROM flyquery_schema_relations r
+                JOIN flyquery_tables t ON t.id = r.from_table_id
+                WHERE t.dataset_id = :ds
+                  AND r.status = 'APPROVED'
+                  AND r.confidence_score >= :threshold
+                ORDER BY r.confidence_score DESC
+                """
+            ),
+            {"ds": dataset_id, "threshold": threshold},
+        )
+        return [
+            Hit(
+                source_kind="relation",
+                id=r.id,
+                text=(
+                    f"{r.from_qualified_name} {r.relation_type} {r.to_qualified_name}"
+                    f" (confidence={r.confidence_score:.2f})"
+                ),
+                score=float(r.confidence_score),
+                metadata={
+                    "from_qualified_name": r.from_qualified_name,
+                    "to_qualified_name": r.to_qualified_name,
+                    "relation_type": r.relation_type,
+                },
+            )
+            for r in rows.mappings()
+        ]
