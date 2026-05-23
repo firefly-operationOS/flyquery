@@ -54,3 +54,12 @@ def configure_env(
     monkeypatch.setenv("AWS_ACCESS_KEY_ID", minio_container.access_key)
     monkeypatch.setenv("AWS_SECRET_ACCESS_KEY", minio_container.secret_key)
     monkeypatch.setenv("FLYQUERY_RUN_MIGRATIONS", "false")
+    # After migration 0007 provisions flyquery_app (NOSUPERUSER), the runtime
+    # URL must authenticate as that role so RLS policies actually fire.
+    # The admin URL (BYPASSRLS) is kept in FLYQUERY_DATABASE_URL_ADMIN for
+    # migrations and seeding (memory: postgres_test_role_bypasses_rls).
+    app_url = async_url.replace(
+        f"//{postgres_container.username}:{postgres_container.password}",
+        "//flyquery_app:flyquery_app"
+    )
+    monkeypatch.setenv("FLYQUERY_DATABASE_URL", app_url)
