@@ -1,3 +1,4 @@
+# Copyright 2026 Firefly Software Solutions Inc
 import gzip
 import bz2
 import zipfile

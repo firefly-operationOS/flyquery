@@ -1,3 +1,4 @@
+# Copyright 2026 Firefly Software Solutions Inc
 import pytest
 from flyquery.core.services.storage.object_store_factory import build_object_store
 from flyquery.config import FlyquerySettings

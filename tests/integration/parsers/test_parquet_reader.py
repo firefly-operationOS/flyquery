@@ -1,3 +1,4 @@
+# Copyright 2026 Firefly Software Solutions Inc
 import pytest
 from pathlib import Path
 from flyquery.core.services.ingestion.readers.parquet_reader import ParquetReader

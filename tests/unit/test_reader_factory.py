@@ -1,3 +1,4 @@
+# Copyright 2026 Firefly Software Solutions Inc
 import pytest
 from flyquery.core.services.ingestion.reader_factory import get_reader
 from flyquery.core.services.ingestion.reader import UnsupportedFormatError
