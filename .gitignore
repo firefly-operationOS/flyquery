@@ -111,6 +111,20 @@ claude-*.md
 docker-data/
 postgres_data/
 
+# --- Local ObjectStore output (LocalFs ObjectStore adapter) ------------------
+# When FLYQUERY_OBJECT_STORE=local_fs, the adapter writes tenant Parquet
+# snapshots + original uploads under this directory. Real tenant data.
+# Never commit.
+.local_blobs/
+.minio_data/
+.gcs_emulator/
+
+# --- Local debug / probe scripts ---------------------------------------------
+# Quick one-off scripts to poke at a real XLSX, sniff a Parquet, etc.
+# They reference paths on the developer's machine and shouldn't ship.
+scripts/probe_*.py
+scripts/_local_*.py
+
 # --- Misc generated artefacts ------------------------------------------------
 *.tmp
 *.bak

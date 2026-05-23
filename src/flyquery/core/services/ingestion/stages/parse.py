@@ -20,8 +20,14 @@ from typing import Any
 import sqlalchemy as sa
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from flyquery.core.agents.column_name_proposer_agent import (
+    build_column_name_proposer_agent,
+    needs_proposal,
+    render_proposal_prompt,
+)
 from flyquery.core.services.ingestion.compression import decompress_to_temp
 from flyquery.core.services.ingestion.reader import (
+    ColumnSchema,
     MaterialiseResult,
     TableExtractionRules,
 )
@@ -35,6 +41,201 @@ _SAFE_NAME_RE = re.compile(r"[^A-Za-z0-9_]+")
 
 def _sanitise_name(name: str) -> str:
     return _SAFE_NAME_RE.sub("_", name).strip("_") or "table"
+
+
+def _sanitise_proposed_name(name: str) -> str:
+    """Best-effort enforcement of snake_case identifier rules on agent output."""
+    cleaned = _SAFE_NAME_RE.sub("_", name).strip("_").lower()
+    if not cleaned:
+        return ""
+    if cleaned[0].isdigit():
+        cleaned = "c_" + cleaned
+    return cleaned[:50]
+
+
+def _dedupe_names(names: list[str], fallback_prefix: str = "col") -> list[str]:
+    """Ensure all names are unique by suffixing duplicates with _2, _3, ..."""
+    seen: dict[str, int] = {}
+    out: list[str] = []
+    for n in names:
+        base = n or fallback_prefix
+        if base not in seen:
+            seen[base] = 1
+            out.append(base)
+        else:
+            seen[base] += 1
+            out.append(f"{base}_{seen[base]}")
+    return out
+
+
+async def _rename_parquet_columns(
+    *,
+    parquet_path: str,
+    current_columns: list[str],
+    proposed_columns: list[str],
+) -> None:
+    """Rewrite ``parquet_path`` in place with the columns renamed.
+
+    Uses DuckDB's ``COPY (SELECT col0 AS new0, col1 AS new1, ...) TO file``
+    so the type information from the materialise step is preserved.
+    """
+    import asyncio
+
+    import duckdb
+
+    def _sync() -> None:
+        conn = duckdb.connect()
+        try:
+            select_clauses = []
+            for old, new in zip(current_columns, proposed_columns, strict=True):
+                select_clauses.append(f'"{old}" AS "{new}"')
+            sel = ", ".join(select_clauses)
+            tmp_path = parquet_path + ".rename.tmp"
+            src = parquet_path.replace("'", "''")
+            tgt = tmp_path.replace("'", "''")
+            conn.execute(
+                f"COPY (SELECT {sel} FROM read_parquet('{src}')) "
+                f"TO '{tgt}' (FORMAT PARQUET, COMPRESSION 'snappy')"
+            )
+            Path(tmp_path).replace(parquet_path)
+        finally:
+            conn.close()
+
+    await asyncio.to_thread(_sync)
+
+
+async def _read_parquet_sample(parquet_path: str, n_rows: int = 5) -> tuple[list[str], list[list[Any]]]:
+    """Return (col_names, per-column sample values list).
+
+    ``per_column`` is shaped as a list-of-lists, aligned with ``col_names``;
+    each inner list has up to ``n_rows`` cell values pulled from the head
+    of the Parquet.
+    """
+    import asyncio
+
+    import duckdb
+
+    def _sync() -> tuple[list[str], list[list[Any]]]:
+        conn = duckdb.connect()
+        try:
+            src = parquet_path.replace("'", "''")
+            rows = conn.execute(f"SELECT * FROM read_parquet('{src}') LIMIT {int(n_rows)}").fetchall()
+            cols = [d[0] for d in conn.description]
+            per_col: list[list[Any]] = [[] for _ in cols]
+            for r in rows:
+                for ci, val in enumerate(r):
+                    per_col[ci].append(val)
+            return cols, per_col
+        finally:
+            conn.close()
+
+    return await asyncio.to_thread(_sync)
+
+
+async def _propose_meaningful_column_names(
+    *,
+    section_label: str,
+    mat_result: MaterialiseResult,
+    parquet_path: str,
+    settings: Any,
+    logger_: logging.Logger,
+) -> MaterialiseResult:
+    """Detect synthetic ``columnNN`` names, propose better ones, rewrite Parquet.
+
+    Returns the updated ``MaterialiseResult`` (column names changed; types
+    + nullability + positions preserved). When the agent or its API key
+    is unavailable, falls back to ``<section>_col_<n>`` so the names are
+    at least scoped to the section.
+    """
+    current_names = [c.name for c in mat_result.columns]
+    if not needs_proposal(current_names):
+        return mat_result
+
+    sample_cols, sample_values = await _read_parquet_sample(parquet_path, n_rows=5)
+    if sample_cols != current_names:
+        # Defensive -- if the Parquet header drifted, skip rename.
+        return mat_result
+
+    # Section-prefixed fallback name set. Used both as the "no API key"
+    # path and as the safety net if the agent returns a malformed list.
+    section_prefix = _sanitise_name(section_label).lower() or "col"
+    section_prefix = section_prefix[:30]
+    fallback = _dedupe_names([f"{section_prefix}_col_{i}" for i in range(len(current_names))])
+
+    import os
+
+    if not os.environ.get("ANTHROPIC_API_KEY"):
+        logger_.info(
+            "stage=parse rename_skipped reason=no_api_key fallback_prefix=%s",
+            section_prefix,
+        )
+        return _rebuild_mat_result(mat_result, fallback)
+
+    try:
+        agent = build_column_name_proposer_agent(settings)
+        prompt = render_proposal_prompt(
+            section_label=section_label,
+            current_names=current_names,
+            sample_values=sample_values,
+        )
+        run = await agent.run(prompt)
+        proposed_obj = getattr(run, "output", run)
+        proposed = list(getattr(proposed_obj, "proposed_names", []) or [])
+        if len(proposed) != len(current_names):
+            logger_.warning(
+                "stage=parse rename_misaligned expected=%d got=%d fallback=section_prefix",
+                len(current_names),
+                len(proposed),
+            )
+            proposed = fallback
+        else:
+            proposed = [_sanitise_proposed_name(p) for p in proposed]
+            # Replace empties with section-prefixed fallback at the same index.
+            proposed = [p if p else fallback[i] for i, p in enumerate(proposed)]
+            proposed = _dedupe_names(proposed, fallback_prefix=section_prefix)
+    except Exception as exc:  # noqa: BLE001
+        logger_.warning(
+            "stage=parse rename_agent_failed err=%s -- using section-prefixed fallback",
+            exc,
+        )
+        proposed = fallback
+
+    if proposed == current_names:
+        return mat_result
+
+    await _rename_parquet_columns(
+        parquet_path=parquet_path,
+        current_columns=current_names,
+        proposed_columns=proposed,
+    )
+    logger_.info(
+        "stage=parse renamed_columns section=%s before=%s after=%s",
+        section_label,
+        current_names[:6],
+        proposed[:6],
+    )
+    return _rebuild_mat_result(mat_result, proposed)
+
+
+def _rebuild_mat_result(
+    mat_result: MaterialiseResult,
+    new_names: list[str],
+) -> MaterialiseResult:
+    """Return a new MaterialiseResult with column names swapped (types kept)."""
+    return MaterialiseResult(
+        target_parquet_key=mat_result.target_parquet_key,
+        parquet_byte_size=mat_result.parquet_byte_size,
+        n_rows_actual=mat_result.n_rows_actual,
+        columns=tuple(
+            ColumnSchema(
+                name=new_names[i],
+                data_type=c.data_type,
+                is_nullable=c.is_nullable,
+                position=c.position,
+            )
+            for i, c in enumerate(mat_result.columns)
+        ),
+    )
 
 
 @dataclass
@@ -133,6 +334,28 @@ async def run_parse(
                         exc,
                     )
                     continue
+
+                # Smart column-name proposal: when DuckDB fell back to
+                # ``columnNN`` because the section didn't carry a real
+                # header band, ask the proposer agent for snake_case
+                # business names. The Parquet is rewritten in place;
+                # the MaterialiseResult.columns list is updated so
+                # downstream stages see the new names from the start.
+                section_label_for_naming = pt.name.split("__", 1)[-1] if "__" in pt.name else pt.name
+                try:
+                    mat_result = await _propose_meaningful_column_names(
+                        section_label=section_label_for_naming,
+                        mat_result=mat_result,
+                        parquet_path=local_parquet,
+                        settings=settings,
+                        logger_=logger,
+                    )
+                except Exception as exc:  # noqa: BLE001
+                    logger.warning(
+                        "stage=parse column_name_proposal_skipped table=%s err=%s",
+                        pt.name,
+                        exc,
+                    )
 
                 # Upload Parquet to object store
                 parquet_bytes = Path(local_parquet).read_bytes()
