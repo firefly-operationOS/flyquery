@@ -123,8 +123,18 @@ class HybridRetriever:
 
         schema_objects = _rrf([bm25_schema, vector_schema], k=self._rrf_k)[:top_k_schema]
 
+        # ALWAYS attach the full dataset inventory as a separate bucket.
+        # The grounding prompt renders this as a "complete catalog"
+        # section so the LLM has visibility into every table in the
+        # dataset, even when BM25 + vector miss (cross-language query,
+        # no embeddings configured, or rare-vocabulary user wording).
+        # The reranker only sees the retrieval hits, so this bucket
+        # bypasses the top-K truncation.
+        full_inventory = await self._index.all_schema_objects(dataset_id, limit=500)
+
         return {
             "schema_objects": schema_objects,
+            "schema_inventory": full_inventory,
             "examples": examples[:top_k_examples],
             "metrics": metrics[:top_k_metrics],
             "glossary": glossary,

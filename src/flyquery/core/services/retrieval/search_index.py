@@ -107,6 +107,124 @@ class SearchIndex:
             for r in rows.mappings()
         ]
 
+    async def all_schema_objects(
+        self,
+        dataset_id: uuid.UUID,
+        *,
+        limit: int = 500,
+    ) -> list[Hit]:
+        """Return every active schema_object in the dataset, unranked.
+
+        Used as a fallback when BM25 + vector retrieval both return zero
+        hits -- without this the grounding prompt carries no table
+        inventory and the LLM hallucinates plausible-but-wrong names
+        like ``balance_sheet`` / ``income_statement``.
+
+        For TABLE-kind rows, the ``text`` payload is enriched with the
+        list of column names + their inferred descriptions. That gives
+        the LLM a self-contained semantic fingerprint per table, even
+        when the describe stage left the table-level description NULL
+        (the describe stage only generates per-column descriptions
+        today). Without this enrichment the prompt would list 61
+        opaque names like ``IVI_MALAGA_SL__Activos`` with no signal
+        for the LLM to match user intent against.
+        """
+        # Fetch tables (with their column fingerprints) and columns
+        # separately so we can build a rich text per table.
+        table_rows = (
+            (
+                await self._session.execute(
+                    sa.text(
+                        """
+                SELECT o.id, o.qualified_name, o.description, o.table_id, o.kind,
+                       array_agg(c.qualified_name ORDER BY c.qualified_name) AS col_qnames,
+                       array_agg(c.description    ORDER BY c.qualified_name) AS col_descs
+                FROM flyquery_schema_objects o
+                JOIN flyquery_tables t ON t.id = o.table_id
+                LEFT JOIN flyquery_schema_objects c
+                    ON c.table_id = o.table_id
+                   AND c.kind = 'COLUMN'
+                   AND c.is_active = true
+                WHERE t.dataset_id = :ds AND o.is_active = true AND o.kind = 'TABLE'
+                GROUP BY o.id, o.qualified_name, o.description, o.table_id, o.kind
+                ORDER BY o.qualified_name
+                """
+                    ),
+                    {"ds": dataset_id},
+                )
+            )
+            .mappings()
+            .all()
+        )
+
+        column_rows = (
+            (
+                await self._session.execute(
+                    sa.text(
+                        """
+                SELECT o.id, o.qualified_name, o.description, o.data_type, o.table_id, o.kind
+                FROM flyquery_schema_objects o
+                JOIN flyquery_tables t ON t.id = o.table_id
+                WHERE t.dataset_id = :ds AND o.is_active = true AND o.kind = 'COLUMN'
+                ORDER BY o.qualified_name
+                LIMIT :lim
+                """
+                    ),
+                    {"ds": dataset_id, "lim": limit},
+                )
+            )
+            .mappings()
+            .all()
+        )
+
+        hits: list[Hit] = []
+        for r in table_rows:
+            # Build a "fingerprint" string: short column-name list +
+            # one-line description of each column (truncated). Stays
+            # under ~600 chars per table; for 60 tables that's ~36KB
+            # in the prompt -- well within Claude's window.
+            qnames = list(r["col_qnames"] or [])
+            descs = list(r["col_descs"] or [])
+            unq_cols = [qn.rsplit(".", 1)[-1] for qn in qnames]
+            col_list = ", ".join(unq_cols[:30])
+            sample_desc = next((d for d in descs if d), None)
+            payload_parts = [
+                r["description"] or "",
+                f"columns: {col_list}" if unq_cols else "",
+                f"sample column meaning: {sample_desc[:200]}" if sample_desc else "",
+            ]
+            text = "\n".join(p for p in payload_parts if p)
+            hits.append(
+                Hit(
+                    source_kind="schema_object",
+                    id=r["id"],
+                    text=text,
+                    score=1.0,
+                    metadata={
+                        "qualified_name": r["qualified_name"],
+                        "table_id": str(r["table_id"]),
+                        "kind": "TABLE",
+                        "columns": unq_cols,
+                    },
+                )
+            )
+
+        for r in column_rows:
+            hits.append(
+                Hit(
+                    source_kind="schema_object",
+                    id=r["id"],
+                    text=f"{r['qualified_name']}: {r['data_type'] or ''}\n{r['description'] or ''}",
+                    score=1.0,
+                    metadata={
+                        "qualified_name": r["qualified_name"],
+                        "table_id": str(r["table_id"]),
+                        "kind": "COLUMN",
+                    },
+                )
+            )
+        return hits
+
     async def approved_examples(
         self,
         query: str,

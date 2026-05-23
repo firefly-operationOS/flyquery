@@ -31,7 +31,6 @@ from flyquery.core.services.execution.ast_classifier import AstClassifier
 from flyquery.core.services.execution.duckdb_executor import ExecutionError, ExecutionResult
 from flyquery.core.services.execution.scope_guard import ScopeGuard, ScopeGuardError
 
-
 # ----------------------------------------------------------------------
 # Prompt rendering helpers
 # ----------------------------------------------------------------------
@@ -63,22 +62,52 @@ def _render_grounding_prompt(
         out.append("```")
         out.append("")
 
-    schema_hits = bundle.get("schema_objects", []) or []
-    if schema_hits:
-        out.append(f"# Retrieved schema objects (top {len(schema_hits)})")
+    # 1. The "Complete dataset catalogue" lists EVERY table in the dataset.
+    #    Ground-truth inventory the LLM must pick from; prevents
+    #    hallucination of plausible-but-nonexistent tables like
+    #    ``balance_sheet`` / ``income_statement``.
+    inventory = bundle.get("schema_inventory", []) or []
+    inv_tables = [h for h in inventory if (getattr(h, "metadata", {}) or {}).get("kind") == "TABLE"]
+    if inv_tables:
+        out.append(f"# Complete dataset catalogue ({len(inv_tables)} tables)")
         out.append(
-            "Each entry is a table or column from the workspace knowledge base. "
-            "Use ONLY these tables/columns in the grounded context — never invent "
-            "names. Column names that look like dates (e.g. `2024-12-31`) are "
-            "legitimate column names in dashboard-style XLSX uploads."
+            "These are the ONLY tables available. Use exactly these qualified "
+            "names. Never invent table names like `balance_sheet`, "
+            "`income_statement`, or `financials.*` -- if the user asks about "
+            "assets, find the matching table below (it may be named in "
+            "another language: Spanish `Activos` for English `Assets`, "
+            "`Cuenta de Pérdidas y Ganancias` for `Profit & Loss`)."
         )
-        for h in schema_hits[:30]:
+        for h in inv_tables:
             md = getattr(h, "metadata", None) or {}
-            qn = md.get("qualified_name") or md.get("table_qualified_name") or "?"
+            qn = md.get("qualified_name") or "?"
             text = getattr(h, "text", "") or ""
             text = text.replace("\n", " ").strip()
-            if len(text) > 240:
-                text = text[:237] + "…"
+            if len(text) > 160:
+                text = text[:157] + "…"
+            out.append(f"- `{qn}` :: {text}")
+        out.append("")
+
+    # 2. The "Top-ranked columns" section -- only column-level hits
+    #    from the hybrid retriever, ranked. Helps the LLM zero in on
+    #    the right columns once it has picked a table.
+    schema_hits = bundle.get("schema_objects", []) or []
+    column_hits = [h for h in schema_hits if (getattr(h, "metadata", {}) or {}).get("kind") != "TABLE"]
+    if column_hits:
+        out.append(f"# Top-ranked column matches ({len(column_hits)})")
+        out.append(
+            "Most relevant column-level matches for this question, ranked by "
+            "BM25 + vector retrieval. Prefer these when writing the SQL. "
+            "Column names that look like dates (e.g. `2024-12-31`) are "
+            "legitimate XLSX column names and must be quoted."
+        )
+        for h in column_hits[:200]:
+            md = getattr(h, "metadata", None) or {}
+            qn = md.get("qualified_name") or "?"
+            text = getattr(h, "text", "") or ""
+            text = text.replace("\n", " ").strip()
+            if len(text) > 200:
+                text = text[:197] + "…"
             out.append(f"- `{qn}` :: {text}")
         out.append("")
 
@@ -134,8 +163,19 @@ def _render_generation_prompt(
     question: str,
     grounded: Any,
     starting_point_sql: str | None,
+    *,
+    schema_inventory: list[Any] | None = None,
 ) -> str:
-    """Pack the grounded context into a SQL-generation prompt."""
+    """Pack the grounded context into a SQL-generation prompt.
+
+    The ``schema_inventory`` fallback is appended even when grounding
+    returned a non-empty tables list -- the inventory acts as a
+    safety net the generation agent can fall back on if it judges
+    the grounded set incomplete (e.g. needs a join to a table the
+    grounding agent missed). Without this fallback, generation
+    hallucinates plausible-but-nonexistent tables like
+    ``balance_sheet`` whenever grounding under-selects.
+    """
 
     out: list[str] = []
     out.append("# User question")
@@ -147,6 +187,25 @@ def _render_generation_prompt(
         out.append("```sql")
         out.append(starting_point_sql.strip())
         out.append("```")
+        out.append("")
+
+    inv = schema_inventory or []
+    inv_tables = [h for h in inv if (getattr(h, "metadata", {}) or {}).get("kind") == "TABLE"]
+    if inv_tables:
+        out.append(f"# Complete dataset catalogue ({len(inv_tables)} tables)")
+        out.append(
+            "Every table in this dataset. The SQL you generate MUST reference "
+            "tables from this list only -- never invent table names like "
+            "`balance_sheet`, `income_statement`, or `financials.*`."
+        )
+        for h in inv_tables:
+            md = getattr(h, "metadata", None) or {}
+            qn = md.get("qualified_name") or "?"
+            text = getattr(h, "text", "") or ""
+            text = text.replace("\n", " ").strip()
+            if len(text) > 160:
+                text = text[:157] + "…"
+            out.append(f"- `{qn}` :: {text}")
         out.append("")
 
     g_path = getattr(grounded, "path", None)
@@ -245,10 +304,10 @@ def _render_explainer_prompt(
     out.append(executed_sql.strip())
     out.append("```")
     out.append("")
-    out.append(f"# Result")
+    out.append("# Result")
     out.append(f"row_count: {row_count}")
     if preview_rows:
-        out.append("rows (first {}):".format(min(len(preview_rows), 50)))
+        out.append(f"rows (first {min(len(preview_rows), 50)}):")
         for row in preview_rows[:50]:
             out.append(f"- {row}")
     out.append("")
@@ -434,7 +493,12 @@ class QueryService:
                 ]
             else:
                 # Fall through to synthesis if no compiled SQL found
-                gen_prompt = _render_generation_prompt(question, grounded, starting_point_sql)
+                gen_prompt = _render_generation_prompt(
+                    question,
+                    grounded,
+                    starting_point_sql,
+                    schema_inventory=bundle.get("schema_inventory"),
+                )
                 gen_run = await self._generation_agent.run(gen_prompt)
                 gen_out = getattr(gen_run, "output", gen_run)
                 candidates_json = [c.model_dump() for c in gen_out.candidates]

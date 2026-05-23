@@ -6,9 +6,11 @@ Wired as a pyfly @service bean. Injected into the FilesController.
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import uuid
 from dataclasses import dataclass
+from typing import Any
 
 from pyfly.container import service as service_bean
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
@@ -60,6 +62,11 @@ class IngestService:
         self._workspace_service = workspace_service
         self._session_factory = session
         self._publisher = IngestPublisher()
+        # Cap concurrent per-section LLM calls (describe + column naming).
+        # A 60-section dashboard XLSX runs ~120 LLM calls; serialising
+        # them takes ~4 min, firing all at once trips Anthropic's per-key
+        # rate limit. ``settings.ingest_section_concurrency`` defaults to 8.
+        self._stage_semaphore = asyncio.Semaphore(getattr(settings, "ingest_section_concurrency", 8))
 
     async def ingest_upload(
         self,
@@ -122,27 +129,73 @@ class IngestService:
         # Stages 6 (relations), 8 (pii_tag) intentionally deferred to
         # the async worker; they're not on the critical path for the
         # first NL query against the table.
-        ingested: list[IngestedTable] = []
-        for pt in parsed_tables:
+        #
+        # Sections are processed in parallel via asyncio.gather, capped
+        # by ``self._stage_semaphore``. The cap exists to keep concurrent
+        # LLM calls under the provider's rate limit -- describe + column
+        # naming both hit the LLM provider, and a 60-section XLSX can
+        # otherwise spam 120 concurrent requests against Anthropic.
+        ingested = await asyncio.gather(
+            *[
+                self._process_section(
+                    tenant_id=tenant_id,
+                    workspace_id=workspace_id,
+                    dataset_id=dataset_id,
+                    actor=actor,
+                    parsed=pt,
+                )
+                for pt in parsed_tables
+            ]
+        )
+        ingested = [t for t in ingested if t is not None]
+
+        logger.info(
+            "ingest_upload complete file_id=%s tables=%d",
+            recv.file_id,
+            len(ingested),
+        )
+        return IngestResult(file_id=str(recv.file_id), tables=ingested)
+
+    async def _process_section(
+        self,
+        *,
+        tenant_id: str,
+        workspace_id: uuid.UUID,
+        dataset_id: uuid.UUID,
+        actor: str,
+        parsed: Any,  # ParsedTable
+    ) -> IngestedTable | None:
+        """Run reconcile -> sample -> profile -> describe -> embed -> publish.
+
+        Bracketed by ``self._stage_semaphore`` to cap concurrent LLM
+        calls; everything inside the bracket is happy to run in parallel
+        with other sections (each section owns its own snapshot id and
+        its own Parquet local path, so DuckDB / sample / profile don't
+        contend).
+        """
+        async with self._stage_semaphore:
             rec = await run_reconcile(
                 tenant_id=tenant_id,
                 workspace_id=workspace_id,
                 dataset_id=dataset_id,
-                parsed=pt,
+                parsed=parsed,
                 actor=actor,
                 triggered_by="USER",
                 session_factory=self._session_factory,
             )
 
+            local_parquet = parsed.local_parquet_path or parsed.parquet_key
+
             # --- Stage 4: sample ---
-            # PII-gated column sampling so DescribeAgent has real values
-            # to reason about. Without samples the agent only sees the
-            # column name + data type.
+            # Reads the local Parquet directly so DuckDB resolves the
+            # path natively. Failures are logged and skipped -- the
+            # describe stage still works without samples (column name
+            # + data type alone).
             try:
                 await run_sample(
                     tenant_id=tenant_id,
                     snapshot_id=rec.snapshot_id,
-                    parquet_key=pt.parquet_key,
+                    parquet_key=local_parquet,
                     session_factory=self._session_factory,
                     settings=self._settings,
                 )
@@ -154,7 +207,7 @@ class IngestService:
                 await run_profile(
                     tenant_id=tenant_id,
                     snapshot_id=rec.snapshot_id,
-                    parquet_key=pt.parquet_key,
+                    parquet_key=local_parquet,
                     n_rows_actual=rec.n_rows_actual,
                     session_factory=self._session_factory,
                     settings=self._settings,
@@ -192,7 +245,7 @@ class IngestService:
                 tenant_id=tenant_id,
                 workspace_id=workspace_id,
                 dataset_id=dataset_id,
-                table_id=pt.table_id,
+                table_id=parsed.table_id,
                 snapshot_id=rec.snapshot_id,
                 n_columns=rec.n_columns,
                 n_rows_actual=rec.n_rows_actual,
@@ -200,22 +253,24 @@ class IngestService:
                 session_factory=self._session_factory,
             )
 
-            ingested.append(
-                IngestedTable(
-                    table_id=str(pt.table_id),
-                    name=pt.name,
-                    n_columns=rec.n_columns,
-                    n_rows_estimate=rec.n_rows_actual,
-                    snapshot_id=str(rec.snapshot_id),
-                )
-            )
+            # Clean up the local Parquet now that every downstream stage
+            # is finished with it. Keeping these around for a 60-section
+            # XLSX wastes ~50MB of /tmp.
+            if parsed.local_parquet_path:
+                try:
+                    from pathlib import Path
 
-        logger.info(
-            "ingest_upload complete file_id=%s tables=%d",
-            recv.file_id,
-            len(ingested),
-        )
-        return IngestResult(file_id=str(recv.file_id), tables=ingested)
+                    Path(parsed.local_parquet_path).unlink(missing_ok=True)
+                except OSError:  # noqa: BLE001
+                    pass
+
+            return IngestedTable(
+                table_id=str(parsed.table_id),
+                name=parsed.name,
+                n_columns=rec.n_columns,
+                n_rows_estimate=rec.n_rows_actual,
+                snapshot_id=str(rec.snapshot_id),
+            )
 
     async def ingest_reupload(
         self,
@@ -270,94 +325,19 @@ class IngestService:
             original_filename=filename,
         )
 
-        ingested: list[IngestedTable] = []
-        for pt in parsed_tables:
-            rec = await run_reconcile(
-                tenant_id=tenant_id,
-                workspace_id=workspace_id,
-                dataset_id=dataset_id,
-                parsed=pt,
-                actor=actor,
-                triggered_by="USER",
-                session_factory=self._session_factory,
-            )
-
-            # Same stage order as the fresh-upload path: sample -> profile
-            # -> describe -> embed -> publish. Skipped silently if the
-            # individual stage fails; ingestion still completes so the
-            # raw data is queryable.
-            try:
-                await run_sample(
+        # Same parallel fan-out as the fresh-upload path.
+        ingested_raw = await asyncio.gather(
+            *[
+                self._process_section(
                     tenant_id=tenant_id,
-                    snapshot_id=rec.snapshot_id,
-                    parquet_key=pt.parquet_key,
-                    session_factory=self._session_factory,
-                    settings=self._settings,
+                    workspace_id=workspace_id,
+                    dataset_id=dataset_id,
+                    actor=actor,
+                    parsed=pt,
                 )
-            except Exception as exc:  # noqa: BLE001
-                logger.warning(
-                    "reupload stage=sample snapshot=%s skipped err=%s",
-                    rec.snapshot_id,
-                    exc,
-                )
-
-            try:
-                await run_profile(
-                    tenant_id=tenant_id,
-                    snapshot_id=rec.snapshot_id,
-                    parquet_key=pt.parquet_key,
-                    n_rows_actual=rec.n_rows_actual,
-                    session_factory=self._session_factory,
-                    settings=self._settings,
-                )
-            except Exception as exc:  # noqa: BLE001
-                logger.warning(
-                    "reupload stage=profile snapshot=%s skipped err=%s",
-                    rec.snapshot_id,
-                    exc,
-                )
-
-            try:
-                await run_describe(
-                    tenant_id=tenant_id,
-                    snapshot_id=rec.snapshot_id,
-                    session_factory=self._session_factory,
-                    settings=self._settings,
-                )
-            except Exception as exc:  # noqa: BLE001
-                logger.warning(
-                    "reupload stage=describe snapshot=%s skipped err=%s",
-                    rec.snapshot_id,
-                    exc,
-                )
-
-            await run_embed(
-                tenant_id=tenant_id,
-                snapshot_id=rec.snapshot_id,
-                session_factory=self._session_factory,
-                settings=self._settings,
-            )
-
-            await run_publish(
-                tenant_id=tenant_id,
-                workspace_id=workspace_id,
-                dataset_id=dataset_id,
-                table_id=pt.table_id,
-                snapshot_id=rec.snapshot_id,
-                n_columns=rec.n_columns,
-                n_rows_actual=rec.n_rows_actual,
-                publisher=self._publisher,
-                session_factory=self._session_factory,
-            )
-
-            ingested.append(
-                IngestedTable(
-                    table_id=str(pt.table_id),
-                    name=pt.name,
-                    n_columns=rec.n_columns,
-                    n_rows_estimate=rec.n_rows_actual,
-                    snapshot_id=str(rec.snapshot_id),
-                )
-            )
+                for pt in parsed_tables
+            ]
+        )
+        ingested = [t for t in ingested_raw if t is not None]
 
         return IngestResult(file_id=str(recv.file_id), tables=ingested)

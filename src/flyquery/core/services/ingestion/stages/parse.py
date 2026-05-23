@@ -246,6 +246,14 @@ class ParsedTable:
     sheet_or_json_path: str | None
     parquet_key: str
     result: MaterialiseResult
+    # Local FS path to the same Parquet that was uploaded under ``parquet_key``.
+    # Kept alive through the synchronous downstream stages (sample, profile,
+    # describe) so DuckDB can ``read_parquet(local_path)`` directly instead of
+    # the object-store key (which is opaque to DuckDB outside the LocalFs
+    # adapter). The owning ``IngestService`` cleans up this path after the
+    # ``publish`` stage; on failure it gets cleaned up by Python's tempfile
+    # mechanism (the file lives under ``tempfile.gettempdir()``).
+    local_parquet_path: str | None = None
 
 
 async def run_parse(
@@ -357,11 +365,16 @@ async def run_parse(
                         exc,
                     )
 
-                # Upload Parquet to object store
+                # Upload Parquet to object store. We keep the local file
+                # around -- sample / profile / describe read it directly,
+                # ingest_service cleans up after publish.
                 parquet_bytes = Path(local_parquet).read_bytes()
                 await object_store.put(parquet_key, parquet_bytes, "application/octet-stream")
-            finally:
+            except Exception:
+                # Materialise / upload failed; clean up the temp file
+                # immediately since no downstream stage will use it.
                 Path(local_parquet).unlink(missing_ok=True)
+                raise
 
             # Insert or verify flyquery_tables row
             if existing_table_id is None:
@@ -389,6 +402,7 @@ async def run_parse(
                     sheet_or_json_path=pt.sheet_or_json_path,
                     parquet_key=parquet_key,
                     result=mat_result,
+                    local_parquet_path=local_parquet,
                 )
             )
             logger.info(

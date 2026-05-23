@@ -83,6 +83,18 @@ class FlyquerySettings(BaseSettings):
     grounding_min_confidence: float = 0.55
     agent_max_output_tokens: int = 8192
 
+    # Ingestion pipeline concurrency / throughput tuning.
+    #
+    # ``ingest_section_concurrency`` caps the number of XLSX sections
+    # processed in parallel through the synchronous per-section
+    # pipeline (reconcile -> sample -> profile -> describe -> embed ->
+    # publish). Each section runs ~1 describe + 1 column-naming LLM
+    # call; for a 60-section dashboard XLSX serialising those takes
+    # ~4 min and firing them all at once (60 simultaneous) trips
+    # Anthropic's per-key RPM. The default of 8 keeps wall-clock low
+    # while staying under standard rate limits.
+    ingest_section_concurrency: int = 8
+
     # Embeddings + retrieval (lock-step with canon)
     #
     # Provider selection lets the operator pick between hosted (OpenAI,
@@ -99,7 +111,9 @@ class FlyquerySettings(BaseSettings):
     # preserved across the padding because the extra zero coordinates
     # add zero to both the dot product and the L2 norms (the rankings
     # in `embedding <=> CAST(:emb AS vector)` are stable).
-    embedding_provider: Literal["ollama", "openai", "cohere", "voyage", "azure", "google", "mistral", "bedrock", "null"] = "ollama"
+    embedding_provider: Literal[
+        "ollama", "openai", "cohere", "voyage", "azure", "google", "mistral", "bedrock", "null"
+    ] = "ollama"
     embedding_model: str = "nomic-embed-text"
     embedding_dimensions: int = 1536
     embedding_native_dim: int = 768  # native dim of the chosen model (used for padding)
