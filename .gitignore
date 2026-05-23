@@ -1,41 +1,124 @@
-# Python
+# =============================================================================
+# flyquery -- .gitignore
+#
+# Tracked: source, tests, docs, build manifests, Dockerfile, docker-compose
+# files, prompt YAMLs, Alembic migrations, env_template, and the Taskfile.
+#
+# Everything below is local-only state, secrets, or generated artefacts.
+# =============================================================================
+
+# --- Python virtual envs + bytecode ------------------------------------------
+.venv/
+venv/
+env/
+.python-version
 __pycache__/
 *.py[cod]
 *$py.class
 *.so
 .Python
-.venv/
-venv/
+
+# --- Build outputs / packaging -----------------------------------------------
+build/
+dist/
+*.egg
+*.egg-info/
+.eggs/
+pip-wheel-metadata/
+wheels/
+*.whl
+
+# --- uv + pip cache ----------------------------------------------------------
+.uv/
+.pip/
+
+# uv.lock is generated locally; CI runs ``uv sync`` (not ``uv sync
+# --frozen``) so the lockfile doesn't need to ride in git.
+uv.lock
+
+# --- Java SDK build artefacts ------------------------------------------------
+sdks/java/target/
+sdks/java/.mvn/
+sdks/java/.flattened-pom.xml
+*.class
+
+# --- Test, lint, type-check caches -------------------------------------------
 .pytest_cache/
 .ruff_cache/
 .mypy_cache/
+.pyright_cache/
 .pyright/
-*.egg-info/
-build/
-dist/
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+.tox/
+.nox/
 
-# Env + secrets
+# --- Local environment overrides + secrets -----------------------------------
+# env_template is the canonical, tracked example -- .env is per-developer.
 .env
 .env.*
-!.env.example
 !env_template
+*.pem
+*.key
+*.crt
+secrets/
+.secrets/
 
-# Editor + OS
+# --- Local databases / state -------------------------------------------------
+*.db
+*.db-journal
+*.sqlite
+*.sqlite3
+*.sqlite3-journal
+flyquery_dev.db
+local_data/
+
+# --- Logs --------------------------------------------------------------------
+*.log
+logs/
+
+# --- IDE / editor noise ------------------------------------------------------
 .idea/
 .vscode/
+*.swp
+*.swo
+*.sublime-*
+.fleet/
+.project
+.classpath
+.settings/
+
+# --- OS noise ----------------------------------------------------------------
 .DS_Store
 Thumbs.db
+desktop.ini
+.AppleDouble
+.LSOverride
 
-# Local data
-local_data/
-*.duckdb
-*.duckdb.wal
+# --- Claude Code + AI assistants ---------------------------------------------
+# Per-project memory and local agent state should never land in the repo.
+.claude/
+.claude*
+CLAUDE.md
+claude-*.md
+.cursor/
+.aider*
 
-# Generated SDKs (rebuilt in Plan 4)
-sdks/python/dist/
-sdks/python/build/
-sdks/python/*.egg-info/
-sdks/java/target/
+# --- Docker / compose runtime data -------------------------------------------
+.docker/
+docker-data/
+postgres_data/
 
-# uv
-uv.lock
+# --- Misc generated artefacts ------------------------------------------------
+*.tmp
+*.bak
+*.orig
+site/
+
+# --- Local design artefacts (not shipped) ------------------------------------
+# Brainstorm + spec + plan drafts live alongside the working copy as a
+# personal design journal; they are not part of the public product surface
+# and never land in the repo.
+docs/superpowers/
