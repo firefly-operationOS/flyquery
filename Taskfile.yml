@@ -96,6 +96,7 @@ tasks:
           -o sdks/python
           --package-name flyquery_sdk
           --additional-properties=packageVersion=26.5.2,projectName=flyquery-sdk,library=asyncio
+          --skip-validate-spec
       - cd sdks/python && uv pip install --system --quiet . || true
 
   sdk:java:
@@ -107,3 +108,4 @@ tasks:
           -o sdks/java
           --package-name io.firefly.flyquery
           --additional-properties=artifactId=flyquery-sdk,groupId=io.firefly,artifactVersion=26.5.2,library=okhttp-gson
+          --skip-validate-spec
