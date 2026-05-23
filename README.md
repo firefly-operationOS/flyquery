@@ -18,7 +18,7 @@ knowledge base — all behind a single HTTP service.
 [![OpenAPI](https://img.shields.io/badge/api-openapi%203.1-green)](docs/api-reference.md)
 [![DuckDB](https://img.shields.io/badge/query%20engine-duckdb-yellow)](docs/architecture.md)
 [![pgvector](https://img.shields.io/badge/vector--store-pgvector-336791)](docs/architecture.md)
-[![Version](https://img.shields.io/badge/version-26.5.3-green.svg)](#)
+[![Version](https://img.shields.io/badge/version-26.5.4-green.svg)](#)
 [![License](https://img.shields.io/badge/license-Proprietary-lightgrey.svg)](LICENSE)
 
 </div>
@@ -31,16 +31,28 @@ knowledge base — all behind a single HTTP service.
 
 ## Why this service exists
 
-flyquery is the third pillar of **Firefly OperationOS**, alongside
-[flycanon](../flycanon) (operational knowledge repository for unstructured
-content) and [flyradar](../flyradar) (operations-discovery and diagnostic
-intelligence).
+Analysts answering ad-hoc questions live in two worlds:
 
-When customers bring operational data as structured files — quarterly sales
-exports, CRM extracts, inventory snapshots, financial ledger CSVs — they
-need natural-language access without writing SQL, maintaining database
-connections, or mastering schema details. flyquery handles that boundary:
-upload a file, ask a question in plain English, get a cited, auditable answer.
+1. **Spreadsheets** — fast to start, impossible to govern. Excel and CSV
+   tabs accumulate in inboxes; nobody knows which version is current,
+   which column means what, or whether the numbers can be trusted.
+2. **Warehouses + BI tools** — governed but expensive. Onboarding a
+   new dataset means an ETL ticket, a dbt model, a schema review, and
+   weeks before the first dashboard ships.
+
+flyquery is the **middle path**. Drop a CSV (or XLSX, or JSON, or
+Parquet) into a workspace; flyquery materialises it as Parquet on
+object storage, derives a typed schema, samples + profiles each
+column, runs a PII pass, proposes joins to your other tables, and
+fits it to a long-lived knowledge base. Then you ask in English. A
+multi-agent pipeline (Grounding → Generation → Critic → Explainer)
+produces governed DuckDB SQL, runs it in a sandboxed connection
+under per-token scopes, returns rows + a chart hint, and keeps a
+conversation thread for drill-down.
+
+You get the governance of a warehouse (RLS, audit, scopes,
+versioned schemas, semantic-layer metrics) and the time-to-first-
+answer of a spreadsheet (upload, ask, done).
 
 What makes this non-trivial:
 
@@ -54,6 +66,33 @@ What makes this non-trivial:
   tables, invents columns, and silently drops GROUP BY. flyquery uses a
   four-agent pipeline with an AST firewall and self-correcting Critic to ensure
   only valid, scoped SQL executes.
+
+---
+
+## Why not part of flycanon?
+
+flycanon and flyquery are deliberately separate services that solve fundamentally
+different problems. Combining them would create a coherent-looking mess.
+
+**flycanon** is the operational knowledge repository for **unstructured** content
+(documents, HTML, PDFs, audio transcripts). Its model is: docs → chunks →
+embeddings → hybrid retrieval → grounded answers with citations. The query
+language is natural-language-to-RAG. The storage engine is pgvector + BM25 over
+text chunks. The retrieval primitive is semantic chunk retrieval with candidate
+scoring. The user-facing concepts are knowledge items, candidates, and
+supersession.
+
+**flyquery** handles **structured tabular data**. Its model is: file → typed
+schema → Parquet on object storage → DuckDB SQL via multi-agent pipeline. The
+query language is natural-language-to-SQL. The storage engine is Parquet on
+object storage queried in-process by DuckDB. The retrieval primitive is
+schema-element retrieval + table resolution + AST firewall. The user-facing
+concepts are datasets, tables, snapshots, examples, and metrics.
+
+The query languages, storage engines, retrieval primitives, and user-facing
+concepts conflict on every layer. Keeping them separate lets each service be sharp
+at its one job. Cross-service handoff happens via the agent tier with idempotency;
+see [`docs/integration-with-firefly-os.md`](docs/integration-with-firefly-os.md).
 
 ---
 
@@ -93,31 +132,66 @@ Three tiers: **upload surface** (async ingest into object storage + schema KB),
 
 ---
 
-## 10-second example
+## Quickstart
+
+The commands below use a local stack (`task dev` starts Postgres + Redis + MinIO).
+See [QUICKSTART.md](QUICKSTART.md) for the full walkthrough including credentials,
+MinIO bucket setup, and environment variables.
 
 ```bash
-# Upload a CSV
-curl -X POST http://localhost:8520/api/v1/datasets/ds_01/files \
-  -H "X-Tenant-Id: acme" -H "X-Workspace-Id: analytics" \
-  -F "file=@sales_q1.csv"
-# → {"file_id": "f_01", "tables": [{"table_id": "t_01", "name": "sales_q1", ...}]}
+# 1. Boot
+task dev && task migrate && task serve
+```
 
-# Wait for ingest (or stream progress)
-curl http://localhost:8520/api/v1/ingest-jobs/job_01/stream  # SSE
-
-# Ask a question
-curl -X POST http://localhost:8520/api/v1/query \
+```bash
+# 2. Create a workspace and dataset
+TENANT=acme
+WS_ID=$(curl -s -X POST http://localhost:8520/api/v1/workspaces \
   -H "Content-Type: application/json" \
-  -H "X-Tenant-Id: acme" -H "X-Workspace-Id: analytics" \
-  -d '{"question": "Total revenue by region for Q1", "dataset_id": "ds_01"}'
-# → {"answer": "Total Q1 revenue is $4.2M. Northeast led at $1.8M (43%).",
-#    "executed_sql": "SELECT region, SUM(revenue) ...",
-#    "chart_hint": "bar", "result_url": "https://...presigned..."}
+  -H "X-Tenant-Id: $TENANT" \
+  -d '{"name": "analytics", "description": "Q1 analytics"}' \
+  | python3 -c "import sys,json; print(json.load(sys.stdin)['id'])")
+
+DS_ID=$(curl -s -X POST http://localhost:8520/api/v1/datasets \
+  -H "Content-Type: application/json" \
+  -H "X-Tenant-Id: $TENANT" -H "X-Workspace-Id: $WS_ID" \
+  -d '{"name": "q1_sales", "description": "Q1 sales export"}' \
+  | python3 -c "import sys,json; print(json.load(sys.stdin)['id'])")
+```
+
+```bash
+# 3. Upload a CSV
+JOB_ID=$(curl -s -X POST \
+  "http://localhost:8520/api/v1/datasets/$DS_ID/files" \
+  -H "X-Tenant-Id: $TENANT" -H "X-Workspace-Id: $WS_ID" \
+  -F "file=@sales_q1.csv" \
+  | python3 -c "import sys,json; print(json.load(sys.stdin)['ingest_job_id'])")
+```
+
+```bash
+# 4. Stream ingest progress (SSE — Ctrl-C when you see "SUCCEEDED")
+curl -N "http://localhost:8520/api/v1/ingest-jobs/$JOB_ID/stream" \
+  -H "X-Tenant-Id: $TENANT" -H "X-Workspace-Id: $WS_ID"
+```
+
+```bash
+# 5. Ask a question
+curl -s -X POST http://localhost:8520/api/v1/query \
+  -H "Content-Type: application/json" \
+  -H "X-Tenant-Id: $TENANT" -H "X-Workspace-Id: $WS_ID" \
+  -d "{\"question\": \"Total revenue by region for Q1\", \"dataset_id\": \"$DS_ID\"}" \
+  | python3 -m json.tool
+# → {
+#     "answer": "Total Q1 revenue is $4.2M. Northeast led at $1.8M (43%).",
+#     "executed_sql": "SELECT region, SUM(revenue) FROM sales_q1 GROUP BY region",
+#     "chart_hint": "bar",
+#     "result_url": "https://minio.local/flyquery/results/..."
+#   }
 ```
 
 ---
 
-## What ships in v0
+## Capabilities
 
 | Capability | Detail |
 |------------|--------|
@@ -133,7 +207,7 @@ curl -X POST http://localhost:8520/api/v1/query \
 | **Auto-learning** | First-shot OK queries auto-propose `(question, SQL)` examples |
 | **PII scanning** | regex/Presidio; warn/redact/reject policy |
 | **Agent surface** | Full `/api/v1/agent/*` mirror with `X-Agent-Token` + `Idempotency-Key` |
-| **SDKs** | Python (`flyquery-sdk`) and Java (`io.firefly:flyquery-sdk`) auto-generated from OpenAPI |
+| **SDKs** | Python (`flyquery-sdk`) and Java (`com.firefly:flyquery-sdk`) auto-generated from OpenAPI |
 
 ---
 
@@ -162,26 +236,10 @@ Full index with reading paths: [**docs/README.md →**](docs/README.md)
 
 ---
 
-## Status
-
-**v0 complete.** Plans 1–4 shipped:
-
-| Plan | Scope | Status |
-|------|-------|--------|
-| 1 — Foundation | Scaffold, lock-step modules, RLS schema, workspace/dataset CRUD, agent tokens, ObjectStore | Done |
-| 2 — File ingestion | FileReader port (12 formats), 10-stage async pipeline, IngestWorker, EDA, PII, embeddings | Done |
-| 3 — Query pipeline | 4-agent pipeline, AST firewall, DuckDB executor, conversations, auto-learn | Done |
-| 4 — Packaging | OpenAPI drift gate, Python + Java SDKs, full docs | Done |
-
-v1+ roadmap: frontend `/flyquery` route, MCP server, cost enforcement,
-per-workspace KMS/CMEK, drift watchdog, `GovernanceClassifierAgent`.
-
----
-
 ## Local dev
 
 ```bash
-task dev          # docker compose up postgres + redis
+task dev          # docker compose up postgres + redis + minio
 task migrate      # alembic upgrade head
 task serve        # uvicorn flyquery.main:app --reload
 ```
