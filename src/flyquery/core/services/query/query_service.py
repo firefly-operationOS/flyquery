@@ -256,6 +256,7 @@ def _render_critic_prompt(
     failing_sql: str,
     error_message: str,
     grounded: Any,
+    schema_inventory: list[Any] | None = None,
 ) -> str:
     out: list[str] = []
     out.append("# User question")
@@ -269,10 +270,37 @@ def _render_critic_prompt(
     out.append("# DuckDB execution error")
     out.append(error_message.strip())
     out.append("")
+
+    # Full dataset catalogue -- the critic's most common failure mode
+    # is rewriting one hallucinated table name into another (e.g.
+    # ``balance_sheet`` -> ``financials.balance_sheet`` rather than
+    # picking the real ``IVI_MALAGA_SL__Activos``). Showing every real
+    # table by qualified_name + column fingerprint forces the critic
+    # to pick from the catalogue.
+    inv = schema_inventory or []
+    inv_tables = [h for h in inv if (getattr(h, "metadata", {}) or {}).get("kind") == "TABLE"]
+    if inv_tables:
+        out.append(f"# Complete dataset catalogue ({len(inv_tables)} tables)")
+        out.append(
+            "ONLY these tables exist. If the failing SQL referenced anything "
+            "else, that's the bug -- pick the right one from this list. Table "
+            "names may be in any language (Spanish `Activos` = Assets, "
+            "`Cuenta de Pérdidas y Ganancias` = Profit & Loss)."
+        )
+        for h in inv_tables:
+            md = getattr(h, "metadata", None) or {}
+            qn = md.get("qualified_name") or "?"
+            text = getattr(h, "text", "") or ""
+            text = text.replace("\n", " ").strip()
+            if len(text) > 160:
+                text = text[:157] + "…"
+            out.append(f"- `{qn}` :: {text}")
+        out.append("")
+
     g_tables = getattr(grounded, "tables", []) or []
     g_columns = getattr(grounded, "columns", []) or []
     if g_tables or g_columns:
-        out.append("# Grounded scope (do not invent tables/columns outside this set)")
+        out.append("# Grounded scope (preferred tables / columns)")
         for t in g_tables:
             out.append(f"- table: `{getattr(t, 'table_qualified_name', t)}`")
         for c in g_columns:
@@ -281,9 +309,10 @@ def _render_critic_prompt(
     out.append("# Task")
     out.append(
         "Return a corrected SQL that resolves the execution error. Output a "
-        "RefinedSql with a brief reasoning + a confidence in [0,1]. Stay inside "
-        "the grounded scope. Use unqualified table names (last segment only) and "
-        'quote any non-identifier column names like `"2024-12-31"`.'
+        "RefinedSql with a brief reasoning + a confidence in [0,1]. Pick "
+        "tables ONLY from the catalogue above. Use unqualified table names "
+        "(last segment only) and quote any non-identifier column names like "
+        '`"2024-12-31"`.'
     )
     return "\n".join(out)
 
@@ -504,7 +533,12 @@ class QueryService:
                 candidates_json = [c.model_dump() for c in gen_out.candidates]
                 chosen_sql = gen_out.candidates[0].sql
         else:
-            gen_prompt = _render_generation_prompt(question, grounded, starting_point_sql)
+            gen_prompt = _render_generation_prompt(
+                question,
+                grounded,
+                starting_point_sql,
+                schema_inventory=bundle.get("schema_inventory"),
+            )
             gen_run = await self._generation_agent.run(gen_prompt)
             gen_out = getattr(gen_run, "output", gen_run)
             candidates_json = [c.model_dump() for c in gen_out.candidates]
@@ -563,11 +597,42 @@ class QueryService:
         # ------------------------------------------------------------------
         # 6. Resolve parquet paths + execute (with critic loop)
         # ------------------------------------------------------------------
-        attached = await self._table_resolver.resolve(
-            dataset_id,
-            list(ast.table_refs),
-        )
-        result = await self._executor.execute(chosen_sql, attached)
+        # Pre-execution guard: detect SQL that references a table not in
+        # the dataset. ``_table_kinds_by_name`` returns ONLY matching
+        # rows -- a missing table simply has no key in the dict. So
+        # the bad-tables check is set-difference against
+        # ``ast.table_refs``, not a None-value sweep.
+        #
+        # The LLM occasionally hallucinates ``balance_sheet`` /
+        # ``income_statement`` / ``financials.*`` despite the prompt
+        # rules; rather than waiting for DuckDB to emit a generic
+        # ``Catalog Error: Table does not exist``, we synthesise a
+        # sharp ExecutionError that the existing critic loop picks
+        # up. The critic prompt receives the full dataset catalogue
+        # so the rewrite has the real table names in scope.
+        ref_set = {t for t in ast.table_refs if t}
+        bad_tables = sorted(ref_set - set(table_kinds.keys()))
+        if bad_tables:
+            real_tables = sorted(table_kinds.keys()) + [
+                (getattr(h, "metadata", {}) or {}).get("qualified_name", "").rsplit(".", 1)[-1]
+                for h in (bundle.get("schema_inventory") or [])
+                if (getattr(h, "metadata", {}) or {}).get("kind") == "TABLE"
+            ]
+            real_tables = [t for t in dict.fromkeys(real_tables) if t]
+            result: ExecutionResult | ExecutionError = ExecutionError(
+                message=(
+                    f"Table(s) {bad_tables!r} do not exist in this dataset. "
+                    f"Pick ONLY from this catalogue (and translate as needed: "
+                    f"Spanish `Activos` = Assets, `Cuenta de Pérdidas y Ganancias` "
+                    f"= Profit & Loss): {real_tables[:80]!r}."
+                )
+            )
+        else:
+            attached = await self._table_resolver.resolve(
+                dataset_id,
+                list(ast.table_refs),
+            )
+            result = await self._executor.execute(chosen_sql, attached)
         retries = 0
 
         while isinstance(result, ExecutionError) and retries < self._settings.max_refine_retries:
@@ -576,6 +641,7 @@ class QueryService:
                 failing_sql=chosen_sql,
                 error_message=result.message,
                 grounded=grounded,
+                schema_inventory=bundle.get("schema_inventory"),
             )
             refined_run = await self._critic_agent.run(critic_prompt)
             refined = getattr(refined_run, "output", refined_run)
@@ -593,6 +659,27 @@ class QueryService:
                 )
             except ScopeGuardError:
                 break
+            # Re-apply the unknown-table guard on the refined SQL too --
+            # otherwise the critic could hallucinate a different
+            # non-existent table and DuckDB would catch it generically.
+            ref_set = {t for t in ast.table_refs if t}
+            bad_tables = sorted(ref_set - set(table_kinds.keys()))
+            if bad_tables:
+                real_tables = sorted(table_kinds.keys()) + [
+                    (getattr(h, "metadata", {}) or {}).get("qualified_name", "").rsplit(".", 1)[-1]
+                    for h in (bundle.get("schema_inventory") or [])
+                    if (getattr(h, "metadata", {}) or {}).get("kind") == "TABLE"
+                ]
+                real_tables = [t for t in dict.fromkeys(real_tables) if t]
+                result = ExecutionError(
+                    message=(
+                        f"Refined SQL still references missing table(s) "
+                        f"{bad_tables!r}. The dataset only contains: "
+                        f"{real_tables[:80]!r}."
+                    )
+                )
+                retries += 1
+                continue
             attached = await self._table_resolver.resolve(dataset_id, list(ast.table_refs))
             result = await self._executor.execute(chosen_sql, attached)
             retries += 1
