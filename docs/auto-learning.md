@@ -249,8 +249,7 @@ a GroundingAgent context. This data feeds the `GET /api/v1/stats` response
 
 If operators are not reviewing proposals fast enough, the example store grows
 with unvetted SQL. Options:
-- Raise the auto-learn quality bar by enabling `FLYQUERY_AUTOLEARN_ENABLED=false`
-  (disables the mechanism entirely).
+- Disable auto-learn entirely by setting `FLYQUERY_AUTOLEARN_ENABLED=false`.
 - Set up a review workflow: `GET /examples?quality=PROPOSED&order=created_at_asc`
   daily and batch-approve/reject.
 - Use the agent surface to build an automated reviewer in v1.

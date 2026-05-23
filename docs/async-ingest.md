@@ -72,11 +72,12 @@ rollback of already-completed stages.
 
 ### Heartbeat + stale-job recovery
 
-Workers write a `heartbeat_at` timestamp to `flyquery_ingest_jobs` every
-`FLYQUERY_INGEST_HEARTBEAT_S` seconds (default 30). A separate background
-task resets jobs that have been `RUNNING` for longer than
-`FLYQUERY_INGEST_HANDLER_TIMEOUT_S` (default 600 s) without a heartbeat
-to `FAILED` with `error_json.code=HEARTBEAT_TIMEOUT`.
+> **v1+:** Periodic heartbeat writes and automatic stale-job recovery are
+> planned for v1. Currently, stale RUNNING jobs are detected only at restart
+> via the handler timeout (`FLYQUERY_INGEST_HANDLER_TIMEOUT_S`, default 600 s);
+> manual `FAILED` marking via `POST /ingest-jobs/{id}:cancel` is the operator
+> workaround. `FLYQUERY_INGEST_HEARTBEAT_S` (default 30) and
+> `FLYQUERY_INGEST_MAX_ATTEMPTS` (default 3) are reserved for v1 use.
 
 ---
 

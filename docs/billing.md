@@ -117,7 +117,11 @@ provider.
 
 ## 6. Billing API
 
-### Cost rollup by workspace
+> **v1+:** The `/api/v1/billing` endpoint is not in the current release.
+> `flyquery_cost_events` are recorded in the database and can be queried
+> directly. The API shape below describes the planned v1 surface.
+
+### Cost rollup by workspace (v1+)
 
 ```
 GET /api/v1/billing
@@ -170,12 +174,13 @@ In v0, `flyquery_cost_events` is populated but no enforcement runs:
 - No rate-limit-rpm on LLM calls (only on API requests via
   `agent_token.rate_limit_rpm`).
 
-Operators can set up external cost alerts using the billing API:
+Operators can set up external cost alerts by querying `flyquery_cost_events`
+directly via the Postgres admin role until the billing API ships in v1:
 
 ```bash
-# Simple alert: daily cost check (run via cron or monitoring pipeline)
-COST=$(curl -s "http://flyquery:8520/api/v1/billing?period_start=$(date -d '-1 day' +%Y-%m-%dT%H:%M:%SZ)" \
-  -H "X-Tenant-Id: acme" -H "X-Workspace-Id: analytics" | jq .total_cost_cents)
+# Simple alert: daily cost check (query DB directly until /api/v1/billing ships)
+COST=$(psql "$FLYQUERY_DATABASE_URL_ADMIN" -tAc \
+  "SELECT COALESCE(SUM(cost_cents),0) FROM flyquery_cost_events WHERE created_at > now()-interval '1 day'")
 if [ "$COST" -gt "10000" ]; then   # $100/day threshold
   echo "ALERT: flyquery daily cost exceeded $100 (actual: $(echo $COST/100 | bc) USD)"
 fi

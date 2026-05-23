@@ -479,7 +479,8 @@ Postgres is the scaling bottleneck for the schema knowledge base. Options:
 Embedding calls (stage 9) are the most API-rate-limited step. With
 `FLYQUERY_INGEST_WORKER_CONCURRENCY=4` and embedding dimension 1536,
 expect ~2-4 seconds per table for the embedding batch. Rate-limit
-management via `FLYQUERY_EMBEDDING_RATE_LIMIT_RPM` (TBD in v1).
+management via `FLYQUERY_EMBEDDING_RATE_LIMIT_RPM` (default 3000 RPM; not
+currently enforced in the embedding stage — rate limit enforcement is v1).
 
 ---
 

@@ -55,6 +55,8 @@ class FlyquerySettings(BaseSettings):
     ingest_worker_concurrency: int = 4
     ingest_handler_timeout_s: int = 600
     ingest_shutdown_grace_s: int = 30
+    ingest_heartbeat_s: int = 30
+    ingest_max_attempts: int = 3
     sample_n: int = 8
     profile_row_threshold: int = 10_000_000
     describe_budget_cents_per_run: int = 200
@@ -84,6 +86,7 @@ class FlyquerySettings(BaseSettings):
     # Embeddings + retrieval (lock-step with canon)
     embedding_model: str = "openai:text-embedding-3-small"
     embedding_dimensions: int = 1536
+    embedding_rate_limit_rpm: int = 3000
     vector_store: str = "pgvector"
     top_k_schema: int = 12
     top_k_examples: int = 5
@@ -97,6 +100,8 @@ class FlyquerySettings(BaseSettings):
     pii_scanner: Literal["regex", "presidio", "disabled"] = "regex"
     pii_policy_samples: Literal["warn", "redact", "reject"] = "redact"
     pii_policy_results: Literal["warn", "redact", "reject"] = "warn"
+    pii_regex_patterns_path: str = ""
+    presidio_spacy_model: str = "en_core_web_sm"
 
     # Auth + backends
     redis_url: str = ""
@@ -107,3 +112,16 @@ class FlyquerySettings(BaseSettings):
     eda_adapter: str = "postgres"
     eda_destinations: str = "flyquery.ingest,flyquery.schema,flyquery.audit"
     eda_group: str = "flyquery-workers"
+    kafka_bootstrap_servers: str = ""
+
+    # Conversation memory
+    conv_ttl_days: int = 90
+    conv_history_turns: int = 10
+    conv_summary_max_tokens: int = 500
+    conv_summary_interval: int = 5
+
+    # Auto-learn
+    autolearn_enabled: bool = True
+
+    # Observability
+    otel_endpoint: str = ""

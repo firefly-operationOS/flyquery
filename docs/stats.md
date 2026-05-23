@@ -12,8 +12,15 @@
 
 ## 1. Overview
 
-`GET /api/v1/stats` returns a one-shot workspace inventory snapshot. It
-aggregates:
+> **v1+:** `GET /api/v1/stats` is not in the current release. The endpoint
+> shape below describes the planned v1 surface. Current workspace storage
+> information is available via `GET /api/v1/workspaces/{id}` (which includes
+> `storage_used_bytes`). Aggregate stats can be queried directly from
+> `flyquery_workspaces`, `flyquery_datasets`, `flyquery_tables`, and
+> `flyquery_queries` via the admin Postgres role.
+
+`GET /api/v1/stats` will return a one-shot workspace inventory snapshot
+aggregating:
 
 - Storage utilisation (bytes used vs workspace cap).
 - Query activity (total counts, recent history, top questions).
@@ -21,7 +28,7 @@ aggregates:
 - Schema knowledge base size.
 - Top tables by query frequency.
 
-The endpoint is read-only and cached with a short TTL (default 60 seconds)
+The endpoint will be read-only and cached with a short TTL (default 60 seconds)
 to avoid hammering Postgres on dashboard polling.
 
 ---
