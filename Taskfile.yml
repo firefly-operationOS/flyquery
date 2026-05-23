@@ -86,3 +86,24 @@ tasks:
     desc: Snapshot the current OpenAPI spec to openapi.json
     cmds:
       - uv run python -c "from flyquery.main import app; import json; print(json.dumps(app.openapi(), indent=2, sort_keys=True))" > openapi.json
+
+  sdk:python:
+    desc: Regenerate the Python SDK from openapi.json
+    cmds:
+      - npx -y @openapitools/openapi-generator-cli generate
+          -i openapi.json
+          -g python
+          -o sdks/python
+          --package-name flyquery_sdk
+          --additional-properties=packageVersion=26.5.2,projectName=flyquery-sdk,library=asyncio
+      - cd sdks/python && uv pip install --system --quiet . || true
+
+  sdk:java:
+    desc: Regenerate the Java SDK from openapi.json
+    cmds:
+      - npx -y @openapitools/openapi-generator-cli generate
+          -i openapi.json
+          -g java
+          -o sdks/java
+          --package-name io.firefly.flyquery
+          --additional-properties=artifactId=flyquery-sdk,groupId=io.firefly,artifactVersion=26.5.2,library=okhttp-gson
