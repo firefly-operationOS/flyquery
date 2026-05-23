@@ -1,1166 +1,5815 @@
 {
+  "components": {
+    "schemas": {
+      "AgentTokenCreated": {
+        "description": "Mint response: includes the full ``token`` ONCE.\n\nSubsequent reads only ever expose ``prefix`` -- the secret hash\nis stored server-side and never returned. Callers MUST\ncapture the token at mint time; there is no recovery path.",
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "created_by": {
+            "title": "Created By",
+            "type": "string"
+          },
+          "expires_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expires At"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "last_used_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Used At"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "prefix": {
+            "title": "Prefix",
+            "type": "string"
+          },
+          "rate_limit_rpm": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rate Limit Rpm"
+          },
+          "revoked_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Revoked At"
+          },
+          "scopes": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Scopes",
+            "type": "array"
+          },
+          "token": {
+            "title": "Token",
+            "type": "string"
+          },
+          "workspace_allowlist": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Workspace Allowlist"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "prefix",
+          "workspace_allowlist",
+          "scopes",
+          "rate_limit_rpm",
+          "expires_at",
+          "created_at",
+          "created_by",
+          "revoked_at",
+          "last_used_at",
+          "token"
+        ],
+        "title": "AgentTokenCreated",
+        "type": "object"
+      },
+      "AgentTokenMintRequest": {
+        "description": "Request body for ``POST /api/v1/agent-tokens``.\n\n``workspace_allowlist`` is optional -- ``None`` means the token\ncan be used in any workspace under the tenant. ``scopes``\ndefaults to ``[\"*\"]`` (all scopes); the verify path treats\n``\"*\"`` as a wildcard. ``rate_limit_rpm`` is advisory metadata\ntoday and reserved for the per-token rate limiter we add\nlater; ``expires_at`` is enforced by the verify path.",
+        "properties": {
+          "expires_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Expires At"
+          },
+          "name": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "rate_limit_rpm": {
+            "anyOf": [
+              {
+                "maximum": 10000,
+                "minimum": 1,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Rate Limit Rpm"
+          },
+          "scopes": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Scopes",
+            "type": "array"
+          },
+          "workspace_allowlist": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Workspace Allowlist"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "title": "AgentTokenMintRequest",
+        "type": "object"
+      },
+      "AgentTokenSummaryDto": {
+        "description": "Token surface as listed back to user-tier callers -- secret omitted.\n\nEvery read path through ``GET /api/v1/agent-tokens`` returns\nthis shape. The raw token is *only* available on the\n:class:`AgentTokenCreated` returned by the mint endpoint and\nis never round-tripped through any other endpoint.",
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "created_by": {
+            "title": "Created By",
+            "type": "string"
+          },
+          "expires_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expires At"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "last_used_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Used At"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "prefix": {
+            "title": "Prefix",
+            "type": "string"
+          },
+          "rate_limit_rpm": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rate Limit Rpm"
+          },
+          "revoked_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Revoked At"
+          },
+          "scopes": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Scopes",
+            "type": "array"
+          },
+          "workspace_allowlist": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Workspace Allowlist"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "prefix",
+          "workspace_allowlist",
+          "scopes",
+          "rate_limit_rpm",
+          "expires_at",
+          "created_at",
+          "created_by",
+          "revoked_at",
+          "last_used_at"
+        ],
+        "title": "AgentTokenSummaryDto",
+        "type": "object"
+      },
+      "AnswerResponse": {
+        "description": "Response from POST /api/v1/query (sync).",
+        "properties": {
+          "chart_hint": {
+            "anyOf": [
+              {
+                "enum": [
+                  "line",
+                  "bar",
+                  "table",
+                  "pie",
+                  "none"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Chart Hint"
+          },
+          "clarification": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ClarificationFrame"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "elapsed_ms": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Elapsed Ms"
+          },
+          "execution_status": {
+            "anyOf": [
+              {
+                "enum": [
+                  "OK",
+                  "REFINED_OK",
+                  "FAILED",
+                  "REJECTED_BY_FIREWALL"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Execution Status"
+          },
+          "explanation": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Explanation"
+          },
+          "grounded_summary": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Grounded Summary"
+          },
+          "preview": {
+            "anyOf": [
+              {
+                "items": {
+                  "additionalProperties": true,
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Preview"
+          },
+          "query_id": {
+            "format": "uuid",
+            "title": "Query Id",
+            "type": "string"
+          },
+          "row_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Row Count"
+          },
+          "snapshot_pins": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Snapshot Pins",
+            "type": "object"
+          },
+          "sql": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sql"
+          },
+          "truncated": {
+            "default": false,
+            "title": "Truncated",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "query_id",
+          "sql",
+          "execution_status",
+          "preview",
+          "row_count",
+          "elapsed_ms"
+        ],
+        "title": "AnswerResponse",
+        "type": "object"
+      },
+      "CancelResponse": {
+        "description": "Response for POST /ingest-jobs/{id}:cancel.",
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "status",
+          "message"
+        ],
+        "title": "CancelResponse",
+        "type": "object"
+      },
+      "ClarificationFrame": {
+        "description": "Emitted when grounding confidence is below the threshold and missing_info is set.",
+        "properties": {
+          "questions": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Questions",
+            "type": "array"
+          },
+          "reasons": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Reasons",
+            "type": "array"
+          }
+        },
+        "required": [
+          "questions"
+        ],
+        "title": "ClarificationFrame",
+        "type": "object"
+      },
+      "ConversationCreate": {
+        "description": "Request body for POST /api/v1/conversations.",
+        "properties": {
+          "title": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Title"
+          }
+        },
+        "title": "ConversationCreate",
+        "type": "object"
+      },
+      "ConversationRead": {
+        "description": "A conversation, optionally with its turns.",
+        "properties": {
+          "actor": {
+            "title": "Actor",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "summary": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Summary"
+          },
+          "tenant_id": {
+            "title": "Tenant Id",
+            "type": "string"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          },
+          "turns": {
+            "items": {
+              "$ref": "#/components/schemas/TurnRead"
+            },
+            "title": "Turns",
+            "type": "array"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          },
+          "workspace_id": {
+            "format": "uuid",
+            "title": "Workspace Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "tenant_id",
+          "workspace_id",
+          "title",
+          "summary",
+          "actor",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "ConversationRead",
+        "type": "object"
+      },
+      "ConversationTurnRequest": {
+        "description": "Request body for POST /api/v1/conversations/{id}/turn.",
+        "properties": {
+          "dataset_id": {
+            "format": "uuid",
+            "title": "Dataset Id",
+            "type": "string"
+          },
+          "question": {
+            "maxLength": 4096,
+            "minLength": 1,
+            "title": "Question",
+            "type": "string"
+          }
+        },
+        "required": [
+          "dataset_id",
+          "question"
+        ],
+        "title": "ConversationTurnRequest",
+        "type": "object"
+      },
+      "DatasetCreate": {
+        "properties": {
+          "default_locale": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Default Locale"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Description"
+          },
+          "drift_policy": {
+            "default": "AUTO",
+            "enum": [
+              "AUTO",
+              "MANUAL"
+            ],
+            "title": "Drift Policy",
+            "type": "string"
+          },
+          "ingest_policy_json": {
+            "additionalProperties": true,
+            "title": "Ingest Policy Json",
+            "type": "object"
+          },
+          "metadata_json": {
+            "additionalProperties": true,
+            "title": "Metadata Json",
+            "type": "object"
+          },
+          "name": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "title": "DatasetCreate",
+        "type": "object"
+      },
+      "DatasetRead": {
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "default_locale": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Default Locale"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "drift_policy": {
+            "enum": [
+              "AUTO",
+              "MANUAL"
+            ],
+            "title": "Drift Policy",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "ingest_policy_json": {
+            "additionalProperties": true,
+            "title": "Ingest Policy Json",
+            "type": "object"
+          },
+          "metadata_json": {
+            "additionalProperties": true,
+            "title": "Metadata Json",
+            "type": "object"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "ACTIVE",
+              "ARCHIVED"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "tenant_id": {
+            "title": "Tenant Id",
+            "type": "string"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          },
+          "workspace_id": {
+            "format": "uuid",
+            "title": "Workspace Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "tenant_id",
+          "workspace_id",
+          "name",
+          "description",
+          "drift_policy",
+          "default_locale",
+          "ingest_policy_json",
+          "status",
+          "created_at",
+          "updated_at",
+          "metadata_json"
+        ],
+        "title": "DatasetRead",
+        "type": "object"
+      },
+      "DatasetUpdate": {
+        "properties": {
+          "default_locale": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Default Locale"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Description"
+          },
+          "drift_policy": {
+            "anyOf": [
+              {
+                "enum": [
+                  "AUTO",
+                  "MANUAL"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Drift Policy"
+          },
+          "ingest_policy_json": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Ingest Policy Json"
+          },
+          "metadata_json": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Metadata Json"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Name"
+          }
+        },
+        "title": "DatasetUpdate",
+        "type": "object"
+      },
+      "DeriveTableRequest": {
+        "description": "Request body for POST /api/v1/tables:derive.",
+        "properties": {
+          "dataset_id": {
+            "format": "uuid",
+            "title": "Dataset Id",
+            "type": "string"
+          },
+          "name": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "sql": {
+            "maxLength": 65536,
+            "minLength": 1,
+            "title": "Sql",
+            "type": "string"
+          }
+        },
+        "required": [
+          "dataset_id",
+          "name",
+          "sql"
+        ],
+        "title": "DeriveTableRequest",
+        "type": "object"
+      },
+      "DeriveTableResponse": {
+        "description": "Response from POST /api/v1/tables:derive.",
+        "properties": {
+          "dataset_id": {
+            "format": "uuid",
+            "title": "Dataset Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "table_id": {
+            "format": "uuid",
+            "title": "Table Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "table_id",
+          "name",
+          "dataset_id"
+        ],
+        "title": "DeriveTableResponse",
+        "type": "object"
+      },
+      "ExampleCreate": {
+        "description": "Payload for creating a new example (question + SQL pair).",
+        "properties": {
+          "citations_json": {
+            "additionalProperties": true,
+            "title": "Citations Json",
+            "type": "object"
+          },
+          "dataset_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Dataset Id"
+          },
+          "generated_sql": {
+            "minLength": 1,
+            "title": "Generated Sql",
+            "type": "string"
+          },
+          "question": {
+            "maxLength": 4096,
+            "minLength": 1,
+            "title": "Question",
+            "type": "string"
+          }
+        },
+        "required": [
+          "question",
+          "generated_sql"
+        ],
+        "title": "ExampleCreate",
+        "type": "object"
+      },
+      "ExampleRead": {
+        "description": "Full read representation of a flyquery_examples row.",
+        "properties": {
+          "citations_json": {
+            "additionalProperties": true,
+            "title": "Citations Json",
+            "type": "object"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "created_by": {
+            "title": "Created By",
+            "type": "string"
+          },
+          "dataset_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dataset Id"
+          },
+          "generated_sql": {
+            "title": "Generated Sql",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "last_used_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Used At"
+          },
+          "normalised_sql": {
+            "title": "Normalised Sql",
+            "type": "string"
+          },
+          "quality": {
+            "enum": [
+              "PROPOSED",
+              "APPROVED",
+              "REJECTED"
+            ],
+            "title": "Quality",
+            "type": "string"
+          },
+          "question": {
+            "title": "Question",
+            "type": "string"
+          },
+          "source": {
+            "enum": [
+              "USER_CURATED",
+              "AGENT_LEARNED"
+            ],
+            "title": "Source",
+            "type": "string"
+          },
+          "tenant_id": {
+            "title": "Tenant Id",
+            "type": "string"
+          },
+          "usage_count": {
+            "title": "Usage Count",
+            "type": "integer"
+          },
+          "workspace_id": {
+            "format": "uuid",
+            "title": "Workspace Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "tenant_id",
+          "workspace_id",
+          "dataset_id",
+          "question",
+          "generated_sql",
+          "normalised_sql",
+          "source",
+          "quality",
+          "citations_json",
+          "created_at",
+          "created_by",
+          "last_used_at",
+          "usage_count"
+        ],
+        "title": "ExampleRead",
+        "type": "object"
+      },
+      "ExplainResponse": {
+        "description": "Response from POST /api/v1/query:explain \u2014 Grounding + Generation only.",
+        "properties": {
+          "clarification": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ClarificationFrame"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "confidence": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Confidence"
+          },
+          "grounded_summary": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Grounded Summary"
+          },
+          "reasoning": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reasoning"
+          },
+          "sql": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sql"
+          }
+        },
+        "required": [
+          "sql",
+          "reasoning",
+          "confidence"
+        ],
+        "title": "ExplainResponse",
+        "type": "object"
+      },
+      "FileUploadResponse": {
+        "description": "Response from POST /datasets/{id}/files.",
+        "properties": {
+          "file_id": {
+            "title": "File Id",
+            "type": "string"
+          },
+          "tables": {
+            "items": {
+              "$ref": "#/components/schemas/TableSummary"
+            },
+            "title": "Tables",
+            "type": "array"
+          }
+        },
+        "required": [
+          "file_id",
+          "tables"
+        ],
+        "title": "FileUploadResponse",
+        "type": "object"
+      },
+      "GlossaryTermCreate": {
+        "description": "Payload for creating a new glossary term.",
+        "properties": {
+          "definition": {
+            "minLength": 1,
+            "title": "Definition",
+            "type": "string"
+          },
+          "related_columns_json": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Related Columns Json",
+            "type": "array"
+          },
+          "related_metrics_json": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Related Metrics Json",
+            "type": "array"
+          },
+          "synonyms_json": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Synonyms Json",
+            "type": "array"
+          },
+          "tags_json": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Tags Json",
+            "type": "array"
+          },
+          "term": {
+            "maxLength": 512,
+            "minLength": 1,
+            "title": "Term",
+            "type": "string"
+          }
+        },
+        "required": [
+          "term",
+          "definition"
+        ],
+        "title": "GlossaryTermCreate",
+        "type": "object"
+      },
+      "GlossaryTermRead": {
+        "description": "Full read representation of a flyquery_glossary_terms row.",
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "definition": {
+            "title": "Definition",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "related_columns_json": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Related Columns Json",
+            "type": "array"
+          },
+          "related_metrics_json": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Related Metrics Json",
+            "type": "array"
+          },
+          "synonyms_json": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Synonyms Json",
+            "type": "array"
+          },
+          "tags_json": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Tags Json",
+            "type": "array"
+          },
+          "tenant_id": {
+            "title": "Tenant Id",
+            "type": "string"
+          },
+          "term": {
+            "title": "Term",
+            "type": "string"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          },
+          "workspace_id": {
+            "format": "uuid",
+            "title": "Workspace Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "tenant_id",
+          "workspace_id",
+          "term",
+          "definition",
+          "synonyms_json",
+          "tags_json",
+          "related_columns_json",
+          "related_metrics_json",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "GlossaryTermRead",
+        "type": "object"
+      },
+      "GlossaryTermUpdate": {
+        "description": "Sparse-update payload for an existing glossary term.",
+        "properties": {
+          "definition": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Definition"
+          },
+          "related_columns_json": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Related Columns Json"
+          },
+          "related_metrics_json": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Related Metrics Json"
+          },
+          "synonyms_json": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Synonyms Json"
+          },
+          "tags_json": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Tags Json"
+          }
+        },
+        "title": "GlossaryTermUpdate",
+        "type": "object"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "title": "Detail",
+            "type": "array"
+          }
+        },
+        "title": "HTTPValidationError",
+        "type": "object"
+      },
+      "IngestEventListResponse": {
+        "description": "Paginated event ledger for GET /ingest-jobs/{id}/events.",
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/IngestEventRead"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "limit": {
+            "title": "Limit",
+            "type": "integer"
+          },
+          "offset": {
+            "title": "Offset",
+            "type": "integer"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "total",
+          "limit",
+          "offset"
+        ],
+        "title": "IngestEventListResponse",
+        "type": "object"
+      },
+      "IngestEventRead": {
+        "description": "One row from flyquery_ingest_events.",
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "ingest_job_id": {
+            "format": "uuid",
+            "title": "Ingest Job Id",
+            "type": "string"
+          },
+          "message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Message"
+          },
+          "payload_json": {
+            "additionalProperties": true,
+            "title": "Payload Json",
+            "type": "object"
+          },
+          "stage": {
+            "title": "Stage",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "ingest_job_id",
+          "stage",
+          "status",
+          "message",
+          "payload_json",
+          "created_at"
+        ],
+        "title": "IngestEventRead",
+        "type": "object"
+      },
+      "IngestJobListResponse": {
+        "description": "Paginated list of ingest jobs.",
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/IngestJobRead"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "limit": {
+            "title": "Limit",
+            "type": "integer"
+          },
+          "offset": {
+            "title": "Offset",
+            "type": "integer"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "total",
+          "limit",
+          "offset"
+        ],
+        "title": "IngestJobListResponse",
+        "type": "object"
+      },
+      "IngestJobRead": {
+        "description": "Response for GET /api/v1/ingest-jobs/{id} and list items.",
+        "properties": {
+          "attempts": {
+            "title": "Attempts",
+            "type": "integer"
+          },
+          "cost_cents": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              }
+            ],
+            "title": "Cost Cents"
+          },
+          "dataset_id": {
+            "format": "uuid",
+            "title": "Dataset Id",
+            "type": "string"
+          },
+          "elapsed_ms": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Elapsed Ms"
+          },
+          "file_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "File Id"
+          },
+          "finished_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Finished At"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "job_kind": {
+            "title": "Job Kind",
+            "type": "string"
+          },
+          "request_json": {
+            "additionalProperties": true,
+            "title": "Request Json",
+            "type": "object"
+          },
+          "result_json": {
+            "additionalProperties": true,
+            "title": "Result Json",
+            "type": "object"
+          },
+          "snapshot_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Snapshot Id"
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Started At"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "table_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Table Id"
+          },
+          "tenant_id": {
+            "title": "Tenant Id",
+            "type": "string"
+          },
+          "workspace_id": {
+            "format": "uuid",
+            "title": "Workspace Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "tenant_id",
+          "workspace_id",
+          "dataset_id",
+          "table_id",
+          "file_id",
+          "snapshot_id",
+          "job_kind",
+          "status",
+          "attempts",
+          "request_json",
+          "result_json",
+          "cost_cents",
+          "elapsed_ms",
+          "started_at",
+          "finished_at"
+        ],
+        "title": "IngestJobRead",
+        "type": "object"
+      },
+      "QueryRequest": {
+        "description": "Request body for POST /api/v1/query and /query:explain, /query:validate.",
+        "properties": {
+          "conversation_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Conversation Id"
+          },
+          "dataset_id": {
+            "format": "uuid",
+            "title": "Dataset Id",
+            "type": "string"
+          },
+          "question": {
+            "maxLength": 4096,
+            "minLength": 1,
+            "title": "Question",
+            "type": "string"
+          }
+        },
+        "required": [
+          "dataset_id",
+          "question"
+        ],
+        "title": "QueryRequest",
+        "type": "object"
+      },
+      "ReuploadResponse": {
+        "description": "Response from PUT /datasets/{ds}/tables/{id}:upload.",
+        "properties": {
+          "file_id": {
+            "title": "File Id",
+            "type": "string"
+          },
+          "n_columns": {
+            "title": "N Columns",
+            "type": "integer"
+          },
+          "n_rows_actual": {
+            "title": "N Rows Actual",
+            "type": "integer"
+          },
+          "snapshot_id": {
+            "title": "Snapshot Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "file_id",
+          "snapshot_id",
+          "n_columns",
+          "n_rows_actual"
+        ],
+        "title": "ReuploadResponse",
+        "type": "object"
+      },
+      "SchemaChangeRead": {
+        "description": "Response for GET /tables/{id}/changes items.",
+        "properties": {
+          "after_json": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "After Json"
+          },
+          "approved_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Approved At"
+          },
+          "approved_by": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Approved By"
+          },
+          "before_json": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Before Json"
+          },
+          "change": {
+            "title": "Change",
+            "type": "string"
+          },
+          "column_name": {
+            "title": "Column Name",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "llm_rationale": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Llm Rationale"
+          },
+          "next_snapshot_id": {
+            "format": "uuid",
+            "title": "Next Snapshot Id",
+            "type": "string"
+          },
+          "prev_snapshot_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Prev Snapshot Id"
+          },
+          "table_id": {
+            "format": "uuid",
+            "title": "Table Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "table_id",
+          "prev_snapshot_id",
+          "next_snapshot_id",
+          "column_name",
+          "change",
+          "before_json",
+          "after_json",
+          "llm_rationale",
+          "created_at"
+        ],
+        "title": "SchemaChangeRead",
+        "type": "object"
+      },
+      "SchemaObjectRead": {
+        "description": "Response for GET /schema-objects/{id} or PUT /schema-objects/{id}.",
+        "properties": {
+          "business_owner": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Business Owner"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "data_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data Type"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "description_source": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description Source"
+          },
+          "governance_json": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Governance Json"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "is_active": {
+            "title": "Is Active",
+            "type": "boolean"
+          },
+          "is_nullable": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Is Nullable"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "last_changed_at": {
+            "format": "date-time",
+            "title": "Last Changed At",
+            "type": "string"
+          },
+          "pii_source": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pii Source"
+          },
+          "pii_tag": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pii Tag"
+          },
+          "qualified_name": {
+            "title": "Qualified Name",
+            "type": "string"
+          },
+          "snapshot_id": {
+            "format": "uuid",
+            "title": "Snapshot Id",
+            "type": "string"
+          },
+          "synonyms_json": {
+            "anyOf": [
+              {
+                "items": {},
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Synonyms Json"
+          },
+          "table_id": {
+            "format": "uuid",
+            "title": "Table Id",
+            "type": "string"
+          },
+          "tenant_id": {
+            "title": "Tenant Id",
+            "type": "string"
+          },
+          "workspace_id": {
+            "format": "uuid",
+            "title": "Workspace Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "tenant_id",
+          "workspace_id",
+          "table_id",
+          "snapshot_id",
+          "kind",
+          "qualified_name",
+          "data_type",
+          "is_nullable",
+          "description",
+          "description_source",
+          "synonyms_json",
+          "pii_tag",
+          "pii_source",
+          "business_owner",
+          "governance_json",
+          "is_active",
+          "created_at",
+          "last_changed_at"
+        ],
+        "title": "SchemaObjectRead",
+        "type": "object"
+      },
+      "SchemaObjectUpdate": {
+        "description": "Request body for PUT /schema-objects/{id}.",
+        "properties": {
+          "business_owner": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Business Owner"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Description"
+          },
+          "governance_json": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Governance Json"
+          },
+          "pii_tag": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Pii Tag"
+          },
+          "synonyms_json": {
+            "anyOf": [
+              {
+                "items": {},
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Synonyms Json"
+          }
+        },
+        "title": "SchemaObjectUpdate",
+        "type": "object"
+      },
+      "SemanticDimensionCreate": {
+        "description": "Payload for creating a new semantic dimension.",
+        "properties": {
+          "dataset_id": {
+            "format": "uuid",
+            "title": "Dataset Id",
+            "type": "string"
+          },
+          "definition_yaml": {
+            "minLength": 1,
+            "title": "Definition Yaml",
+            "type": "string"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Description"
+          },
+          "label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Label"
+          },
+          "metric_type": {
+            "default": "SIMPLE",
+            "enum": [
+              "SIMPLE",
+              "RATIO",
+              "DERIVED",
+              "CUMULATIVE"
+            ],
+            "title": "Metric Type",
+            "type": "string"
+          },
+          "name": {
+            "maxLength": 256,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "dataset_id",
+          "name",
+          "definition_yaml"
+        ],
+        "title": "SemanticDimensionCreate",
+        "type": "object"
+      },
+      "SemanticDimensionRead": {
+        "description": "Full read representation of a flyquery_semantic_dimensions row.",
+        "properties": {
+          "compiled_sql_template": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Compiled Sql Template"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "current_version": {
+            "title": "Current Version",
+            "type": "integer"
+          },
+          "dataset_id": {
+            "format": "uuid",
+            "title": "Dataset Id",
+            "type": "string"
+          },
+          "definition_yaml": {
+            "title": "Definition Yaml",
+            "type": "string"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Label"
+          },
+          "metric_type": {
+            "enum": [
+              "SIMPLE",
+              "RATIO",
+              "DERIVED",
+              "CUMULATIVE"
+            ],
+            "title": "Metric Type",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "DRAFT",
+              "PUBLISHED",
+              "RETIRED"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "tenant_id": {
+            "title": "Tenant Id",
+            "type": "string"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          },
+          "workspace_id": {
+            "format": "uuid",
+            "title": "Workspace Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "tenant_id",
+          "workspace_id",
+          "dataset_id",
+          "name",
+          "label",
+          "description",
+          "definition_yaml",
+          "compiled_sql_template",
+          "metric_type",
+          "status",
+          "current_version",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "SemanticDimensionRead",
+        "type": "object"
+      },
+      "SemanticDimensionUpdate": {
+        "description": "Sparse-update payload for an existing semantic dimension.",
+        "properties": {
+          "definition_yaml": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Definition Yaml"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Description"
+          },
+          "label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Label"
+          },
+          "metric_type": {
+            "anyOf": [
+              {
+                "enum": [
+                  "SIMPLE",
+                  "RATIO",
+                  "DERIVED",
+                  "CUMULATIVE"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Metric Type"
+          }
+        },
+        "title": "SemanticDimensionUpdate",
+        "type": "object"
+      },
+      "SemanticMetricCreate": {
+        "description": "Payload for creating a new semantic metric.",
+        "properties": {
+          "dataset_id": {
+            "format": "uuid",
+            "title": "Dataset Id",
+            "type": "string"
+          },
+          "definition_yaml": {
+            "minLength": 1,
+            "title": "Definition Yaml",
+            "type": "string"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Description"
+          },
+          "label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Label"
+          },
+          "metric_type": {
+            "default": "SIMPLE",
+            "enum": [
+              "SIMPLE",
+              "RATIO",
+              "DERIVED",
+              "CUMULATIVE"
+            ],
+            "title": "Metric Type",
+            "type": "string"
+          },
+          "name": {
+            "maxLength": 256,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "dataset_id",
+          "name",
+          "definition_yaml"
+        ],
+        "title": "SemanticMetricCreate",
+        "type": "object"
+      },
+      "SemanticMetricRead": {
+        "description": "Full read representation of a flyquery_semantic_metrics row.",
+        "properties": {
+          "compiled_sql_template": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Compiled Sql Template"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "current_version": {
+            "title": "Current Version",
+            "type": "integer"
+          },
+          "dataset_id": {
+            "format": "uuid",
+            "title": "Dataset Id",
+            "type": "string"
+          },
+          "definition_yaml": {
+            "title": "Definition Yaml",
+            "type": "string"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Label"
+          },
+          "metric_type": {
+            "enum": [
+              "SIMPLE",
+              "RATIO",
+              "DERIVED",
+              "CUMULATIVE"
+            ],
+            "title": "Metric Type",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "DRAFT",
+              "PUBLISHED",
+              "RETIRED"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "tenant_id": {
+            "title": "Tenant Id",
+            "type": "string"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          },
+          "workspace_id": {
+            "format": "uuid",
+            "title": "Workspace Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "tenant_id",
+          "workspace_id",
+          "dataset_id",
+          "name",
+          "label",
+          "description",
+          "definition_yaml",
+          "compiled_sql_template",
+          "metric_type",
+          "status",
+          "current_version",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "SemanticMetricRead",
+        "type": "object"
+      },
+      "SemanticMetricUpdate": {
+        "description": "Sparse-update payload for an existing semantic metric.",
+        "properties": {
+          "definition_yaml": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Definition Yaml"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Description"
+          },
+          "label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Label"
+          },
+          "metric_type": {
+            "anyOf": [
+              {
+                "enum": [
+                  "SIMPLE",
+                  "RATIO",
+                  "DERIVED",
+                  "CUMULATIVE"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Metric Type"
+          }
+        },
+        "title": "SemanticMetricUpdate",
+        "type": "object"
+      },
+      "SqlExecuteRequest": {
+        "description": "Request body for POST /api/v1/sql:execute.",
+        "properties": {
+          "dataset_id": {
+            "format": "uuid",
+            "title": "Dataset Id",
+            "type": "string"
+          },
+          "sql": {
+            "maxLength": 65536,
+            "minLength": 1,
+            "title": "Sql",
+            "type": "string"
+          }
+        },
+        "required": [
+          "dataset_id",
+          "sql"
+        ],
+        "title": "SqlExecuteRequest",
+        "type": "object"
+      },
+      "SqlExecuteResponse": {
+        "description": "Response from POST /api/v1/sql:execute (sync).",
+        "properties": {
+          "ast_classification": {
+            "title": "Ast Classification",
+            "type": "string"
+          },
+          "elapsed_ms": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Elapsed Ms"
+          },
+          "execution_status": {
+            "enum": [
+              "OK",
+              "FAILED",
+              "REJECTED_BY_FIREWALL"
+            ],
+            "title": "Execution Status",
+            "type": "string"
+          },
+          "preview": {
+            "anyOf": [
+              {
+                "items": {
+                  "additionalProperties": true,
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Preview"
+          },
+          "query_id": {
+            "format": "uuid",
+            "title": "Query Id",
+            "type": "string"
+          },
+          "row_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Row Count"
+          },
+          "sql": {
+            "title": "Sql",
+            "type": "string"
+          },
+          "truncated": {
+            "default": false,
+            "title": "Truncated",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "query_id",
+          "sql",
+          "ast_classification",
+          "execution_status",
+          "preview",
+          "row_count",
+          "elapsed_ms"
+        ],
+        "title": "SqlExecuteResponse",
+        "type": "object"
+      },
+      "TableRead": {
+        "description": "Response for GET /tables/{id}.",
+        "properties": {
+          "business_owner": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Business Owner"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "current_snapshot_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Current Snapshot Id"
+          },
+          "dataset_id": {
+            "format": "uuid",
+            "title": "Dataset Id",
+            "type": "string"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "description_source": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description Source"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "is_active": {
+            "title": "Is Active",
+            "type": "boolean"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "n_columns": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "N Columns"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "qualified_name": {
+            "title": "Qualified Name",
+            "type": "string"
+          },
+          "sheet_or_json_path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sheet Or Json Path"
+          },
+          "source_file_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source File Id"
+          },
+          "tenant_id": {
+            "title": "Tenant Id",
+            "type": "string"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          },
+          "workspace_id": {
+            "format": "uuid",
+            "title": "Workspace Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "tenant_id",
+          "workspace_id",
+          "dataset_id",
+          "source_file_id",
+          "name",
+          "qualified_name",
+          "kind",
+          "sheet_or_json_path",
+          "current_snapshot_id",
+          "description",
+          "description_source",
+          "business_owner",
+          "is_active",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "TableRead",
+        "type": "object"
+      },
+      "TableSummary": {
+        "description": "Summary of a table created/updated by an upload.",
+        "properties": {
+          "n_columns": {
+            "title": "N Columns",
+            "type": "integer"
+          },
+          "n_rows_estimate": {
+            "title": "N Rows Estimate",
+            "type": "integer"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "table_id": {
+            "title": "Table Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "table_id",
+          "name",
+          "n_columns",
+          "n_rows_estimate"
+        ],
+        "title": "TableSummary",
+        "type": "object"
+      },
+      "TurnRead": {
+        "description": "Single conversation turn.",
+        "properties": {
+          "conversation_id": {
+            "format": "uuid",
+            "title": "Conversation Id",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "elapsed_ms": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Elapsed Ms"
+          },
+          "executed_sql": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Executed Sql"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "no_answer": {
+            "title": "No Answer",
+            "type": "boolean"
+          },
+          "question": {
+            "title": "Question",
+            "type": "string"
+          },
+          "snapshot_pins_json": {
+            "additionalProperties": true,
+            "title": "Snapshot Pins Json",
+            "type": "object"
+          },
+          "summary": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Summary"
+          },
+          "table_qnames_json": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Table Qnames Json",
+            "type": "array"
+          },
+          "tenant_id": {
+            "title": "Tenant Id",
+            "type": "string"
+          },
+          "turn_index": {
+            "title": "Turn Index",
+            "type": "integer"
+          },
+          "workspace_id": {
+            "format": "uuid",
+            "title": "Workspace Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "tenant_id",
+          "workspace_id",
+          "conversation_id",
+          "turn_index",
+          "question",
+          "executed_sql",
+          "summary",
+          "no_answer",
+          "elapsed_ms",
+          "created_at"
+        ],
+        "title": "TurnRead",
+        "type": "object"
+      },
+      "ValidateResponse": {
+        "description": "Response from POST /api/v1/query:validate \u2014 includes AST + scope check.",
+        "properties": {
+          "ast_classification": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ast Classification"
+          },
+          "clarification": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ClarificationFrame"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "scope_error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Scope Error"
+          },
+          "single_statement": {
+            "default": true,
+            "title": "Single Statement",
+            "type": "boolean"
+          },
+          "sql": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sql"
+          },
+          "table_refs": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Table Refs",
+            "type": "array"
+          }
+        },
+        "required": [
+          "sql",
+          "ast_classification"
+        ],
+        "title": "ValidateResponse",
+        "type": "object"
+      },
+      "ValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "properties": {
+                "loc": {
+                  "items": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "integer"
+                      }
+                    ]
+                  },
+                  "title": "Location",
+                  "type": "array"
+                },
+                "msg": {
+                  "title": "Message",
+                  "type": "string"
+                },
+                "type": {
+                  "title": "Error Type",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "loc",
+                "msg",
+                "type"
+              ],
+              "type": "object"
+            },
+            "title": "Detail",
+            "type": "array"
+          }
+        },
+        "required": [
+          "detail"
+        ],
+        "title": "ValidationError",
+        "type": "object"
+      },
+      "WorkspaceCreate": {
+        "properties": {
+          "allow_direct_sql": {
+            "default": false,
+            "title": "Allow Direct Sql",
+            "type": "boolean"
+          },
+          "default_locale": {
+            "default": "en-US",
+            "title": "Default Locale",
+            "type": "string"
+          },
+          "kms_key_uri": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Kms Key Uri"
+          },
+          "metadata_json": {
+            "additionalProperties": true,
+            "title": "Metadata Json",
+            "type": "object"
+          },
+          "name": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "retention_days": {
+            "anyOf": [
+              {
+                "minimum": 1,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Retention Days"
+          },
+          "slug": {
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Slug",
+            "type": "string"
+          }
+        },
+        "required": [
+          "slug",
+          "name"
+        ],
+        "title": "WorkspaceCreate",
+        "type": "object"
+      },
+      "WorkspaceRead": {
+        "properties": {
+          "allow_direct_sql": {
+            "title": "Allow Direct Sql",
+            "type": "boolean"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "default_locale": {
+            "title": "Default Locale",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "kms_key_uri": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Kms Key Uri"
+          },
+          "metadata_json": {
+            "additionalProperties": true,
+            "title": "Metadata Json",
+            "type": "object"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "retention_days": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Retention Days"
+          },
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "ACTIVE",
+              "ARCHIVED",
+              "PURGING"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "storage_used_bytes": {
+            "title": "Storage Used Bytes",
+            "type": "integer"
+          },
+          "tenant_id": {
+            "title": "Tenant Id",
+            "type": "string"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "tenant_id",
+          "slug",
+          "name",
+          "kms_key_uri",
+          "retention_days",
+          "allow_direct_sql",
+          "default_locale",
+          "storage_used_bytes",
+          "status",
+          "created_at",
+          "updated_at",
+          "metadata_json"
+        ],
+        "title": "WorkspaceRead",
+        "type": "object"
+      },
+      "WorkspaceUpdate": {
+        "properties": {
+          "allow_direct_sql": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Allow Direct Sql"
+          },
+          "default_locale": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Default Locale"
+          },
+          "kms_key_uri": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Kms Key Uri"
+          },
+          "metadata_json": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Metadata Json"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Name"
+          },
+          "retention_days": {
+            "anyOf": [
+              {
+                "minimum": 1,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Retention Days"
+          }
+        },
+        "title": "WorkspaceUpdate",
+        "type": "object"
+      }
+    }
+  },
   "info": {
-    "description": "Operational Structured-Data Intelligence (upload-driven) -- multi-tenant ingestion + Text-to-SQL over user-uploaded structured files (CSV / TSV / XLSX / XLS / ODS / JSON / JSONL / Parquet / Avro / ORC / Arrow / Feather + .gz/.zip/.bz2 variants). Materialises uploads to Parquet on object storage; indexes a long-lived schema knowledge base; answers natural-language questions via a multi-agent pipeline. Part of Firefly OperationOS.",
+    "contact": {
+      "name": "Firefly OperationOS",
+      "url": "https://github.com/firefly-operationOS/flyquery"
+    },
+    "license": {
+      "name": "Proprietary -- service",
+      "url": "https://github.com/firefly-operationOS/flyquery/blob/main/LICENSE"
+    },
     "title": "flyquery",
-    "version": "26.5.0"
+    "version": "26.5.2"
   },
   "openapi": "3.1.0",
   "paths": {
     "/api/v1/agent-tokens": {
       "get": {
-        "operationId": "lazy_endpoint_api_v1_agent_tokens_get",
+        "description": "Returns the summary shape only -- the secret is never\nround-tripped on this endpoint.",
+        "operationId": "list_tokens",
         "responses": {
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/AgentTokenSummaryDto"
+                  },
+                  "type": "array"
+                }
               }
             },
-            "description": "Successful Response"
+            "description": "Successful response"
           }
         },
-        "summary": "Lazy Endpoint"
+        "summary": "List tokens for the current tenant (newest first).",
+        "tags": [
+          "agent-tokens"
+        ]
       },
       "post": {
-        "operationId": "lazy_endpoint_api_v1_agent_tokens_post",
+        "description": "Returns 201 with the full ``token`` populated. The token is\nonly returned this once -- subsequent reads expose only\n``prefix``. Refuses agent-tier callers with\n``403 agent_cannot_mint``.",
+        "operationId": "mint",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AgentTokenMintRequest"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
           "201": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/AgentTokenCreated"
+                }
               }
             },
-            "description": "Successful Response"
+            "description": "Successful response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
           }
         },
-        "summary": "Lazy Endpoint"
+        "summary": "Mint a new agent token.",
+        "tags": [
+          "agent-tokens"
+        ]
       }
     },
     "/api/v1/agent-tokens/{token_id}": {
       "delete": {
-        "operationId": "lazy_endpoint_api_v1_agent_tokens__token_id__delete",
+        "description": "Unknown ``token_id`` returns ``404 resource_not_found``.",
+        "operationId": "revoke",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "token_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "204": {
-            "description": "Successful Response"
+            "description": "No Content"
           }
         },
-        "summary": "Lazy Endpoint"
+        "summary": "Revoke a token. Idempotent -- already-revoked is a no-op (204).",
+        "tags": [
+          "agent-tokens"
+        ]
       }
     },
     "/api/v1/agent/examples": {
       "get": {
-        "operationId": "lazy_endpoint_api_v1_agent_examples_get",
+        "description": ":param http_request: Starlette request\n:param quality: optional quality filter (PROPOSED/APPROVED/REJECTED)\n:param dataset_id: optional dataset filter\n:return: ``{\"items\": [...]}``",
+        "operationId": "list_examples",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "quality",
+            "required": false,
+            "schema": {
+              "default": null,
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "dataset_id",
+            "required": false,
+            "schema": {
+              "default": null,
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "200": {
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            },
-            "description": "Successful Response"
+            "description": "Successful response"
           }
         },
-        "summary": "Lazy Endpoint"
+        "summary": "List examples for the caller's workspace (agent-tier).",
+        "tags": [
+          "agent-examples"
+        ]
       },
       "post": {
-        "operationId": "lazy_endpoint_api_v1_agent_examples_post",
+        "description": ":param http_request: Starlette request\n:param body: validated ExampleCreate\n:return: ExampleRead with created fields",
+        "operationId": "create",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExampleCreate"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
           "201": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/ExampleRead"
+                }
               }
             },
-            "description": "Successful Response"
+            "description": "Successful response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
           }
         },
-        "summary": "Lazy Endpoint"
+        "summary": "Create an example (agent-tier \u2014 source=AGENT_LEARNED, quality=PROPOSED).",
+        "tags": [
+          "agent-examples"
+        ]
       }
     },
     "/api/v1/agent/query": {
       "post": {
-        "operationId": "lazy_endpoint_api_v1_agent_query_post",
+        "description": ":param http_request: Starlette request (provides tenant context + agent token)\n:param body: validated QueryRequest\n:return: AnswerResponse",
+        "operationId": "query",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/QueryRequest"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/AnswerResponse"
+                }
               }
             },
-            "description": "Successful Response"
+            "description": "Successful response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
           }
         },
-        "summary": "Lazy Endpoint"
+        "summary": "Run the full NL \u2192 SQL \u2192 result pipeline (agent-tier).",
+        "tags": [
+          "agent-query"
+        ]
       }
     },
     "/api/v1/agent/query/stream": {
       "post": {
-        "operationId": "lazy_endpoint_api_v1_agent_query_stream_post",
+        "description": ":param http_request: Starlette request\n:param body: validated QueryRequest\n:return: StreamingResponse with text/event-stream",
+        "operationId": "stream",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/QueryRequest"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
           "200": {
+            "description": "Successful response"
+          },
+          "422": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
               }
             },
-            "description": "Successful Response"
+            "description": "Validation Error"
           }
         },
-        "summary": "Lazy Endpoint"
+        "summary": "Run the pipeline as SSE stream (agent-tier).",
+        "tags": [
+          "agent-query"
+        ]
       }
     },
     "/api/v1/agent/query:explain": {
       "post": {
-        "operationId": "lazy_endpoint_api_v1_agent_query_explain_post",
+        "description": ":param http_request: Starlette request\n:param body: validated QueryRequest\n:return: ExplainResponse with candidate SQL and reasoning",
+        "operationId": "explain",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/QueryRequest"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/ExplainResponse"
+                }
               }
             },
-            "description": "Successful Response"
+            "description": "Successful response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
           }
         },
-        "summary": "Lazy Endpoint"
+        "summary": "Run Grounding + Generation only (agent-tier).",
+        "tags": [
+          "agent-query"
+        ]
       }
     },
     "/api/v1/agent/query:validate": {
       "post": {
-        "operationId": "lazy_endpoint_api_v1_agent_query_validate_post",
+        "description": ":param http_request: Starlette request\n:param body: validated QueryRequest\n:return: ValidateResponse",
+        "operationId": "validate",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/QueryRequest"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/ValidateResponse"
+                }
               }
             },
-            "description": "Successful Response"
+            "description": "Successful response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
           }
         },
-        "summary": "Lazy Endpoint"
+        "summary": "Run Grounding + Generation + AST + ScopeGuard (agent-tier).",
+        "tags": [
+          "agent-query"
+        ]
       }
     },
     "/api/v1/agent/sql:execute": {
       "post": {
-        "operationId": "lazy_endpoint_api_v1_agent_sql_execute_post",
+        "description": ":param http_request: Starlette request\n:param body: validated SqlExecuteRequest\n:return: SqlExecuteResponse",
+        "operationId": "execute",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SqlExecuteRequest"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/SqlExecuteResponse"
+                }
               }
             },
-            "description": "Successful Response"
+            "description": "Successful response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
           }
         },
-        "summary": "Lazy Endpoint"
+        "summary": "Execute SQL directly (agent-tier).",
+        "tags": [
+          "agent-sql"
+        ]
       }
     },
     "/api/v1/agent/sql:execute/stream": {
       "post": {
-        "operationId": "lazy_endpoint_api_v1_agent_sql_execute_stream_post",
+        "description": ":param http_request: Starlette request\n:param body: validated SqlExecuteRequest\n:return: StreamingResponse with text/event-stream",
+        "operationId": "execute_stream",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SqlExecuteRequest"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
           "200": {
+            "description": "Successful response"
+          },
+          "422": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
               }
             },
-            "description": "Successful Response"
+            "description": "Validation Error"
           }
         },
-        "summary": "Lazy Endpoint"
+        "summary": "Execute SQL as SSE stream (agent-tier).",
+        "tags": [
+          "agent-sql"
+        ]
       }
     },
     "/api/v1/agent/version": {
       "get": {
-        "operationId": "lazy_endpoint_api_v1_agent_version_get",
+        "description": "Requires a valid ``X-Agent-Token`` with ``flyquery.audit:read`` scope.\nMissing or invalid tokens return 401 / 403 respectively.",
+        "operationId": "version",
         "responses": {
           "200": {
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            },
-            "description": "Successful Response"
+            "description": "Successful response"
           }
         },
-        "summary": "Lazy Endpoint"
+        "summary": "Return service name + CalVer version tag.",
+        "tags": [
+          "meta"
+        ]
       }
     },
     "/api/v1/conversations": {
       "get": {
-        "operationId": "lazy_endpoint_api_v1_conversations_get",
+        "description": ":param http_request: Starlette request\n:return: ``{\"items\": [...]}``",
+        "operationId": "list_conversations",
         "responses": {
           "200": {
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            },
-            "description": "Successful Response"
+            "description": "Successful response"
           }
         },
-        "summary": "Lazy Endpoint"
+        "summary": "List conversations for the caller's workspace, newest first.",
+        "tags": [
+          "conversations"
+        ]
       },
       "post": {
-        "operationId": "lazy_endpoint_api_v1_conversations_post",
+        "description": ":param http_request: Starlette request (tenant context headers)\n:param body: optional title\n:return: the new ConversationRead (no turns yet)",
+        "operationId": "create",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConversationCreate"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
           "201": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/ConversationRead"
+                }
               }
             },
-            "description": "Successful Response"
+            "description": "Successful response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
           }
         },
-        "summary": "Lazy Endpoint"
+        "summary": "Create a new conversation.",
+        "tags": [
+          "conversations"
+        ]
       }
     },
     "/api/v1/conversations/{conversation_id}": {
       "get": {
-        "operationId": "lazy_endpoint_api_v1_conversations__conversation_id__get",
+        "description": ":param conversation_id: conversation UUID\n:return: ConversationRead including turns list\n:raises ResourceNotFound: when conversation does not exist",
+        "operationId": "read",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "conversation_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/ConversationRead"
+                }
               }
             },
-            "description": "Successful Response"
+            "description": "Successful response"
           }
         },
-        "summary": "Lazy Endpoint"
+        "summary": "Fetch a conversation with all its turns.",
+        "tags": [
+          "conversations"
+        ]
       }
     },
     "/api/v1/conversations/{conversation_id}/turn": {
       "post": {
-        "operationId": "lazy_endpoint_api_v1_conversations__conversation_id__turn_post",
+        "description": "Loads the prior turn's ``executed_sql + table_qnames + snapshot_pins``\nand passes them into the query pipeline as drill-down context.\n\n:param http_request: Starlette request\n:param conversation_id: conversation UUID\n:param body: dataset_id + question\n:return: AnswerResponse from the full pipeline",
+        "operationId": "post_turn",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "conversation_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConversationTurnRequest"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/AnswerResponse"
+                }
               }
             },
-            "description": "Successful Response"
+            "description": "Successful response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
           }
         },
-        "summary": "Lazy Endpoint"
+        "summary": "Ask a follow-up question inside an existing conversation.",
+        "tags": [
+          "conversations"
+        ]
       }
     },
     "/api/v1/datasets": {
       "get": {
-        "operationId": "lazy_endpoint_api_v1_datasets_get",
+        "operationId": "list_datasets",
         "responses": {
           "200": {
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            },
-            "description": "Successful Response"
+            "description": "Successful response"
           }
         },
-        "summary": "Lazy Endpoint"
+        "summary": "Return all datasets for the caller's tenant+workspace.",
+        "tags": [
+          "datasets"
+        ]
       },
       "post": {
-        "operationId": "lazy_endpoint_api_v1_datasets_post",
+        "operationId": "create",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DatasetCreate"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
           "201": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/DatasetRead"
+                }
               }
             },
-            "description": "Successful Response"
+            "description": "Successful response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
           }
         },
-        "summary": "Lazy Endpoint"
+        "summary": "Create a dataset; tenant + workspace come from request headers.",
+        "tags": [
+          "datasets"
+        ]
       }
     },
     "/api/v1/datasets/{dataset_id}": {
       "delete": {
-        "operationId": "lazy_endpoint_api_v1_datasets__dataset_id__delete",
+        "operationId": "archive",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "dataset_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/DatasetRead"
+                }
               }
             },
-            "description": "Successful Response"
+            "description": "Successful response"
           }
         },
-        "summary": "Lazy Endpoint"
+        "summary": "Archive a dataset (set status=ARCHIVED).",
+        "tags": [
+          "datasets"
+        ]
       },
       "get": {
-        "operationId": "lazy_endpoint_api_v1_datasets__dataset_id__get",
+        "operationId": "read",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "dataset_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/DatasetRead"
+                }
               }
             },
-            "description": "Successful Response"
+            "description": "Successful response"
           }
         },
-        "summary": "Lazy Endpoint"
+        "summary": "Fetch a single dataset by id. Returns 404 if not found.",
+        "tags": [
+          "datasets"
+        ]
       },
       "put": {
-        "operationId": "lazy_endpoint_api_v1_datasets__dataset_id__put",
+        "operationId": "update",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "dataset_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DatasetUpdate"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/DatasetRead"
+                }
               }
             },
-            "description": "Successful Response"
+            "description": "Successful response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
           }
         },
-        "summary": "Lazy Endpoint"
+        "summary": "Sparse-update a dataset. Only fields present in body are changed.",
+        "tags": [
+          "datasets"
+        ]
       }
     },
     "/api/v1/datasets/{dataset_id}/files": {
       "post": {
-        "operationId": "lazy_endpoint_api_v1_datasets__dataset_id__files_post",
+        "operationId": "upload_file",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "dataset_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "201": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/FileUploadResponse"
+                }
               }
             },
-            "description": "Successful Response"
+            "description": "Successful response"
           }
         },
-        "summary": "Lazy Endpoint"
+        "summary": "Accept a multipart file upload and run the synchronous ingestion pipeline.",
+        "tags": [
+          "files"
+        ]
       }
     },
     "/api/v1/datasets/{dataset_id}/relations": {
       "get": {
-        "operationId": "lazy_endpoint_api_v1_datasets__dataset_id__relations_get",
+        "operationId": "list_relations",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "dataset_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "200": {
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            },
-            "description": "Successful Response"
+            "description": "Successful response"
           }
         },
-        "summary": "Lazy Endpoint"
+        "summary": "List relations for a dataset (all statuses by default).",
+        "tags": [
+          "relations"
+        ]
       }
     },
     "/api/v1/datasets/{dataset_id}/tables": {
       "get": {
-        "operationId": "lazy_endpoint_api_v1_datasets__dataset_id__tables_get",
+        "operationId": "list_tables",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "dataset_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "200": {
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            },
-            "description": "Successful Response"
+            "description": "Successful response"
           }
         },
-        "summary": "Lazy Endpoint"
+        "tags": [
+          "tables"
+        ]
       }
     },
     "/api/v1/datasets/{dataset_id}/tables/{table_id}:upload": {
       "put": {
-        "operationId": "lazy_endpoint_api_v1_datasets__dataset_id__tables__table_id__upload_put",
+        "operationId": "reupload_file",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "dataset_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "table_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "201": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/ReuploadResponse"
+                }
               }
             },
-            "description": "Successful Response"
+            "description": "Successful response"
           }
         },
-        "summary": "Lazy Endpoint"
+        "summary": "Re-upload into an existing table slot; creates a new snapshot.",
+        "tags": [
+          "files"
+        ]
       }
     },
     "/api/v1/examples": {
       "get": {
-        "operationId": "lazy_endpoint_api_v1_examples_get",
+        "operationId": "list_examples",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "quality",
+            "required": false,
+            "schema": {
+              "default": null,
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "dataset_id",
+            "required": false,
+            "schema": {
+              "default": null,
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "200": {
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            },
-            "description": "Successful Response"
+            "description": "Successful response"
           }
         },
-        "summary": "Lazy Endpoint"
+        "summary": "List examples for the caller's workspace, with optional filters.",
+        "tags": [
+          "examples"
+        ]
       },
       "post": {
-        "operationId": "lazy_endpoint_api_v1_examples_post",
+        "operationId": "create",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExampleCreate"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
           "201": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/ExampleRead"
+                }
               }
             },
-            "description": "Successful Response"
+            "description": "Successful response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
           }
         },
-        "summary": "Lazy Endpoint"
+        "summary": "Create an example; defaults to source=USER_CURATED, quality=PROPOSED.",
+        "tags": [
+          "examples"
+        ]
       }
     },
     "/api/v1/examples/{example_id}:approve": {
       "post": {
-        "operationId": "lazy_endpoint_api_v1_examples__example_id__approve_post",
+        "operationId": "approve",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "example_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/ExampleRead"
+                }
               }
             },
-            "description": "Successful Response"
+            "description": "Successful response"
           }
         },
-        "summary": "Lazy Endpoint"
+        "summary": "Approve an example (quality \u2192 APPROVED).",
+        "tags": [
+          "examples"
+        ]
       }
     },
     "/api/v1/examples/{example_id}:reject": {
       "post": {
-        "operationId": "lazy_endpoint_api_v1_examples__example_id__reject_post",
+        "operationId": "reject",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "example_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/ExampleRead"
+                }
               }
             },
-            "description": "Successful Response"
+            "description": "Successful response"
           }
         },
-        "summary": "Lazy Endpoint"
+        "summary": "Reject an example (quality \u2192 REJECTED).",
+        "tags": [
+          "examples"
+        ]
       }
     },
     "/api/v1/glossary": {
       "get": {
-        "operationId": "lazy_endpoint_api_v1_glossary_get",
+        "operationId": "list_terms",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 100,
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "type": "integer"
+            }
+          }
+        ],
         "responses": {
           "200": {
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            },
-            "description": "Successful Response"
+            "description": "Successful response"
           }
         },
-        "summary": "Lazy Endpoint"
+        "summary": "Return paginated glossary terms for the caller's workspace.",
+        "tags": [
+          "glossary"
+        ]
       },
       "post": {
-        "operationId": "lazy_endpoint_api_v1_glossary_post",
+        "operationId": "create",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GlossaryTermCreate"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
           "201": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/GlossaryTermRead"
+                }
               }
             },
-            "description": "Successful Response"
+            "description": "Successful response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
           }
         },
-        "summary": "Lazy Endpoint"
+        "summary": "Create a glossary term; (workspace_id, term) must be unique.",
+        "tags": [
+          "glossary"
+        ]
       }
     },
     "/api/v1/glossary/{term_id}": {
       "delete": {
-        "operationId": "lazy_endpoint_api_v1_glossary__term_id__delete",
+        "operationId": "delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "term_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "204": {
-            "description": "Successful Response"
+            "description": "No Content"
           }
         },
-        "summary": "Lazy Endpoint"
+        "summary": "Hard-delete a glossary term.",
+        "tags": [
+          "glossary"
+        ]
       },
       "put": {
-        "operationId": "lazy_endpoint_api_v1_glossary__term_id__put",
+        "operationId": "update",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "term_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GlossaryTermUpdate"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/GlossaryTermRead"
+                }
               }
             },
-            "description": "Successful Response"
+            "description": "Successful response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
           }
         },
-        "summary": "Lazy Endpoint"
+        "summary": "Sparse-update a glossary term.",
+        "tags": [
+          "glossary"
+        ]
       }
     },
     "/api/v1/ingest-jobs": {
       "get": {
-        "operationId": "lazy_endpoint_api_v1_ingest_jobs_get",
+        "operationId": "list_jobs",
         "responses": {
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/IngestJobListResponse"
+                }
               }
             },
-            "description": "Successful Response"
+            "description": "Successful response"
           }
         },
-        "summary": "Lazy Endpoint"
+        "summary": "List ingest jobs with optional filters.",
+        "tags": [
+          "ingest"
+        ]
       },
       "post": {
-        "operationId": "lazy_endpoint_api_v1_ingest_jobs_post",
+        "operationId": "create_job",
         "responses": {
           "201": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/IngestJobRead"
+                }
               }
             },
-            "description": "Successful Response"
+            "description": "Successful response"
           }
         },
-        "summary": "Lazy Endpoint"
+        "summary": "Start a background ingestion job (REPARSE/SAMPLE_REFRESH/DESCRIBE_PASS/RELATION_PASS).",
+        "tags": [
+          "ingest"
+        ]
       }
     },
     "/api/v1/ingest-jobs/{job_id}": {
       "get": {
-        "operationId": "lazy_endpoint_api_v1_ingest_jobs__job_id__get",
+        "operationId": "get_job",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "job_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/IngestJobRead"
+                }
               }
             },
-            "description": "Successful Response"
+            "description": "Successful response"
           }
         },
-        "summary": "Lazy Endpoint"
+        "summary": "Get a single ingest job.",
+        "tags": [
+          "ingest"
+        ]
       }
     },
     "/api/v1/ingest-jobs/{job_id}/events": {
       "get": {
-        "operationId": "lazy_endpoint_api_v1_ingest_jobs__job_id__events_get",
+        "operationId": "list_events",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "job_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/IngestEventListResponse"
+                }
               }
             },
-            "description": "Successful Response"
+            "description": "Successful response"
           }
         },
-        "summary": "Lazy Endpoint"
+        "summary": "Paginated event ledger for a job.",
+        "tags": [
+          "ingest"
+        ]
       }
     },
     "/api/v1/ingest-jobs/{job_id}/stream": {
       "get": {
-        "operationId": "lazy_endpoint_api_v1_ingest_jobs__job_id__stream_get",
+        "description": "Mirrors canon's ingest_jobs_controller SSE pattern:\n1. Emit all existing events for the job (catch-up replay)\n2. Poll for new events every 250ms\n3. Close stream when a ``final`` or ``error`` event is emitted\n4. Hard timeout at _SSE_MAX_SECONDS to avoid connection leak",
+        "operationId": "stream_job",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "job_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "200": {
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            },
-            "description": "Successful Response"
+            "description": "Successful response"
           }
         },
-        "summary": "Lazy Endpoint"
+        "summary": "SSE stream for real-time job progress.",
+        "tags": [
+          "ingest"
+        ]
       }
     },
     "/api/v1/ingest-jobs/{job_id}:cancel": {
       "post": {
-        "operationId": "lazy_endpoint_api_v1_ingest_jobs__job_id__cancel_post",
+        "operationId": "cancel_job",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "job_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/CancelResponse"
+                }
               }
             },
-            "description": "Successful Response"
+            "description": "Successful response"
           }
         },
-        "summary": "Lazy Endpoint"
+        "summary": "Cooperatively cancel a job (idempotent for terminal jobs).",
+        "tags": [
+          "ingest"
+        ]
       }
     },
     "/api/v1/query": {
       "post": {
-        "operationId": "lazy_endpoint_api_v1_query_post",
+        "description": ":param http_request: Starlette request (provides tenant context headers)\n:param body: validated QueryRequest\n:return: AnswerResponse with SQL, preview rows, chart hint, and explanation",
+        "operationId": "query",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/QueryRequest"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/AnswerResponse"
+                }
               }
             },
-            "description": "Successful Response"
+            "description": "Successful response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
           }
         },
-        "summary": "Lazy Endpoint"
+        "summary": "Run the full NL \u2192 SQL \u2192 result pipeline and return a synchronous answer.",
+        "tags": [
+          "query"
+        ]
       }
     },
     "/api/v1/query/stream": {
       "post": {
-        "operationId": "lazy_endpoint_api_v1_query_stream_post",
+        "description": "Event sequence:\n1. ``schema_linked``   \u2014 after grounding completes\n2. ``clarification``   \u2014 (optional) when confidence < threshold + missing_info\n3. ``sql_generated``   \u2014 after generation\n4. ``executed``        \u2014 after DuckDB execution\n5. ``explained``       \u2014 after ExplainerAgent\n6. ``final``           \u2014 full AnswerResponse JSON\n\n:param http_request: Starlette request\n:param body: validated QueryRequest (body already consumed by pyfly)\n:return: StreamingResponse with ``text/event-stream`` content type",
+        "operationId": "stream",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/QueryRequest"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
           "200": {
+            "description": "Successful response"
+          },
+          "422": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
               }
             },
-            "description": "Successful Response"
+            "description": "Validation Error"
           }
         },
-        "summary": "Lazy Endpoint"
+        "summary": "Run the full pipeline as a Server-Sent Events stream.",
+        "tags": [
+          "query"
+        ]
       }
     },
     "/api/v1/query:explain": {
       "post": {
-        "operationId": "lazy_endpoint_api_v1_query_explain_post",
+        "description": "Useful for previewing the generated SQL without paying execution costs.\n\n:param http_request: Starlette request\n:param body: validated QueryRequest\n:return: ExplainResponse with candidate SQL and reasoning",
+        "operationId": "explain",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/QueryRequest"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/ExplainResponse"
+                }
               }
             },
-            "description": "Successful Response"
+            "description": "Successful response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
           }
         },
-        "summary": "Lazy Endpoint"
+        "summary": "Run Grounding + Generation but stop before AST/execution.",
+        "tags": [
+          "query"
+        ]
       }
     },
     "/api/v1/query:validate": {
       "post": {
-        "operationId": "lazy_endpoint_api_v1_query_validate_post",
+        "description": "Returns the classification and any scope error without executing the SQL.\n\n:param http_request: Starlette request\n:param body: validated QueryRequest\n:return: ValidateResponse with AST classification and optional scope_error",
+        "operationId": "validate",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/QueryRequest"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/ValidateResponse"
+                }
               }
             },
-            "description": "Successful Response"
+            "description": "Successful response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
           }
         },
-        "summary": "Lazy Endpoint"
+        "summary": "Run Grounding + Generation + AST classification + ScopeGuard check.",
+        "tags": [
+          "query"
+        ]
       }
     },
     "/api/v1/relations/{relation_id}:approve": {
       "post": {
-        "operationId": "lazy_endpoint_api_v1_relations__relation_id__approve_post",
+        "operationId": "approve_relation",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "relation_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "200": {
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            },
-            "description": "Successful Response"
+            "description": "Successful response"
           }
         },
-        "summary": "Lazy Endpoint"
+        "summary": "Approve a PROPOSED relation.",
+        "tags": [
+          "relations"
+        ]
       }
     },
     "/api/v1/relations/{relation_id}:reject": {
       "post": {
-        "operationId": "lazy_endpoint_api_v1_relations__relation_id__reject_post",
+        "operationId": "reject_relation",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "relation_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "200": {
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            },
-            "description": "Successful Response"
+            "description": "Successful response"
           }
         },
-        "summary": "Lazy Endpoint"
+        "summary": "Reject a PROPOSED relation.",
+        "tags": [
+          "relations"
+        ]
       }
     },
     "/api/v1/schema-changes/{change_id}:confirm": {
       "post": {
-        "operationId": "lazy_endpoint_api_v1_schema_changes__change_id__confirm_post",
+        "description": "Validates that the change exists and is in state RENAMED_CANDIDATE.\nSets approved_by (the current actor / tenant_id), approved_at (now),\nchange = 'RENAMED'.\nAlso updates last_changed_at on the corresponding schema_objects column row.",
+        "operationId": "confirm",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "change_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/SchemaChangeRead"
+                }
               }
             },
-            "description": "Successful Response"
+            "description": "Successful response"
           }
         },
-        "summary": "Lazy Endpoint"
+        "summary": "Flip a RENAMED_CANDIDATE row to RENAMED.",
+        "tags": [
+          "schema"
+        ]
       }
     },
     "/api/v1/schema-objects/{object_id}": {
       "get": {
-        "operationId": "lazy_endpoint_api_v1_schema_objects__object_id__get",
+        "operationId": "get_object",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "object_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/SchemaObjectRead"
+                }
               }
             },
-            "description": "Successful Response"
+            "description": "Successful response"
           }
         },
-        "summary": "Lazy Endpoint"
+        "summary": "Get a single schema object by ID.",
+        "tags": [
+          "schema"
+        ]
       },
       "put": {
-        "operationId": "lazy_endpoint_api_v1_schema_objects__object_id__put",
+        "description": "Sets description_source='HUMAN' when description is provided.\nSets pii_source='HUMAN' when pii_tag is provided.",
+        "operationId": "update_object",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "object_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SchemaObjectUpdate"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/SchemaObjectRead"
+                }
               }
             },
-            "description": "Successful Response"
+            "description": "Successful response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
           }
         },
-        "summary": "Lazy Endpoint"
+        "summary": "Update human-set fields on a schema object.",
+        "tags": [
+          "schema"
+        ]
       }
     },
     "/api/v1/semantic/dimensions": {
       "get": {
-        "operationId": "lazy_endpoint_api_v1_semantic_dimensions_get",
+        "operationId": "list_dimensions",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "dataset_id",
+            "required": false,
+            "schema": {
+              "default": null,
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "200": {
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            },
-            "description": "Successful Response"
+            "description": "Successful response"
           }
         },
-        "summary": "Lazy Endpoint"
+        "summary": "List all semantic dimensions for the caller's workspace.",
+        "tags": [
+          "semantic"
+        ]
       },
       "post": {
-        "operationId": "lazy_endpoint_api_v1_semantic_dimensions_post",
+        "operationId": "create",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SemanticDimensionCreate"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
           "201": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/SemanticDimensionRead"
+                }
               }
             },
-            "description": "Successful Response"
+            "description": "Successful response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
           }
         },
-        "summary": "Lazy Endpoint"
+        "summary": "Create a new semantic dimension in DRAFT status.",
+        "tags": [
+          "semantic"
+        ]
       }
     },
     "/api/v1/semantic/dimensions/{dimension_id}": {
       "get": {
-        "operationId": "lazy_endpoint_api_v1_semantic_dimensions__dimension_id__get",
+        "operationId": "get_dimension",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "dimension_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/SemanticDimensionRead"
+                }
               }
             },
-            "description": "Successful Response"
+            "description": "Successful response"
           }
         },
-        "summary": "Lazy Endpoint"
+        "summary": "Fetch a single semantic dimension by id.",
+        "tags": [
+          "semantic"
+        ]
       },
       "put": {
-        "operationId": "lazy_endpoint_api_v1_semantic_dimensions__dimension_id__put",
+        "operationId": "update",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "dimension_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SemanticDimensionUpdate"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/SemanticDimensionRead"
+                }
               }
             },
-            "description": "Successful Response"
+            "description": "Successful response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
           }
         },
-        "summary": "Lazy Endpoint"
+        "summary": "Sparse-update a dimension; re-validates YAML if definition changes.",
+        "tags": [
+          "semantic"
+        ]
       }
     },
     "/api/v1/semantic/dimensions/{dimension_id}/history": {
       "get": {
-        "operationId": "lazy_endpoint_api_v1_semantic_dimensions__dimension_id__history_get",
+        "operationId": "history",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "dimension_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "200": {
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            },
-            "description": "Successful Response"
+            "description": "Successful response"
           }
         },
-        "summary": "Lazy Endpoint"
+        "summary": "Return version history for a dimension, oldest first.",
+        "tags": [
+          "semantic"
+        ]
       }
     },
     "/api/v1/semantic/dimensions/{dimension_id}:publish": {
       "post": {
-        "operationId": "lazy_endpoint_api_v1_semantic_dimensions__dimension_id__publish_post",
+        "operationId": "publish",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "dimension_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/SemanticDimensionRead"
+                }
               }
             },
-            "description": "Successful Response"
+            "description": "Successful response"
           }
         },
-        "summary": "Lazy Endpoint"
+        "summary": "Validate, compile, and publish a dimension (status \u2192 PUBLISHED).",
+        "tags": [
+          "semantic"
+        ]
       }
     },
     "/api/v1/semantic/dimensions/{dimension_id}:retire": {
       "post": {
-        "operationId": "lazy_endpoint_api_v1_semantic_dimensions__dimension_id__retire_post",
+        "operationId": "retire",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "dimension_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/SemanticDimensionRead"
+                }
               }
             },
-            "description": "Successful Response"
+            "description": "Successful response"
           }
         },
-        "summary": "Lazy Endpoint"
+        "summary": "Retire a dimension (status \u2192 RETIRED).",
+        "tags": [
+          "semantic"
+        ]
       }
     },
     "/api/v1/semantic/metrics": {
       "get": {
-        "operationId": "lazy_endpoint_api_v1_semantic_metrics_get",
+        "operationId": "list_metrics",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "dataset_id",
+            "required": false,
+            "schema": {
+              "default": null,
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "200": {
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            },
-            "description": "Successful Response"
+            "description": "Successful response"
           }
         },
-        "summary": "Lazy Endpoint"
+        "summary": "List all semantic metrics for the caller's workspace.",
+        "tags": [
+          "semantic"
+        ]
       },
       "post": {
-        "operationId": "lazy_endpoint_api_v1_semantic_metrics_post",
+        "operationId": "create",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SemanticMetricCreate"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
           "201": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/SemanticMetricRead"
+                }
               }
             },
-            "description": "Successful Response"
+            "description": "Successful response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
           }
         },
-        "summary": "Lazy Endpoint"
+        "summary": "Create a new semantic metric in DRAFT status.",
+        "tags": [
+          "semantic"
+        ]
       }
     },
     "/api/v1/semantic/metrics/{metric_id}": {
       "get": {
-        "operationId": "lazy_endpoint_api_v1_semantic_metrics__metric_id__get",
+        "operationId": "get_metric",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "metric_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/SemanticMetricRead"
+                }
               }
             },
-            "description": "Successful Response"
+            "description": "Successful response"
           }
         },
-        "summary": "Lazy Endpoint"
+        "summary": "Fetch a single semantic metric by id.",
+        "tags": [
+          "semantic"
+        ]
       },
       "put": {
-        "operationId": "lazy_endpoint_api_v1_semantic_metrics__metric_id__put",
+        "operationId": "update",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "metric_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SemanticMetricUpdate"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/SemanticMetricRead"
+                }
               }
             },
-            "description": "Successful Response"
+            "description": "Successful response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
           }
         },
-        "summary": "Lazy Endpoint"
+        "summary": "Sparse-update a metric; re-validates YAML if definition changes.",
+        "tags": [
+          "semantic"
+        ]
       }
     },
     "/api/v1/semantic/metrics/{metric_id}/history": {
       "get": {
-        "operationId": "lazy_endpoint_api_v1_semantic_metrics__metric_id__history_get",
+        "operationId": "history",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "metric_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "200": {
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            },
-            "description": "Successful Response"
+            "description": "Successful response"
           }
         },
-        "summary": "Lazy Endpoint"
+        "summary": "Return version history for a metric, oldest first.",
+        "tags": [
+          "semantic"
+        ]
       }
     },
     "/api/v1/semantic/metrics/{metric_id}:publish": {
       "post": {
-        "operationId": "lazy_endpoint_api_v1_semantic_metrics__metric_id__publish_post",
+        "operationId": "publish",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "metric_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/SemanticMetricRead"
+                }
               }
             },
-            "description": "Successful Response"
+            "description": "Successful response"
           }
         },
-        "summary": "Lazy Endpoint"
+        "summary": "Validate, compile, and publish a metric (status \u2192 PUBLISHED).",
+        "tags": [
+          "semantic"
+        ]
       }
     },
     "/api/v1/semantic/metrics/{metric_id}:retire": {
       "post": {
-        "operationId": "lazy_endpoint_api_v1_semantic_metrics__metric_id__retire_post",
+        "operationId": "retire",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "metric_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/SemanticMetricRead"
+                }
               }
             },
-            "description": "Successful Response"
+            "description": "Successful response"
           }
         },
-        "summary": "Lazy Endpoint"
+        "summary": "Retire a metric (status \u2192 RETIRED).",
+        "tags": [
+          "semantic"
+        ]
       }
     },
     "/api/v1/sql:execute": {
       "post": {
-        "operationId": "lazy_endpoint_api_v1_sql_execute_post",
+        "description": "Requires the workspace flag ``allow_direct_sql=true``. The SQL is\nAST-classified and scope-checked; the agent pipeline is skipped.\n\n:param http_request: Starlette request\n:param body: validated SqlExecuteRequest\n:return: SqlExecuteResponse with preview rows and execution metadata\n:raises DirectSqlForbidden: when workspace.allow_direct_sql is False",
+        "operationId": "execute",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SqlExecuteRequest"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/SqlExecuteResponse"
+                }
               }
             },
-            "description": "Successful Response"
+            "description": "Successful response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
           }
         },
-        "summary": "Lazy Endpoint"
+        "summary": "Execute a SQL statement directly against the workspace's dataset Parquet.",
+        "tags": [
+          "sql"
+        ]
       }
     },
     "/api/v1/sql:execute/stream": {
       "post": {
-        "operationId": "lazy_endpoint_api_v1_sql_execute_stream_post",
+        "description": "Event sequence:\n1. ``ast_classified`` \u2014 AST result + scope check outcome\n2. ``executed``       \u2014 DuckDB result\n3. ``final``          \u2014 full SqlExecuteResponse JSON\n\n:param http_request: Starlette request\n:param body: validated SqlExecuteRequest\n:return: StreamingResponse with ``text/event-stream``",
+        "operationId": "execute_stream",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SqlExecuteRequest"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
           "200": {
+            "description": "Successful response"
+          },
+          "422": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
               }
             },
-            "description": "Successful Response"
+            "description": "Validation Error"
           }
         },
-        "summary": "Lazy Endpoint"
+        "summary": "Execute SQL and stream progress as Server-Sent Events.",
+        "tags": [
+          "sql"
+        ]
       }
     },
     "/api/v1/tables/{table_id}": {
       "get": {
-        "operationId": "lazy_endpoint_api_v1_tables__table_id__get",
+        "operationId": "get_table",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "table_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/TableRead"
+                }
               }
             },
-            "description": "Successful Response"
+            "description": "Successful response"
           }
         },
-        "summary": "Lazy Endpoint"
+        "tags": [
+          "tables"
+        ]
       }
     },
     "/api/v1/tables/{table_id}/changes": {
       "get": {
-        "operationId": "lazy_endpoint_api_v1_tables__table_id__changes_get",
+        "operationId": "list_changes",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "table_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "200": {
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            },
-            "description": "Successful Response"
+            "description": "Successful response"
           }
         },
-        "summary": "Lazy Endpoint"
+        "tags": [
+          "tables"
+        ]
       }
     },
     "/api/v1/tables/{table_id}/objects": {
       "get": {
-        "operationId": "lazy_endpoint_api_v1_tables__table_id__objects_get",
+        "operationId": "list_objects",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "table_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "200": {
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            },
-            "description": "Successful Response"
+            "description": "Successful response"
           }
         },
-        "summary": "Lazy Endpoint"
+        "summary": "List schema_objects for the table's current snapshot.",
+        "tags": [
+          "tables"
+        ]
       }
     },
     "/api/v1/tables/{table_id}/snapshots": {
       "get": {
-        "operationId": "lazy_endpoint_api_v1_tables__table_id__snapshots_get",
+        "operationId": "list_snapshots",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "table_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "200": {
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            },
-            "description": "Successful Response"
+            "description": "Successful response"
           }
         },
-        "summary": "Lazy Endpoint"
+        "tags": [
+          "tables"
+        ]
       }
     },
     "/api/v1/tables:derive": {
       "post": {
-        "operationId": "lazy_endpoint_api_v1_tables_derive_post",
+        "description": ":param http_request: Starlette request (tenant context headers)\n:param body: dataset_id + name + sql (must be a SELECT)\n:return: DeriveTableResponse with the new table_id\n:raises DeriveTableForbidden: when sql is not a SELECT\n:raises DeriveTableError: when DuckDB execution fails",
+        "operationId": "derive",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeriveTableRequest"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
           "201": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/DeriveTableResponse"
+                }
               }
             },
-            "description": "Successful Response"
+            "description": "Successful response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
           }
         },
-        "summary": "Lazy Endpoint"
+        "summary": "Materialise a SELECT result as a new DERIVED table.",
+        "tags": [
+          "tables"
+        ]
       }
     },
     "/api/v1/version": {
       "get": {
-        "operationId": "lazy_endpoint_api_v1_version_get",
+        "operationId": "version",
         "responses": {
           "200": {
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            },
-            "description": "Successful Response"
+            "description": "Successful response"
           }
         },
-        "summary": "Lazy Endpoint"
+        "summary": "Return service name + CalVer version tag.",
+        "tags": [
+          "meta"
+        ]
       }
     },
     "/api/v1/workspaces": {
       "get": {
-        "operationId": "lazy_endpoint_api_v1_workspaces_get",
+        "operationId": "list_workspaces",
         "responses": {
           "200": {
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            },
-            "description": "Successful Response"
+            "description": "Successful response"
           }
         },
-        "summary": "Lazy Endpoint"
+        "summary": "Return all workspaces for the caller's tenant.",
+        "tags": [
+          "workspaces"
+        ]
       },
       "post": {
-        "operationId": "lazy_endpoint_api_v1_workspaces_post",
+        "operationId": "create",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WorkspaceCreate"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
           "201": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceRead"
+                }
               }
             },
-            "description": "Successful Response"
+            "description": "Successful response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
           }
         },
-        "summary": "Lazy Endpoint"
+        "summary": "Create a workspace; tenant comes from ``X-Tenant-Id`` header.",
+        "tags": [
+          "workspaces"
+        ]
       }
     },
     "/api/v1/workspaces/{workspace_id}": {
       "get": {
-        "operationId": "lazy_endpoint_api_v1_workspaces__workspace_id__get",
+        "operationId": "read",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "workspace_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceRead"
+                }
               }
             },
-            "description": "Successful Response"
+            "description": "Successful response"
           }
         },
-        "summary": "Lazy Endpoint"
+        "summary": "Fetch a single workspace by id. Returns 404 if not found.",
+        "tags": [
+          "workspaces"
+        ]
       },
       "put": {
-        "operationId": "lazy_endpoint_api_v1_workspaces__workspace_id__put",
+        "operationId": "update",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "workspace_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WorkspaceUpdate"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceRead"
+                }
               }
             },
-            "description": "Successful Response"
+            "description": "Successful response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
           }
         },
-        "summary": "Lazy Endpoint"
+        "summary": "Sparse-update a workspace. Only fields present in body are changed.",
+        "tags": [
+          "workspaces"
+        ]
       }
     },
     "/api/v1/workspaces/{workspace_id}:purge": {
       "delete": {
-        "operationId": "lazy_endpoint_api_v1_workspaces__workspace_id__purge_delete",
+        "description": "Returns 202 Accepted with a tombstone placeholder.",
+        "operationId": "purge",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "workspace_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "202": {
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            },
-            "description": "Successful Response"
+            "description": "Successful response"
           }
         },
-        "summary": "Lazy Endpoint"
+        "summary": "Purge a workspace: mark PURGING + walk + delete all blobs.",
+        "tags": [
+          "workspaces"
+        ]
       }
     }
-  }
+  },
+  "servers": [
+    {
+      "description": "This service",
+      "url": "/"
+    }
+  ],
+  "tags": [
+    {
+      "description": "Agent-tier few-shot example management (requires X-Agent-Token).",
+      "name": "agent-examples"
+    },
+    {
+      "description": "Agent-tier Text-to-SQL pipeline (requires X-Agent-Token with query scope).",
+      "name": "agent-query"
+    },
+    {
+      "description": "Agent-tier direct SQL execution (requires X-Agent-Token with sql:execute scope).",
+      "name": "agent-sql"
+    },
+    {
+      "description": "Lifecycle management for machine-to-machine agent tokens (create, list, revoke).",
+      "name": "agent-tokens"
+    },
+    {
+      "description": "Multi-turn conversation sessions backed by the schema KB.",
+      "name": "conversations"
+    },
+    {
+      "description": "Dataset lifecycle (create, fetch, delete). A dataset groups one or more uploaded files into a named schema boundary.",
+      "name": "datasets"
+    },
+    {
+      "description": "Few-shot Text-to-SQL examples stored in the workspace vector index.",
+      "name": "examples"
+    },
+    {
+      "description": "File upload + re-upload. POST a structured file (CSV, TSV, XLSX, XLS, ODS, JSON, JSONL, Parquet, Avro, ORC, Arrow, Feather) to kick off the 10-stage ingestion pipeline. Re-upload triggers schema-drift detection and annotation transplant.",
+      "name": "files"
+    },
+    {
+      "description": "Business glossary terms linked to schema columns and datasets.",
+      "name": "glossary"
+    },
+    {
+      "description": "Ingestion job tracking and SSE event streaming.",
+      "name": "ingest"
+    },
+    {
+      "description": "Text-to-SQL query pipeline. Converts natural-language questions to validated SQL, executes against DuckDB, and returns structured results.",
+      "name": "query"
+    },
+    {
+      "description": "Cross-table join proposals. Heuristic + AI-proposed foreign-key candidates with human approve/reject workflow.",
+      "name": "relations"
+    },
+    {
+      "description": "Schema knowledge-base objects and change proposals. Column-level AI descriptions, domain metadata, and the diff stream from re-uploads.",
+      "name": "schema"
+    },
+    {
+      "description": "Semantic layer -- MetricFlow-compatible metrics and dimensions derived from the ingested schema KB.",
+      "name": "semantic"
+    },
+    {
+      "description": "Direct SQL execution surface (scoped by workspace RLS).",
+      "name": "sql"
+    },
+    {
+      "description": "Materialised table catalogue. Read table snapshots, column profiles, and schema change history produced by the ingestion pipeline.",
+      "name": "tables"
+    },
+    {
+      "description": "Service identity. Returns deployed CalVer, service name. The agent-tier variant requires a valid X-Agent-Token.",
+      "name": "meta"
+    },
+    {
+      "description": "Multi-tenant workspace management. Each workspace scopes datasets, schema KB, relations, and agent tokens.",
+      "name": "workspaces"
+    }
+  ]
 }

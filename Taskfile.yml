@@ -80,12 +80,24 @@ tasks:
   openapi:
     desc: Refresh openapi.json snapshot (run after route changes)
     cmds:
-      - uv run python -c "from flyquery.main import app; import json; print(json.dumps(app.openapi(), indent=2, sort_keys=True))" > openapi.json
+      - uv run python -c "
+          from flyquery.main import app, _pyfly;
+          from flyquery.web.openapi_override import install_openapi;
+          from flyquery import __version__;
+          install_openapi(app, _pyfly.context, title='flyquery', version=__version__, description='');
+          app.openapi_schema = None;
+          import json; print(json.dumps(app.openapi(), indent=2, sort_keys=True))" > openapi.json
 
   openapi-snapshot:
     desc: Snapshot the current OpenAPI spec to openapi.json
     cmds:
-      - uv run python -c "from flyquery.main import app; import json; print(json.dumps(app.openapi(), indent=2, sort_keys=True))" > openapi.json
+      - uv run python -c "
+          from flyquery.main import app, _pyfly;
+          from flyquery.web.openapi_override import install_openapi;
+          from flyquery import __version__;
+          install_openapi(app, _pyfly.context, title='flyquery', version=__version__, description='');
+          app.openapi_schema = None;
+          import json; print(json.dumps(app.openapi(), indent=2, sort_keys=True))" > openapi.json
 
   sdk:python:
     desc: Regenerate the Python SDK from openapi.json
@@ -102,10 +114,16 @@ tasks:
   sdk:java:
     desc: Regenerate the Java SDK from openapi.json
     cmds:
+      # Remove stale package tree from earlier generator runs that used
+      # org.openapitools.client as the invoker package.
+      - rm -rf sdks/java/src/main/java/org
       - npx -y @openapitools/openapi-generator-cli generate
           -i openapi.json
           -g java
           -o sdks/java
           --package-name io.firefly.flyquery
+          --invoker-package io.firefly.flyquery
+          --api-package io.firefly.flyquery.api
+          --model-package io.firefly.flyquery.model
           --additional-properties=artifactId=flyquery-sdk,groupId=io.firefly,artifactVersion=26.5.2,library=okhttp-gson
           --skip-validate-spec

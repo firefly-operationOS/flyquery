@@ -1,12 +1,8 @@
-"""Verify the generated SDK can be imported and exposes the expected APIs.
+"""Verify the generated SDK can be imported and exposes the expected split API classes.
 
-NOTE: Due to 34 OpenAPI path-parameter validation errors (colon-action routes like
-{workspace_id}:purge confuse the openapi-generator-cli validator), the generator
-collapsed all endpoints into DefaultApi rather than separate WorkspacesApi /
-DatasetsApi / QueryApi classes.  The correct fix is to add `parameters` blocks to
-the FastAPI router definitions so that the path params appear in the OpenAPI spec;
-this is tracked as a follow-up for v1.  For now the smoke test validates against
-the generated shape.
+Each controller tag (workspaces, datasets, files, ...) must produce a
+dedicated API class (WorkspacesApi, DatasetsApi, FilesApi, ...) rather
+than collapsing everything into DefaultApi.
 """
 import sys
 import os
@@ -17,21 +13,37 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 def test_imports():
     from flyquery_sdk import ApiClient, Configuration  # noqa: F401
-    from flyquery_sdk.api.default_api import DefaultApi  # noqa: F401
     assert ApiClient
     assert Configuration
-    assert DefaultApi
 
 
-def test_default_api_has_workspace_methods():
-    """DefaultApi must expose workspace + dataset + query endpoints."""
-    from flyquery_sdk.api.default_api import DefaultApi
-    # Workspace endpoints
-    assert hasattr(DefaultApi, "lazy_endpoint_api_v1_workspaces_post")
-    # Dataset endpoints
-    assert hasattr(DefaultApi, "lazy_endpoint_api_v1_datasets_post")
-    # Query endpoint
-    assert hasattr(DefaultApi, "lazy_endpoint_api_v1_agent_query_post")
+def test_split_api_classes():
+    """All major resource groups must have a dedicated API class."""
+    from flyquery_sdk.api import (  # noqa: F401
+        WorkspacesApi,
+        DatasetsApi,
+        FilesApi,
+        TablesApi,
+        SchemaApi,
+        RelationsApi,
+        SemanticApi,
+        GlossaryApi,
+        ExamplesApi,
+        QueryApi,
+        ConversationsApi,
+        IngestApi,
+        SqlApi,
+        AgentTokensApi,
+        MetaApi,
+        AgentExamplesApi,
+        AgentQueryApi,
+        AgentSqlApi,
+    )
+    assert WorkspacesApi.__module__.endswith(".workspaces_api")
+    assert DatasetsApi.__module__.endswith(".datasets_api")
+    assert QueryApi.__module__.endswith(".query_api")
+    assert FilesApi.__module__.endswith(".files_api")
+    assert AgentQueryApi.__module__.endswith(".agent_query_api")
 
 
 def test_configuration_can_be_constructed():

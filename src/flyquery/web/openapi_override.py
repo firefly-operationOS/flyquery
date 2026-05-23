@@ -31,75 +31,86 @@ from pyfly.web.openapi import OpenAPIGenerator
 logger = logging.getLogger(__name__)
 
 
+#: Maps the auto-derived PascalCase controller tag (``_derive_tag``)
+#: to the canonical lowercase kebab-case tag used in the SDK.
+#:
+#: openapi-generator derives class names from these tags, so:
+#: ``"workspaces"``  → ``WorkspacesApi``
+#: ``"agent-query"`` → ``AgentQueryApi``
+#:
+#: Any controller class NOT listed here keeps its auto-derived tag.
+TAG_OVERRIDES: dict[str, str] = {
+    "Workspaces": "workspaces",
+    "Datasets": "datasets",
+    "Files": "files",
+    "Tables": "tables",
+    "SchemaObjects": "schema",
+    "SchemaChanges": "schema",
+    "Relations": "relations",
+    "SemanticMetrics": "semantic",
+    "SemanticDimensions": "semantic",
+    "Glossary": "glossary",
+    "Examples": "examples",
+    "Query": "query",
+    "Conversations": "conversations",
+    "IngestJobs": "ingest",
+    "SqlExecute": "sql",
+    "TablesDerive": "tables",
+    "AgentTokens": "agent-tokens",
+    "Version": "meta",
+    "AgentVersionController": "meta",
+    "AgentVersion": "meta",
+    "AgentExamples": "agent-examples",
+    "AgentQuery": "agent-query",
+    "AgentSqlExecute": "agent-sql",
+    "AgentIngestJobs": "ingest",
+}
+
 #: Per-tag descriptions rendered on the Swagger / ReDoc landing page.
 #: Each entry mixes the business intent with the technical contract so
 #: the docs read like a runbook, not just a wire reference.
 TAG_DESCRIPTIONS: dict[str, str] = {
-    "Sources": (
-        "Source intake. The front door for binary content -- DOCX, "
-        "XLSX, PPTX, PDF, RTF, ODT/ODS/ODP, HTML, Markdown, plain "
-        "text, CSV, TSV, JSON, XML, EPUB, raster images (PNG, JPEG, "
-        "GIF, WebP, HEIC, AVIF, TIFF, SVG, BMP) routed through "
-        "Tesseract OCR, ZIP / 7Z / TAR / GZ archives expanded inline, "
-        "EML / MSG emails decomposed into body + attachments, and "
-        "WebVTT / SRT transcripts. The intake pipeline sniffs the "
-        "actual media type from magic bytes, runs the binary "
-        "normaliser, loads through the per-format SourceLoader, "
-        "chunks, embeds, and indexes BM25 + dense vectors keyed by "
-        "chunk_id. SHA-256 hashing makes ingestion idempotent on "
-        "content."
+    "workspaces": "Multi-tenant workspace management. Each workspace scopes datasets, schema KB, relations, and agent tokens.",
+    "datasets": "Dataset lifecycle (create, fetch, delete). A dataset groups one or more uploaded files into a named schema boundary.",
+    "files": (
+        "File upload + re-upload. POST a structured file (CSV, TSV, "
+        "XLSX, XLS, ODS, JSON, JSONL, Parquet, Avro, ORC, Arrow, "
+        "Feather) to kick off the 10-stage ingestion pipeline. "
+        "Re-upload triggers schema-drift detection and annotation transplant."
     ),
-    "Knowledge": (
-        "Canonical knowledge items. The validated, versioned units "
-        "downstream consumers should treat as ground truth. Every "
-        "create / update appends a new version row; supersession and "
-        "retirement are final transitions. Every lifecycle event is "
-        "audited and broadcast on the ``flyquery.knowledge`` topic, "
-        "so projections (dashboards, copilots, compliance feeds) "
-        "stay in lock-step without polling."
+    "tables": (
+        "Materialised table catalogue. Read table snapshots, column "
+        "profiles, and schema change history produced by the ingestion pipeline."
     ),
-    "Candidates": (
-        "Pre-canonical knowledge proposals. The consolidation stage "
-        "feeds source chunks to an LLM (FireflyAgent over "
-        "pydantic-ai) that emits structured "
-        "CandidateProposals with chunk-anchored citations and a "
-        "self-rated confidence score. Operators (or an automated "
-        "policy) accept proposals to materialise a new knowledge "
-        "version, reject them with a reason, or merge them into "
-        "existing items. Every decision flows through the audit log."
+    "schema": (
+        "Schema knowledge-base objects and change proposals. "
+        "Column-level AI descriptions, domain metadata, and the diff "
+        "stream from re-uploads."
     ),
-    "Query": (
-        "Hybrid search + grounded retrieval-augmented answering. "
-        "``/search`` returns the raw RRF-fused hit list (BM25 + "
-        "dense vectors). ``/query`` runs the same retrieval, then "
-        "asks the configured answer model to write an answer using "
-        "ONLY the retrieved chunks -- citations include only the "
-        "chunks the model actually relied on. Both surfaces share "
-        "the same filter model (source_id, knowledge_item_id, "
-        "domain, jurisdiction, tags, statuses)."
+    "relations": (
+        "Cross-table join proposals. Heuristic + AI-proposed foreign-key "
+        "candidates with human approve/reject workflow."
     ),
-    "Taxonomy": (
-        "Domain + jurisdiction taxonomy. Seed inserts one root per "
-        ":class:`Domain` value at first boot; callers attach "
-        "finer-grained children at runtime (sub-processes, "
-        "jurisdiction sub-trees). The tree is read flat in "
-        "breadth-first order via the ``depth`` column so the API "
-        "round-trip is index-only."
+    "semantic": (
+        "Semantic layer -- MetricFlow-compatible metrics and dimensions "
+        "derived from the ingested schema KB."
     ),
-    "Audit": (
-        "Append-only audit log. Every mutation in flyquery "
-        "(``source.ingested``, ``knowledge.published``, "
-        "``candidate.accepted``, ...) writes a row here with the "
-        "actor, the correlation id from the originating request, "
-        "and a free-form payload. The same payload is broadcast on "
-        "the ``flyquery.audit`` topic for compliance projections."
+    "glossary": "Business glossary terms linked to schema columns and datasets.",
+    "examples": "Few-shot Text-to-SQL examples stored in the workspace vector index.",
+    "query": (
+        "Text-to-SQL query pipeline. Converts natural-language questions "
+        "to validated SQL, executes against DuckDB, and returns structured results."
     ),
-    "Version": (
-        "Service identity, model selection, and backend choices. "
-        "Surfaces the deployed CalVer, the embedding + answer model "
-        "ids actually in use, the vector backend (pgvector by "
-        "default), and the EDA adapter. Used by smoke tests and "
-        "operations dashboards."
+    "conversations": "Multi-turn conversation sessions backed by the schema KB.",
+    "ingest": "Ingestion job tracking and SSE event streaming.",
+    "sql": "Direct SQL execution surface (scoped by workspace RLS).",
+    "agent-tokens": "Lifecycle management for machine-to-machine agent tokens (create, list, revoke).",
+    "agent-examples": "Agent-tier few-shot example management (requires X-Agent-Token).",
+    "agent-query": "Agent-tier Text-to-SQL pipeline (requires X-Agent-Token with query scope).",
+    "agent-sql": "Agent-tier direct SQL execution (requires X-Agent-Token with sql:execute scope).",
+    "meta": (
+        "Service identity. Returns deployed CalVer, service name. "
+        "The agent-tier variant requires a valid X-Agent-Token."
     ),
 }
 
@@ -125,6 +136,13 @@ def install_openapi(
         if app.openapi_schema is not None:
             return app.openapi_schema
         route_metadata = registrar.collect_route_metadata(context)
+
+        # Apply tag overrides: replace pyfly's auto-derived PascalCase tags
+        # with the canonical lowercase kebab-case names used in the SDK.
+        for meta in route_metadata:
+            if meta.tag in TAG_OVERRIDES:
+                meta.tag = TAG_OVERRIDES[meta.tag]
+
         spec = generator.generate(route_metadata=route_metadata)
 
         # Enrich tag entries with human-readable descriptions.

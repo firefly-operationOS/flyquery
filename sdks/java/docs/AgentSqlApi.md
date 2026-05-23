@@ -1,0 +1,135 @@
+# AgentSqlApi
+
+All URIs are relative to *http://localhost*
+
+| Method | HTTP request | Description |
+|------------- | ------------- | -------------|
+| [**execute**](AgentSqlApi.md#execute) | **POST** /api/v1/agent/sql:execute | Execute SQL directly (agent-tier). |
+| [**executeStream**](AgentSqlApi.md#executeStream) | **POST** /api/v1/agent/sql:execute/stream | Execute SQL as SSE stream (agent-tier). |
+
+
+<a id="execute"></a>
+# **execute**
+> SqlExecuteResponse execute(sqlExecuteRequest)
+
+Execute SQL directly (agent-tier).
+
+:param http_request: Starlette request :param body: validated SqlExecuteRequest :return: SqlExecuteResponse
+
+### Example
+```java
+// Import classes:
+import io.firefly.flyquery.ApiClient;
+import io.firefly.flyquery.ApiException;
+import io.firefly.flyquery.Configuration;
+import io.firefly.flyquery.models.*;
+import io.firefly.flyquery.api.AgentSqlApi;
+
+public class Example {
+  public static void main(String[] args) {
+    ApiClient defaultClient = Configuration.getDefaultApiClient();
+    defaultClient.setBasePath("http://localhost");
+
+    AgentSqlApi apiInstance = new AgentSqlApi(defaultClient);
+    SqlExecuteRequest sqlExecuteRequest = new SqlExecuteRequest(); // SqlExecuteRequest | 
+    try {
+      SqlExecuteResponse result = apiInstance.execute(sqlExecuteRequest);
+      System.out.println(result);
+    } catch (ApiException e) {
+      System.err.println("Exception when calling AgentSqlApi#execute");
+      System.err.println("Status code: " + e.getCode());
+      System.err.println("Reason: " + e.getResponseBody());
+      System.err.println("Response headers: " + e.getResponseHeaders());
+      e.printStackTrace();
+    }
+  }
+}
+```
+
+### Parameters
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **sqlExecuteRequest** | [**SqlExecuteRequest**](SqlExecuteRequest.md)|  | |
+
+### Return type
+
+[**SqlExecuteResponse**](SqlExecuteResponse.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+ - **Content-Type**: application/json
+ - **Accept**: application/json
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** | Successful response |  -  |
+| **422** | Validation Error |  -  |
+
+<a id="executeStream"></a>
+# **executeStream**
+> executeStream(sqlExecuteRequest)
+
+Execute SQL as SSE stream (agent-tier).
+
+:param http_request: Starlette request :param body: validated SqlExecuteRequest :return: StreamingResponse with text/event-stream
+
+### Example
+```java
+// Import classes:
+import io.firefly.flyquery.ApiClient;
+import io.firefly.flyquery.ApiException;
+import io.firefly.flyquery.Configuration;
+import io.firefly.flyquery.models.*;
+import io.firefly.flyquery.api.AgentSqlApi;
+
+public class Example {
+  public static void main(String[] args) {
+    ApiClient defaultClient = Configuration.getDefaultApiClient();
+    defaultClient.setBasePath("http://localhost");
+
+    AgentSqlApi apiInstance = new AgentSqlApi(defaultClient);
+    SqlExecuteRequest sqlExecuteRequest = new SqlExecuteRequest(); // SqlExecuteRequest | 
+    try {
+      apiInstance.executeStream(sqlExecuteRequest);
+    } catch (ApiException e) {
+      System.err.println("Exception when calling AgentSqlApi#executeStream");
+      System.err.println("Status code: " + e.getCode());
+      System.err.println("Reason: " + e.getResponseBody());
+      System.err.println("Response headers: " + e.getResponseHeaders());
+      e.printStackTrace();
+    }
+  }
+}
+```
+
+### Parameters
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **sqlExecuteRequest** | [**SqlExecuteRequest**](SqlExecuteRequest.md)|  | |
+
+### Return type
+
+null (empty response body)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+ - **Content-Type**: application/json
+ - **Accept**: application/json
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** | Successful response |  -  |
+| **422** | Validation Error |  -  |
+

@@ -1,893 +1,4375 @@
 openapi: 3.1.0
 info:
-  description: Operational Structured-Data Intelligence (upload-driven) -- multi-tenant
-    ingestion + Text-to-SQL over user-uploaded structured files (CSV / TSV / XLSX
-    / XLS / ODS / JSON / JSONL / Parquet / Avro / ORC / Arrow / Feather + .gz/.zip/.bz2
-    variants). Materialises uploads to Parquet on object storage; indexes a long-lived
-    schema knowledge base; answers natural-language questions via a multi-agent pipeline.
-    Part of Firefly OperationOS.
+  contact:
+    name: Firefly OperationOS
+    url: https://github.com/firefly-operationOS/flyquery
+  license:
+    name: Proprietary -- service
+    url: https://github.com/firefly-operationOS/flyquery/blob/main/LICENSE
   title: flyquery
-  version: 26.5.0
+  version: 26.5.2
 servers:
-- url: /
+- description: This service
+  url: /
+tags:
+- description: Agent-tier few-shot example management (requires X-Agent-Token).
+  name: agent-examples
+- description: Agent-tier Text-to-SQL pipeline (requires X-Agent-Token with query
+    scope).
+  name: agent-query
+- description: Agent-tier direct SQL execution (requires X-Agent-Token with sql:execute
+    scope).
+  name: agent-sql
+- description: "Lifecycle management for machine-to-machine agent tokens (create,\
+    \ list, revoke)."
+  name: agent-tokens
+- description: Multi-turn conversation sessions backed by the schema KB.
+  name: conversations
+- description: "Dataset lifecycle (create, fetch, delete). A dataset groups one or\
+    \ more uploaded files into a named schema boundary."
+  name: datasets
+- description: Few-shot Text-to-SQL examples stored in the workspace vector index.
+  name: examples
+- description: "File upload + re-upload. POST a structured file (CSV, TSV, XLSX, XLS,\
+    \ ODS, JSON, JSONL, Parquet, Avro, ORC, Arrow, Feather) to kick off the 10-stage\
+    \ ingestion pipeline. Re-upload triggers schema-drift detection and annotation\
+    \ transplant."
+  name: files
+- description: Business glossary terms linked to schema columns and datasets.
+  name: glossary
+- description: Ingestion job tracking and SSE event streaming.
+  name: ingest
+- description: "Text-to-SQL query pipeline. Converts natural-language questions to\
+    \ validated SQL, executes against DuckDB, and returns structured results."
+  name: query
+- description: Cross-table join proposals. Heuristic + AI-proposed foreign-key candidates
+    with human approve/reject workflow.
+  name: relations
+- description: "Schema knowledge-base objects and change proposals. Column-level AI\
+    \ descriptions, domain metadata, and the diff stream from re-uploads."
+  name: schema
+- description: Semantic layer -- MetricFlow-compatible metrics and dimensions derived
+    from the ingested schema KB.
+  name: semantic
+- description: Direct SQL execution surface (scoped by workspace RLS).
+  name: sql
+- description: "Materialised table catalogue. Read table snapshots, column profiles,\
+    \ and schema change history produced by the ingestion pipeline."
+  name: tables
+- description: "Service identity. Returns deployed CalVer, service name. The agent-tier\
+    \ variant requires a valid X-Agent-Token."
+  name: meta
+- description: "Multi-tenant workspace management. Each workspace scopes datasets,\
+    \ schema KB, relations, and agent tokens."
+  name: workspaces
 paths:
   /api/v1/agent-tokens:
     get:
-      operationId: lazy_endpoint_api_v1_agent_tokens_get
+      description: |-
+        Returns the summary shape only -- the secret is never
+        round-tripped on this endpoint.
+      operationId: list_tokens
       responses:
         "200":
           content:
             application/json:
-              schema: {}
-          description: Successful Response
-      summary: Lazy Endpoint
+              schema:
+                items:
+                  $ref: "#/components/schemas/AgentTokenSummaryDto"
+                type: array
+          description: Successful response
+      summary: List tokens for the current tenant (newest first).
+      tags:
+      - agent-tokens
       x-accepts:
       - application/json
     post:
-      operationId: lazy_endpoint_api_v1_agent_tokens_post
+      description: |-
+        Returns 201 with the full ``token`` populated. The token is
+        only returned this once -- subsequent reads expose only
+        ``prefix``. Refuses agent-tier callers with
+        ``403 agent_cannot_mint``.
+      operationId: mint
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AgentTokenMintRequest"
+        required: true
       responses:
         "201":
           content:
             application/json:
-              schema: {}
-          description: Successful Response
-      summary: Lazy Endpoint
+              schema:
+                $ref: "#/components/schemas/AgentTokenCreated"
+          description: Successful response
+        "422":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HTTPValidationError"
+          description: Validation Error
+      summary: Mint a new agent token.
+      tags:
+      - agent-tokens
+      x-content-type: application/json
       x-accepts:
       - application/json
   /api/v1/agent-tokens/{token_id}:
     delete:
-      operationId: lazy_endpoint_api_v1_agent_tokens__token_id__delete
+      description: Unknown ``token_id`` returns ``404 resource_not_found``.
+      operationId: revoke
+      parameters:
+      - explode: false
+        in: path
+        name: token_id
+        required: true
+        schema:
+          nullable: true
+          type: string
+        style: simple
       responses:
         "204":
-          description: Successful Response
-      summary: Lazy Endpoint
+          description: No Content
+      summary: Revoke a token. Idempotent -- already-revoked is a no-op (204).
+      tags:
+      - agent-tokens
       x-accepts:
       - application/json
   /api/v1/agent/examples:
     get:
-      operationId: lazy_endpoint_api_v1_agent_examples_get
+      description: |-
+        :param http_request: Starlette request
+        :param quality: optional quality filter (PROPOSED/APPROVED/REJECTED)
+        :param dataset_id: optional dataset filter
+        :return: ``{"items": [...]}``
+      operationId: list_examples
+      parameters:
+      - explode: true
+        in: query
+        name: quality
+        required: false
+        schema:
+          default: null
+          type: string
+        style: form
+      - explode: true
+        in: query
+        name: dataset_id
+        required: false
+        schema:
+          nullable: true
+          type: string
+        style: form
       responses:
         "200":
-          content:
-            application/json:
-              schema: {}
-          description: Successful Response
-      summary: Lazy Endpoint
+          description: Successful response
+      summary: List examples for the caller's workspace (agent-tier).
+      tags:
+      - agent-examples
       x-accepts:
       - application/json
     post:
-      operationId: lazy_endpoint_api_v1_agent_examples_post
+      description: |-
+        :param http_request: Starlette request
+        :param body: validated ExampleCreate
+        :return: ExampleRead with created fields
+      operationId: create
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ExampleCreate"
+        required: true
       responses:
         "201":
           content:
             application/json:
-              schema: {}
-          description: Successful Response
-      summary: Lazy Endpoint
+              schema:
+                $ref: "#/components/schemas/ExampleRead"
+          description: Successful response
+        "422":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HTTPValidationError"
+          description: Validation Error
+      summary: "Create an example (agent-tier — source=AGENT_LEARNED, quality=PROPOSED)."
+      tags:
+      - agent-examples
+      x-content-type: application/json
       x-accepts:
       - application/json
   /api/v1/agent/query:
     post:
-      operationId: lazy_endpoint_api_v1_agent_query_post
+      description: |-
+        :param http_request: Starlette request (provides tenant context + agent token)
+        :param body: validated QueryRequest
+        :return: AnswerResponse
+      operationId: query
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/QueryRequest"
+        required: true
       responses:
         "200":
           content:
             application/json:
-              schema: {}
-          description: Successful Response
-      summary: Lazy Endpoint
+              schema:
+                $ref: "#/components/schemas/AnswerResponse"
+          description: Successful response
+        "422":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HTTPValidationError"
+          description: Validation Error
+      summary: Run the full NL → SQL → result pipeline (agent-tier).
+      tags:
+      - agent-query
+      x-content-type: application/json
       x-accepts:
       - application/json
   /api/v1/agent/query/stream:
     post:
-      operationId: lazy_endpoint_api_v1_agent_query_stream_post
+      description: |-
+        :param http_request: Starlette request
+        :param body: validated QueryRequest
+        :return: StreamingResponse with text/event-stream
+      operationId: stream
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/QueryRequest"
+        required: true
       responses:
         "200":
+          description: Successful response
+        "422":
           content:
             application/json:
-              schema: {}
-          description: Successful Response
-      summary: Lazy Endpoint
+              schema:
+                $ref: "#/components/schemas/HTTPValidationError"
+          description: Validation Error
+      summary: Run the pipeline as SSE stream (agent-tier).
+      tags:
+      - agent-query
+      x-content-type: application/json
       x-accepts:
       - application/json
   /api/v1/agent/query:explain:
     post:
-      operationId: lazy_endpoint_api_v1_agent_query_explain_post
+      description: |-
+        :param http_request: Starlette request
+        :param body: validated QueryRequest
+        :return: ExplainResponse with candidate SQL and reasoning
+      operationId: explain
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/QueryRequest"
+        required: true
       responses:
         "200":
           content:
             application/json:
-              schema: {}
-          description: Successful Response
-      summary: Lazy Endpoint
+              schema:
+                $ref: "#/components/schemas/ExplainResponse"
+          description: Successful response
+        "422":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HTTPValidationError"
+          description: Validation Error
+      summary: Run Grounding + Generation only (agent-tier).
+      tags:
+      - agent-query
+      x-content-type: application/json
       x-accepts:
       - application/json
   /api/v1/agent/query:validate:
     post:
-      operationId: lazy_endpoint_api_v1_agent_query_validate_post
+      description: |-
+        :param http_request: Starlette request
+        :param body: validated QueryRequest
+        :return: ValidateResponse
+      operationId: validate
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/QueryRequest"
+        required: true
       responses:
         "200":
           content:
             application/json:
-              schema: {}
-          description: Successful Response
-      summary: Lazy Endpoint
+              schema:
+                $ref: "#/components/schemas/ValidateResponse"
+          description: Successful response
+        "422":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HTTPValidationError"
+          description: Validation Error
+      summary: Run Grounding + Generation + AST + ScopeGuard (agent-tier).
+      tags:
+      - agent-query
+      x-content-type: application/json
       x-accepts:
       - application/json
   /api/v1/agent/sql:execute:
     post:
-      operationId: lazy_endpoint_api_v1_agent_sql_execute_post
+      description: |-
+        :param http_request: Starlette request
+        :param body: validated SqlExecuteRequest
+        :return: SqlExecuteResponse
+      operationId: execute
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SqlExecuteRequest"
+        required: true
       responses:
         "200":
           content:
             application/json:
-              schema: {}
-          description: Successful Response
-      summary: Lazy Endpoint
+              schema:
+                $ref: "#/components/schemas/SqlExecuteResponse"
+          description: Successful response
+        "422":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HTTPValidationError"
+          description: Validation Error
+      summary: Execute SQL directly (agent-tier).
+      tags:
+      - agent-sql
+      x-content-type: application/json
       x-accepts:
       - application/json
   /api/v1/agent/sql:execute/stream:
     post:
-      operationId: lazy_endpoint_api_v1_agent_sql_execute_stream_post
+      description: |-
+        :param http_request: Starlette request
+        :param body: validated SqlExecuteRequest
+        :return: StreamingResponse with text/event-stream
+      operationId: execute_stream
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SqlExecuteRequest"
+        required: true
       responses:
         "200":
+          description: Successful response
+        "422":
           content:
             application/json:
-              schema: {}
-          description: Successful Response
-      summary: Lazy Endpoint
+              schema:
+                $ref: "#/components/schemas/HTTPValidationError"
+          description: Validation Error
+      summary: Execute SQL as SSE stream (agent-tier).
+      tags:
+      - agent-sql
+      x-content-type: application/json
       x-accepts:
       - application/json
   /api/v1/agent/version:
     get:
-      operationId: lazy_endpoint_api_v1_agent_version_get
+      description: |-
+        Requires a valid ``X-Agent-Token`` with ``flyquery.audit:read`` scope.
+        Missing or invalid tokens return 401 / 403 respectively.
+      operationId: version
       responses:
         "200":
-          content:
-            application/json:
-              schema: {}
-          description: Successful Response
-      summary: Lazy Endpoint
+          description: Successful response
+      summary: Return service name + CalVer version tag.
+      tags:
+      - meta
       x-accepts:
       - application/json
   /api/v1/conversations:
     get:
-      operationId: lazy_endpoint_api_v1_conversations_get
+      description: |-
+        :param http_request: Starlette request
+        :return: ``{"items": [...]}``
+      operationId: list_conversations
       responses:
         "200":
-          content:
-            application/json:
-              schema: {}
-          description: Successful Response
-      summary: Lazy Endpoint
+          description: Successful response
+      summary: "List conversations for the caller's workspace, newest first."
+      tags:
+      - conversations
       x-accepts:
       - application/json
     post:
-      operationId: lazy_endpoint_api_v1_conversations_post
+      description: |-
+        :param http_request: Starlette request (tenant context headers)
+        :param body: optional title
+        :return: the new ConversationRead (no turns yet)
+      operationId: create
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ConversationCreate"
+        required: true
       responses:
         "201":
           content:
             application/json:
-              schema: {}
-          description: Successful Response
-      summary: Lazy Endpoint
+              schema:
+                $ref: "#/components/schemas/ConversationRead"
+          description: Successful response
+        "422":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HTTPValidationError"
+          description: Validation Error
+      summary: Create a new conversation.
+      tags:
+      - conversations
+      x-content-type: application/json
       x-accepts:
       - application/json
   /api/v1/conversations/{conversation_id}:
     get:
-      operationId: lazy_endpoint_api_v1_conversations__conversation_id__get
+      description: |-
+        :param conversation_id: conversation UUID
+        :return: ConversationRead including turns list
+        :raises ResourceNotFound: when conversation does not exist
+      operationId: read
+      parameters:
+      - explode: false
+        in: path
+        name: conversation_id
+        required: true
+        schema:
+          nullable: true
+          type: string
+        style: simple
       responses:
         "200":
           content:
             application/json:
-              schema: {}
-          description: Successful Response
-      summary: Lazy Endpoint
+              schema:
+                $ref: "#/components/schemas/ConversationRead"
+          description: Successful response
+      summary: Fetch a conversation with all its turns.
+      tags:
+      - conversations
       x-accepts:
       - application/json
   /api/v1/conversations/{conversation_id}/turn:
     post:
-      operationId: lazy_endpoint_api_v1_conversations__conversation_id__turn_post
+      description: |-
+        Loads the prior turn's ``executed_sql + table_qnames + snapshot_pins``
+        and passes them into the query pipeline as drill-down context.
+
+        :param http_request: Starlette request
+        :param conversation_id: conversation UUID
+        :param body: dataset_id + question
+        :return: AnswerResponse from the full pipeline
+      operationId: post_turn
+      parameters:
+      - explode: false
+        in: path
+        name: conversation_id
+        required: true
+        schema:
+          type: string
+        style: simple
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ConversationTurnRequest"
+        required: true
       responses:
         "200":
           content:
             application/json:
-              schema: {}
-          description: Successful Response
-      summary: Lazy Endpoint
+              schema:
+                $ref: "#/components/schemas/AnswerResponse"
+          description: Successful response
+        "422":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HTTPValidationError"
+          description: Validation Error
+      summary: Ask a follow-up question inside an existing conversation.
+      tags:
+      - conversations
+      x-content-type: application/json
       x-accepts:
       - application/json
   /api/v1/datasets:
     get:
-      operationId: lazy_endpoint_api_v1_datasets_get
+      operationId: list_datasets
       responses:
         "200":
-          content:
-            application/json:
-              schema: {}
-          description: Successful Response
-      summary: Lazy Endpoint
+          description: Successful response
+      summary: Return all datasets for the caller's tenant+workspace.
+      tags:
+      - datasets
       x-accepts:
       - application/json
     post:
-      operationId: lazy_endpoint_api_v1_datasets_post
+      operationId: create
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DatasetCreate"
+        required: true
       responses:
         "201":
           content:
             application/json:
-              schema: {}
-          description: Successful Response
-      summary: Lazy Endpoint
+              schema:
+                $ref: "#/components/schemas/DatasetRead"
+          description: Successful response
+        "422":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HTTPValidationError"
+          description: Validation Error
+      summary: Create a dataset; tenant + workspace come from request headers.
+      tags:
+      - datasets
+      x-content-type: application/json
       x-accepts:
       - application/json
   /api/v1/datasets/{dataset_id}:
     delete:
-      operationId: lazy_endpoint_api_v1_datasets__dataset_id__delete
+      operationId: archive
+      parameters:
+      - explode: false
+        in: path
+        name: dataset_id
+        required: true
+        schema:
+          type: string
+        style: simple
       responses:
         "200":
           content:
             application/json:
-              schema: {}
-          description: Successful Response
-      summary: Lazy Endpoint
+              schema:
+                $ref: "#/components/schemas/DatasetRead"
+          description: Successful response
+      summary: Archive a dataset (set status=ARCHIVED).
+      tags:
+      - datasets
       x-accepts:
       - application/json
     get:
-      operationId: lazy_endpoint_api_v1_datasets__dataset_id__get
+      operationId: read
+      parameters:
+      - explode: false
+        in: path
+        name: dataset_id
+        required: true
+        schema:
+          nullable: true
+          type: string
+        style: simple
       responses:
         "200":
           content:
             application/json:
-              schema: {}
-          description: Successful Response
-      summary: Lazy Endpoint
+              schema:
+                $ref: "#/components/schemas/DatasetRead"
+          description: Successful response
+      summary: Fetch a single dataset by id. Returns 404 if not found.
+      tags:
+      - datasets
       x-accepts:
       - application/json
     put:
-      operationId: lazy_endpoint_api_v1_datasets__dataset_id__put
+      operationId: update
+      parameters:
+      - explode: false
+        in: path
+        name: dataset_id
+        required: true
+        schema:
+          type: string
+        style: simple
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DatasetUpdate"
+        required: true
       responses:
         "200":
           content:
             application/json:
-              schema: {}
-          description: Successful Response
-      summary: Lazy Endpoint
+              schema:
+                $ref: "#/components/schemas/DatasetRead"
+          description: Successful response
+        "422":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HTTPValidationError"
+          description: Validation Error
+      summary: Sparse-update a dataset. Only fields present in body are changed.
+      tags:
+      - datasets
+      x-content-type: application/json
       x-accepts:
       - application/json
   /api/v1/datasets/{dataset_id}/files:
     post:
-      operationId: lazy_endpoint_api_v1_datasets__dataset_id__files_post
+      operationId: upload_file
+      parameters:
+      - explode: false
+        in: path
+        name: dataset_id
+        required: true
+        schema:
+          type: string
+        style: simple
       responses:
         "201":
           content:
             application/json:
-              schema: {}
-          description: Successful Response
-      summary: Lazy Endpoint
+              schema:
+                $ref: "#/components/schemas/FileUploadResponse"
+          description: Successful response
+      summary: Accept a multipart file upload and run the synchronous ingestion pipeline.
+      tags:
+      - files
       x-accepts:
       - application/json
   /api/v1/datasets/{dataset_id}/relations:
     get:
-      operationId: lazy_endpoint_api_v1_datasets__dataset_id__relations_get
+      operationId: list_relations
+      parameters:
+      - explode: false
+        in: path
+        name: dataset_id
+        required: true
+        schema:
+          type: string
+        style: simple
       responses:
         "200":
-          content:
-            application/json:
-              schema: {}
-          description: Successful Response
-      summary: Lazy Endpoint
+          description: Successful response
+      summary: List relations for a dataset (all statuses by default).
+      tags:
+      - relations
       x-accepts:
       - application/json
   /api/v1/datasets/{dataset_id}/tables:
     get:
-      operationId: lazy_endpoint_api_v1_datasets__dataset_id__tables_get
+      operationId: list_tables
+      parameters:
+      - explode: false
+        in: path
+        name: dataset_id
+        required: true
+        schema:
+          type: string
+        style: simple
       responses:
         "200":
-          content:
-            application/json:
-              schema: {}
-          description: Successful Response
-      summary: Lazy Endpoint
+          description: Successful response
+      tags:
+      - tables
       x-accepts:
       - application/json
   /api/v1/datasets/{dataset_id}/tables/{table_id}:upload:
     put:
-      operationId: lazy_endpoint_api_v1_datasets__dataset_id__tables__table_id__upload_put
+      operationId: reupload_file
+      parameters:
+      - explode: false
+        in: path
+        name: dataset_id
+        required: true
+        schema:
+          type: string
+        style: simple
+      - explode: false
+        in: path
+        name: table_id
+        required: true
+        schema:
+          nullable: true
+          type: string
+        style: simple
       responses:
         "201":
           content:
             application/json:
-              schema: {}
-          description: Successful Response
-      summary: Lazy Endpoint
+              schema:
+                $ref: "#/components/schemas/ReuploadResponse"
+          description: Successful response
+      summary: Re-upload into an existing table slot; creates a new snapshot.
+      tags:
+      - files
       x-accepts:
       - application/json
   /api/v1/examples:
     get:
-      operationId: lazy_endpoint_api_v1_examples_get
+      operationId: list_examples
+      parameters:
+      - explode: true
+        in: query
+        name: quality
+        required: false
+        schema:
+          nullable: true
+          type: string
+        style: form
+      - explode: true
+        in: query
+        name: dataset_id
+        required: false
+        schema:
+          type: string
+        style: form
       responses:
         "200":
-          content:
-            application/json:
-              schema: {}
-          description: Successful Response
-      summary: Lazy Endpoint
+          description: Successful response
+      summary: "List examples for the caller's workspace, with optional filters."
+      tags:
+      - examples
       x-accepts:
       - application/json
     post:
-      operationId: lazy_endpoint_api_v1_examples_post
+      operationId: create
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ExampleCreate"
+        required: true
       responses:
         "201":
           content:
             application/json:
-              schema: {}
-          description: Successful Response
-      summary: Lazy Endpoint
+              schema:
+                $ref: "#/components/schemas/ExampleRead"
+          description: Successful response
+        "422":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HTTPValidationError"
+          description: Validation Error
+      summary: "Create an example; defaults to source=USER_CURATED, quality=PROPOSED."
+      tags:
+      - examples
+      x-content-type: application/json
       x-accepts:
       - application/json
   /api/v1/examples/{example_id}:approve:
     post:
-      operationId: lazy_endpoint_api_v1_examples__example_id__approve_post
+      operationId: approve
+      parameters:
+      - explode: false
+        in: path
+        name: example_id
+        required: true
+        schema:
+          nullable: true
+          type: string
+        style: simple
       responses:
         "200":
           content:
             application/json:
-              schema: {}
-          description: Successful Response
-      summary: Lazy Endpoint
+              schema:
+                $ref: "#/components/schemas/ExampleRead"
+          description: Successful response
+      summary: Approve an example (quality → APPROVED).
+      tags:
+      - examples
       x-accepts:
       - application/json
   /api/v1/examples/{example_id}:reject:
     post:
-      operationId: lazy_endpoint_api_v1_examples__example_id__reject_post
+      operationId: reject
+      parameters:
+      - explode: false
+        in: path
+        name: example_id
+        required: true
+        schema:
+          type: string
+        style: simple
       responses:
         "200":
           content:
             application/json:
-              schema: {}
-          description: Successful Response
-      summary: Lazy Endpoint
+              schema:
+                $ref: "#/components/schemas/ExampleRead"
+          description: Successful response
+      summary: Reject an example (quality → REJECTED).
+      tags:
+      - examples
       x-accepts:
       - application/json
   /api/v1/glossary:
     get:
-      operationId: lazy_endpoint_api_v1_glossary_get
+      operationId: list_terms
+      parameters:
+      - explode: true
+        in: query
+        name: limit
+        required: false
+        schema:
+          default: 100
+          type: integer
+        style: form
+      - explode: true
+        in: query
+        name: offset
+        required: false
+        schema:
+          default: 0
+          type: integer
+        style: form
       responses:
         "200":
-          content:
-            application/json:
-              schema: {}
-          description: Successful Response
-      summary: Lazy Endpoint
+          description: Successful response
+      summary: Return paginated glossary terms for the caller's workspace.
+      tags:
+      - glossary
       x-accepts:
       - application/json
     post:
-      operationId: lazy_endpoint_api_v1_glossary_post
+      operationId: create
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GlossaryTermCreate"
+        required: true
       responses:
         "201":
           content:
             application/json:
-              schema: {}
-          description: Successful Response
-      summary: Lazy Endpoint
+              schema:
+                $ref: "#/components/schemas/GlossaryTermRead"
+          description: Successful response
+        "422":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HTTPValidationError"
+          description: Validation Error
+      summary: "Create a glossary term; (workspace_id, term) must be unique."
+      tags:
+      - glossary
+      x-content-type: application/json
       x-accepts:
       - application/json
   /api/v1/glossary/{term_id}:
     delete:
-      operationId: lazy_endpoint_api_v1_glossary__term_id__delete
+      operationId: delete
+      parameters:
+      - explode: false
+        in: path
+        name: term_id
+        required: true
+        schema:
+          type: string
+        style: simple
       responses:
         "204":
-          description: Successful Response
-      summary: Lazy Endpoint
+          description: No Content
+      summary: Hard-delete a glossary term.
+      tags:
+      - glossary
       x-accepts:
       - application/json
     put:
-      operationId: lazy_endpoint_api_v1_glossary__term_id__put
+      operationId: update
+      parameters:
+      - explode: false
+        in: path
+        name: term_id
+        required: true
+        schema:
+          nullable: true
+          type: string
+        style: simple
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GlossaryTermUpdate"
+        required: true
       responses:
         "200":
           content:
             application/json:
-              schema: {}
-          description: Successful Response
-      summary: Lazy Endpoint
+              schema:
+                $ref: "#/components/schemas/GlossaryTermRead"
+          description: Successful response
+        "422":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HTTPValidationError"
+          description: Validation Error
+      summary: Sparse-update a glossary term.
+      tags:
+      - glossary
+      x-content-type: application/json
       x-accepts:
       - application/json
   /api/v1/ingest-jobs:
     get:
-      operationId: lazy_endpoint_api_v1_ingest_jobs_get
+      operationId: list_jobs
       responses:
         "200":
           content:
             application/json:
-              schema: {}
-          description: Successful Response
-      summary: Lazy Endpoint
+              schema:
+                $ref: "#/components/schemas/IngestJobListResponse"
+          description: Successful response
+      summary: List ingest jobs with optional filters.
+      tags:
+      - ingest
       x-accepts:
       - application/json
     post:
-      operationId: lazy_endpoint_api_v1_ingest_jobs_post
+      operationId: create_job
       responses:
         "201":
           content:
             application/json:
-              schema: {}
-          description: Successful Response
-      summary: Lazy Endpoint
+              schema:
+                $ref: "#/components/schemas/IngestJobRead"
+          description: Successful response
+      summary: Start a background ingestion job (REPARSE/SAMPLE_REFRESH/DESCRIBE_PASS/RELATION_PASS).
+      tags:
+      - ingest
       x-accepts:
       - application/json
   /api/v1/ingest-jobs/{job_id}:
     get:
-      operationId: lazy_endpoint_api_v1_ingest_jobs__job_id__get
+      operationId: get_job
+      parameters:
+      - explode: false
+        in: path
+        name: job_id
+        required: true
+        schema:
+          nullable: true
+          type: string
+        style: simple
       responses:
         "200":
           content:
             application/json:
-              schema: {}
-          description: Successful Response
-      summary: Lazy Endpoint
+              schema:
+                $ref: "#/components/schemas/IngestJobRead"
+          description: Successful response
+      summary: Get a single ingest job.
+      tags:
+      - ingest
       x-accepts:
       - application/json
   /api/v1/ingest-jobs/{job_id}/events:
     get:
-      operationId: lazy_endpoint_api_v1_ingest_jobs__job_id__events_get
+      operationId: list_events
+      parameters:
+      - explode: false
+        in: path
+        name: job_id
+        required: true
+        schema:
+          type: string
+        style: simple
       responses:
         "200":
           content:
             application/json:
-              schema: {}
-          description: Successful Response
-      summary: Lazy Endpoint
+              schema:
+                $ref: "#/components/schemas/IngestEventListResponse"
+          description: Successful response
+      summary: Paginated event ledger for a job.
+      tags:
+      - ingest
       x-accepts:
       - application/json
   /api/v1/ingest-jobs/{job_id}/stream:
     get:
-      operationId: lazy_endpoint_api_v1_ingest_jobs__job_id__stream_get
+      description: |-
+        Mirrors canon's ingest_jobs_controller SSE pattern:
+        1. Emit all existing events for the job (catch-up replay)
+        2. Poll for new events every 250ms
+        3. Close stream when a ``final`` or ``error`` event is emitted
+        4. Hard timeout at _SSE_MAX_SECONDS to avoid connection leak
+      operationId: stream_job
+      parameters:
+      - explode: false
+        in: path
+        name: job_id
+        required: true
+        schema:
+          type: string
+        style: simple
       responses:
         "200":
-          content:
-            application/json:
-              schema: {}
-          description: Successful Response
-      summary: Lazy Endpoint
+          description: Successful response
+      summary: SSE stream for real-time job progress.
+      tags:
+      - ingest
       x-accepts:
       - application/json
   /api/v1/ingest-jobs/{job_id}:cancel:
     post:
-      operationId: lazy_endpoint_api_v1_ingest_jobs__job_id__cancel_post
+      operationId: cancel_job
+      parameters:
+      - explode: false
+        in: path
+        name: job_id
+        required: true
+        schema:
+          type: string
+        style: simple
       responses:
         "200":
           content:
             application/json:
-              schema: {}
-          description: Successful Response
-      summary: Lazy Endpoint
+              schema:
+                $ref: "#/components/schemas/CancelResponse"
+          description: Successful response
+      summary: Cooperatively cancel a job (idempotent for terminal jobs).
+      tags:
+      - ingest
       x-accepts:
       - application/json
   /api/v1/query:
     post:
-      operationId: lazy_endpoint_api_v1_query_post
+      description: |-
+        :param http_request: Starlette request (provides tenant context headers)
+        :param body: validated QueryRequest
+        :return: AnswerResponse with SQL, preview rows, chart hint, and explanation
+      operationId: query
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/QueryRequest"
+        required: true
       responses:
         "200":
           content:
             application/json:
-              schema: {}
-          description: Successful Response
-      summary: Lazy Endpoint
+              schema:
+                $ref: "#/components/schemas/AnswerResponse"
+          description: Successful response
+        "422":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HTTPValidationError"
+          description: Validation Error
+      summary: Run the full NL → SQL → result pipeline and return a synchronous answer.
+      tags:
+      - query
+      x-content-type: application/json
       x-accepts:
       - application/json
   /api/v1/query/stream:
     post:
-      operationId: lazy_endpoint_api_v1_query_stream_post
+      description: |-
+        Event sequence:
+        1. ``schema_linked``   — after grounding completes
+        2. ``clarification``   — (optional) when confidence < threshold + missing_info
+        3. ``sql_generated``   — after generation
+        4. ``executed``        — after DuckDB execution
+        5. ``explained``       — after ExplainerAgent
+        6. ``final``           — full AnswerResponse JSON
+
+        :param http_request: Starlette request
+        :param body: validated QueryRequest (body already consumed by pyfly)
+        :return: StreamingResponse with ``text/event-stream`` content type
+      operationId: stream
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/QueryRequest"
+        required: true
       responses:
         "200":
+          description: Successful response
+        "422":
           content:
             application/json:
-              schema: {}
-          description: Successful Response
-      summary: Lazy Endpoint
+              schema:
+                $ref: "#/components/schemas/HTTPValidationError"
+          description: Validation Error
+      summary: Run the full pipeline as a Server-Sent Events stream.
+      tags:
+      - query
+      x-content-type: application/json
       x-accepts:
       - application/json
   /api/v1/query:explain:
     post:
-      operationId: lazy_endpoint_api_v1_query_explain_post
+      description: |-
+        Useful for previewing the generated SQL without paying execution costs.
+
+        :param http_request: Starlette request
+        :param body: validated QueryRequest
+        :return: ExplainResponse with candidate SQL and reasoning
+      operationId: explain
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/QueryRequest"
+        required: true
       responses:
         "200":
           content:
             application/json:
-              schema: {}
-          description: Successful Response
-      summary: Lazy Endpoint
+              schema:
+                $ref: "#/components/schemas/ExplainResponse"
+          description: Successful response
+        "422":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HTTPValidationError"
+          description: Validation Error
+      summary: Run Grounding + Generation but stop before AST/execution.
+      tags:
+      - query
+      x-content-type: application/json
       x-accepts:
       - application/json
   /api/v1/query:validate:
     post:
-      operationId: lazy_endpoint_api_v1_query_validate_post
+      description: |-
+        Returns the classification and any scope error without executing the SQL.
+
+        :param http_request: Starlette request
+        :param body: validated QueryRequest
+        :return: ValidateResponse with AST classification and optional scope_error
+      operationId: validate
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/QueryRequest"
+        required: true
       responses:
         "200":
           content:
             application/json:
-              schema: {}
-          description: Successful Response
-      summary: Lazy Endpoint
+              schema:
+                $ref: "#/components/schemas/ValidateResponse"
+          description: Successful response
+        "422":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HTTPValidationError"
+          description: Validation Error
+      summary: Run Grounding + Generation + AST classification + ScopeGuard check.
+      tags:
+      - query
+      x-content-type: application/json
       x-accepts:
       - application/json
   /api/v1/relations/{relation_id}:approve:
     post:
-      operationId: lazy_endpoint_api_v1_relations__relation_id__approve_post
+      operationId: approve_relation
+      parameters:
+      - explode: false
+        in: path
+        name: relation_id
+        required: true
+        schema:
+          nullable: true
+          type: string
+        style: simple
       responses:
         "200":
-          content:
-            application/json:
-              schema: {}
-          description: Successful Response
-      summary: Lazy Endpoint
+          description: Successful response
+      summary: Approve a PROPOSED relation.
+      tags:
+      - relations
       x-accepts:
       - application/json
   /api/v1/relations/{relation_id}:reject:
     post:
-      operationId: lazy_endpoint_api_v1_relations__relation_id__reject_post
+      operationId: reject_relation
+      parameters:
+      - explode: false
+        in: path
+        name: relation_id
+        required: true
+        schema:
+          type: string
+        style: simple
       responses:
         "200":
-          content:
-            application/json:
-              schema: {}
-          description: Successful Response
-      summary: Lazy Endpoint
+          description: Successful response
+      summary: Reject a PROPOSED relation.
+      tags:
+      - relations
       x-accepts:
       - application/json
   /api/v1/schema-changes/{change_id}:confirm:
     post:
-      operationId: lazy_endpoint_api_v1_schema_changes__change_id__confirm_post
+      description: |-
+        Validates that the change exists and is in state RENAMED_CANDIDATE.
+        Sets approved_by (the current actor / tenant_id), approved_at (now),
+        change = 'RENAMED'.
+        Also updates last_changed_at on the corresponding schema_objects column row.
+      operationId: confirm
+      parameters:
+      - explode: false
+        in: path
+        name: change_id
+        required: true
+        schema:
+          nullable: true
+          type: string
+        style: simple
       responses:
         "200":
           content:
             application/json:
-              schema: {}
-          description: Successful Response
-      summary: Lazy Endpoint
+              schema:
+                $ref: "#/components/schemas/SchemaChangeRead"
+          description: Successful response
+      summary: Flip a RENAMED_CANDIDATE row to RENAMED.
+      tags:
+      - schema
       x-accepts:
       - application/json
   /api/v1/schema-objects/{object_id}:
     get:
-      operationId: lazy_endpoint_api_v1_schema_objects__object_id__get
+      operationId: get_object
+      parameters:
+      - explode: false
+        in: path
+        name: object_id
+        required: true
+        schema:
+          nullable: true
+          type: string
+        style: simple
       responses:
         "200":
           content:
             application/json:
-              schema: {}
-          description: Successful Response
-      summary: Lazy Endpoint
+              schema:
+                $ref: "#/components/schemas/SchemaObjectRead"
+          description: Successful response
+      summary: Get a single schema object by ID.
+      tags:
+      - schema
       x-accepts:
       - application/json
     put:
-      operationId: lazy_endpoint_api_v1_schema_objects__object_id__put
+      description: |-
+        Sets description_source='HUMAN' when description is provided.
+        Sets pii_source='HUMAN' when pii_tag is provided.
+      operationId: update_object
+      parameters:
+      - explode: false
+        in: path
+        name: object_id
+        required: true
+        schema:
+          type: string
+        style: simple
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SchemaObjectUpdate"
+        required: true
       responses:
         "200":
           content:
             application/json:
-              schema: {}
-          description: Successful Response
-      summary: Lazy Endpoint
+              schema:
+                $ref: "#/components/schemas/SchemaObjectRead"
+          description: Successful response
+        "422":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HTTPValidationError"
+          description: Validation Error
+      summary: Update human-set fields on a schema object.
+      tags:
+      - schema
+      x-content-type: application/json
       x-accepts:
       - application/json
   /api/v1/semantic/dimensions:
     get:
-      operationId: lazy_endpoint_api_v1_semantic_dimensions_get
+      operationId: list_dimensions
+      parameters:
+      - explode: true
+        in: query
+        name: dataset_id
+        required: false
+        schema:
+          type: string
+        style: form
       responses:
         "200":
-          content:
-            application/json:
-              schema: {}
-          description: Successful Response
-      summary: Lazy Endpoint
+          description: Successful response
+      summary: List all semantic dimensions for the caller's workspace.
+      tags:
+      - semantic
       x-accepts:
       - application/json
     post:
-      operationId: lazy_endpoint_api_v1_semantic_dimensions_post
+      operationId: create
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SemanticDimensionCreate"
+        required: true
       responses:
         "201":
           content:
             application/json:
-              schema: {}
-          description: Successful Response
-      summary: Lazy Endpoint
+              schema:
+                $ref: "#/components/schemas/SemanticDimensionRead"
+          description: Successful response
+        "422":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HTTPValidationError"
+          description: Validation Error
+      summary: Create a new semantic dimension in DRAFT status.
+      tags:
+      - semantic
+      x-content-type: application/json
       x-accepts:
       - application/json
   /api/v1/semantic/dimensions/{dimension_id}:
     get:
-      operationId: lazy_endpoint_api_v1_semantic_dimensions__dimension_id__get
+      operationId: get_dimension
+      parameters:
+      - explode: false
+        in: path
+        name: dimension_id
+        required: true
+        schema:
+          nullable: true
+          type: string
+        style: simple
       responses:
         "200":
           content:
             application/json:
-              schema: {}
-          description: Successful Response
-      summary: Lazy Endpoint
+              schema:
+                $ref: "#/components/schemas/SemanticDimensionRead"
+          description: Successful response
+      summary: Fetch a single semantic dimension by id.
+      tags:
+      - semantic
       x-accepts:
       - application/json
     put:
-      operationId: lazy_endpoint_api_v1_semantic_dimensions__dimension_id__put
+      operationId: update
+      parameters:
+      - explode: false
+        in: path
+        name: dimension_id
+        required: true
+        schema:
+          type: string
+        style: simple
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SemanticDimensionUpdate"
+        required: true
       responses:
         "200":
           content:
             application/json:
-              schema: {}
-          description: Successful Response
-      summary: Lazy Endpoint
+              schema:
+                $ref: "#/components/schemas/SemanticDimensionRead"
+          description: Successful response
+        "422":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HTTPValidationError"
+          description: Validation Error
+      summary: Sparse-update a dimension; re-validates YAML if definition changes.
+      tags:
+      - semantic
+      x-content-type: application/json
       x-accepts:
       - application/json
   /api/v1/semantic/dimensions/{dimension_id}/history:
     get:
-      operationId: lazy_endpoint_api_v1_semantic_dimensions__dimension_id__history_get
+      operationId: history
+      parameters:
+      - explode: false
+        in: path
+        name: dimension_id
+        required: true
+        schema:
+          type: string
+        style: simple
       responses:
         "200":
-          content:
-            application/json:
-              schema: {}
-          description: Successful Response
-      summary: Lazy Endpoint
+          description: Successful response
+      summary: "Return version history for a dimension, oldest first."
+      tags:
+      - semantic
       x-accepts:
       - application/json
   /api/v1/semantic/dimensions/{dimension_id}:publish:
     post:
-      operationId: lazy_endpoint_api_v1_semantic_dimensions__dimension_id__publish_post
+      operationId: publish
+      parameters:
+      - explode: false
+        in: path
+        name: dimension_id
+        required: true
+        schema:
+          type: string
+        style: simple
       responses:
         "200":
           content:
             application/json:
-              schema: {}
-          description: Successful Response
-      summary: Lazy Endpoint
+              schema:
+                $ref: "#/components/schemas/SemanticDimensionRead"
+          description: Successful response
+      summary: "Validate, compile, and publish a dimension (status → PUBLISHED)."
+      tags:
+      - semantic
       x-accepts:
       - application/json
   /api/v1/semantic/dimensions/{dimension_id}:retire:
     post:
-      operationId: lazy_endpoint_api_v1_semantic_dimensions__dimension_id__retire_post
+      operationId: retire
+      parameters:
+      - explode: false
+        in: path
+        name: dimension_id
+        required: true
+        schema:
+          type: string
+        style: simple
       responses:
         "200":
           content:
             application/json:
-              schema: {}
-          description: Successful Response
-      summary: Lazy Endpoint
+              schema:
+                $ref: "#/components/schemas/SemanticDimensionRead"
+          description: Successful response
+      summary: Retire a dimension (status → RETIRED).
+      tags:
+      - semantic
       x-accepts:
       - application/json
   /api/v1/semantic/metrics:
     get:
-      operationId: lazy_endpoint_api_v1_semantic_metrics_get
+      operationId: list_metrics
+      parameters:
+      - explode: true
+        in: query
+        name: dataset_id
+        required: false
+        schema:
+          type: string
+        style: form
       responses:
         "200":
-          content:
-            application/json:
-              schema: {}
-          description: Successful Response
-      summary: Lazy Endpoint
+          description: Successful response
+      summary: List all semantic metrics for the caller's workspace.
+      tags:
+      - semantic
       x-accepts:
       - application/json
     post:
-      operationId: lazy_endpoint_api_v1_semantic_metrics_post
+      operationId: create
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SemanticMetricCreate"
+        required: true
       responses:
         "201":
           content:
             application/json:
-              schema: {}
-          description: Successful Response
-      summary: Lazy Endpoint
+              schema:
+                $ref: "#/components/schemas/SemanticMetricRead"
+          description: Successful response
+        "422":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HTTPValidationError"
+          description: Validation Error
+      summary: Create a new semantic metric in DRAFT status.
+      tags:
+      - semantic
+      x-content-type: application/json
       x-accepts:
       - application/json
   /api/v1/semantic/metrics/{metric_id}:
     get:
-      operationId: lazy_endpoint_api_v1_semantic_metrics__metric_id__get
+      operationId: get_metric
+      parameters:
+      - explode: false
+        in: path
+        name: metric_id
+        required: true
+        schema:
+          nullable: true
+          type: string
+        style: simple
       responses:
         "200":
           content:
             application/json:
-              schema: {}
-          description: Successful Response
-      summary: Lazy Endpoint
+              schema:
+                $ref: "#/components/schemas/SemanticMetricRead"
+          description: Successful response
+      summary: Fetch a single semantic metric by id.
+      tags:
+      - semantic
       x-accepts:
       - application/json
     put:
-      operationId: lazy_endpoint_api_v1_semantic_metrics__metric_id__put
+      operationId: update
+      parameters:
+      - explode: false
+        in: path
+        name: metric_id
+        required: true
+        schema:
+          type: string
+        style: simple
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SemanticMetricUpdate"
+        required: true
       responses:
         "200":
           content:
             application/json:
-              schema: {}
-          description: Successful Response
-      summary: Lazy Endpoint
+              schema:
+                $ref: "#/components/schemas/SemanticMetricRead"
+          description: Successful response
+        "422":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HTTPValidationError"
+          description: Validation Error
+      summary: Sparse-update a metric; re-validates YAML if definition changes.
+      tags:
+      - semantic
+      x-content-type: application/json
       x-accepts:
       - application/json
   /api/v1/semantic/metrics/{metric_id}/history:
     get:
-      operationId: lazy_endpoint_api_v1_semantic_metrics__metric_id__history_get
+      operationId: history
+      parameters:
+      - explode: false
+        in: path
+        name: metric_id
+        required: true
+        schema:
+          type: string
+        style: simple
       responses:
         "200":
-          content:
-            application/json:
-              schema: {}
-          description: Successful Response
-      summary: Lazy Endpoint
+          description: Successful response
+      summary: "Return version history for a metric, oldest first."
+      tags:
+      - semantic
       x-accepts:
       - application/json
   /api/v1/semantic/metrics/{metric_id}:publish:
     post:
-      operationId: lazy_endpoint_api_v1_semantic_metrics__metric_id__publish_post
+      operationId: publish
+      parameters:
+      - explode: false
+        in: path
+        name: metric_id
+        required: true
+        schema:
+          type: string
+        style: simple
       responses:
         "200":
           content:
             application/json:
-              schema: {}
-          description: Successful Response
-      summary: Lazy Endpoint
+              schema:
+                $ref: "#/components/schemas/SemanticMetricRead"
+          description: Successful response
+      summary: "Validate, compile, and publish a metric (status → PUBLISHED)."
+      tags:
+      - semantic
       x-accepts:
       - application/json
   /api/v1/semantic/metrics/{metric_id}:retire:
     post:
-      operationId: lazy_endpoint_api_v1_semantic_metrics__metric_id__retire_post
+      operationId: retire
+      parameters:
+      - explode: false
+        in: path
+        name: metric_id
+        required: true
+        schema:
+          type: string
+        style: simple
       responses:
         "200":
           content:
             application/json:
-              schema: {}
-          description: Successful Response
-      summary: Lazy Endpoint
+              schema:
+                $ref: "#/components/schemas/SemanticMetricRead"
+          description: Successful response
+      summary: Retire a metric (status → RETIRED).
+      tags:
+      - semantic
       x-accepts:
       - application/json
   /api/v1/sql:execute:
     post:
-      operationId: lazy_endpoint_api_v1_sql_execute_post
+      description: |-
+        Requires the workspace flag ``allow_direct_sql=true``. The SQL is
+        AST-classified and scope-checked; the agent pipeline is skipped.
+
+        :param http_request: Starlette request
+        :param body: validated SqlExecuteRequest
+        :return: SqlExecuteResponse with preview rows and execution metadata
+        :raises DirectSqlForbidden: when workspace.allow_direct_sql is False
+      operationId: execute
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SqlExecuteRequest"
+        required: true
       responses:
         "200":
           content:
             application/json:
-              schema: {}
-          description: Successful Response
-      summary: Lazy Endpoint
+              schema:
+                $ref: "#/components/schemas/SqlExecuteResponse"
+          description: Successful response
+        "422":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HTTPValidationError"
+          description: Validation Error
+      summary: Execute a SQL statement directly against the workspace's dataset Parquet.
+      tags:
+      - sql
+      x-content-type: application/json
       x-accepts:
       - application/json
   /api/v1/sql:execute/stream:
     post:
-      operationId: lazy_endpoint_api_v1_sql_execute_stream_post
+      description: |-
+        Event sequence:
+        1. ``ast_classified`` — AST result + scope check outcome
+        2. ``executed``       — DuckDB result
+        3. ``final``          — full SqlExecuteResponse JSON
+
+        :param http_request: Starlette request
+        :param body: validated SqlExecuteRequest
+        :return: StreamingResponse with ``text/event-stream``
+      operationId: execute_stream
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SqlExecuteRequest"
+        required: true
       responses:
         "200":
+          description: Successful response
+        "422":
           content:
             application/json:
-              schema: {}
-          description: Successful Response
-      summary: Lazy Endpoint
+              schema:
+                $ref: "#/components/schemas/HTTPValidationError"
+          description: Validation Error
+      summary: Execute SQL and stream progress as Server-Sent Events.
+      tags:
+      - sql
+      x-content-type: application/json
       x-accepts:
       - application/json
   /api/v1/tables/{table_id}:
     get:
-      operationId: lazy_endpoint_api_v1_tables__table_id__get
+      operationId: get_table
+      parameters:
+      - explode: false
+        in: path
+        name: table_id
+        required: true
+        schema:
+          type: string
+        style: simple
       responses:
         "200":
           content:
             application/json:
-              schema: {}
-          description: Successful Response
-      summary: Lazy Endpoint
+              schema:
+                $ref: "#/components/schemas/TableRead"
+          description: Successful response
+      tags:
+      - tables
       x-accepts:
       - application/json
   /api/v1/tables/{table_id}/changes:
     get:
-      operationId: lazy_endpoint_api_v1_tables__table_id__changes_get
+      operationId: list_changes
+      parameters:
+      - explode: false
+        in: path
+        name: table_id
+        required: true
+        schema:
+          type: string
+        style: simple
       responses:
         "200":
-          content:
-            application/json:
-              schema: {}
-          description: Successful Response
-      summary: Lazy Endpoint
+          description: Successful response
+      tags:
+      - tables
       x-accepts:
       - application/json
   /api/v1/tables/{table_id}/objects:
     get:
-      operationId: lazy_endpoint_api_v1_tables__table_id__objects_get
+      operationId: list_objects
+      parameters:
+      - explode: false
+        in: path
+        name: table_id
+        required: true
+        schema:
+          type: string
+        style: simple
       responses:
         "200":
-          content:
-            application/json:
-              schema: {}
-          description: Successful Response
-      summary: Lazy Endpoint
+          description: Successful response
+      summary: List schema_objects for the table's current snapshot.
+      tags:
+      - tables
       x-accepts:
       - application/json
   /api/v1/tables/{table_id}/snapshots:
     get:
-      operationId: lazy_endpoint_api_v1_tables__table_id__snapshots_get
+      operationId: list_snapshots
+      parameters:
+      - explode: false
+        in: path
+        name: table_id
+        required: true
+        schema:
+          type: string
+        style: simple
       responses:
         "200":
-          content:
-            application/json:
-              schema: {}
-          description: Successful Response
-      summary: Lazy Endpoint
+          description: Successful response
+      tags:
+      - tables
       x-accepts:
       - application/json
   /api/v1/tables:derive:
     post:
-      operationId: lazy_endpoint_api_v1_tables_derive_post
+      description: |-
+        :param http_request: Starlette request (tenant context headers)
+        :param body: dataset_id + name + sql (must be a SELECT)
+        :return: DeriveTableResponse with the new table_id
+        :raises DeriveTableForbidden: when sql is not a SELECT
+        :raises DeriveTableError: when DuckDB execution fails
+      operationId: derive
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DeriveTableRequest"
+        required: true
       responses:
         "201":
           content:
             application/json:
-              schema: {}
-          description: Successful Response
-      summary: Lazy Endpoint
+              schema:
+                $ref: "#/components/schemas/DeriveTableResponse"
+          description: Successful response
+        "422":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HTTPValidationError"
+          description: Validation Error
+      summary: Materialise a SELECT result as a new DERIVED table.
+      tags:
+      - tables
+      x-content-type: application/json
       x-accepts:
       - application/json
   /api/v1/version:
     get:
-      operationId: lazy_endpoint_api_v1_version_get
+      operationId: version
       responses:
         "200":
-          content:
-            application/json:
-              schema: {}
-          description: Successful Response
-      summary: Lazy Endpoint
+          description: Successful response
+      summary: Return service name + CalVer version tag.
+      tags:
+      - meta
       x-accepts:
       - application/json
   /api/v1/workspaces:
     get:
-      operationId: lazy_endpoint_api_v1_workspaces_get
+      operationId: list_workspaces
       responses:
         "200":
-          content:
-            application/json:
-              schema: {}
-          description: Successful Response
-      summary: Lazy Endpoint
+          description: Successful response
+      summary: Return all workspaces for the caller's tenant.
+      tags:
+      - workspaces
       x-accepts:
       - application/json
     post:
-      operationId: lazy_endpoint_api_v1_workspaces_post
+      operationId: create
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WorkspaceCreate"
+        required: true
       responses:
         "201":
           content:
             application/json:
-              schema: {}
-          description: Successful Response
-      summary: Lazy Endpoint
+              schema:
+                $ref: "#/components/schemas/WorkspaceRead"
+          description: Successful response
+        "422":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HTTPValidationError"
+          description: Validation Error
+      summary: Create a workspace; tenant comes from ``X-Tenant-Id`` header.
+      tags:
+      - workspaces
+      x-content-type: application/json
       x-accepts:
       - application/json
   /api/v1/workspaces/{workspace_id}:
     get:
-      operationId: lazy_endpoint_api_v1_workspaces__workspace_id__get
+      operationId: read
+      parameters:
+      - explode: false
+        in: path
+        name: workspace_id
+        required: true
+        schema:
+          nullable: true
+          type: string
+        style: simple
       responses:
         "200":
           content:
             application/json:
-              schema: {}
-          description: Successful Response
-      summary: Lazy Endpoint
+              schema:
+                $ref: "#/components/schemas/WorkspaceRead"
+          description: Successful response
+      summary: Fetch a single workspace by id. Returns 404 if not found.
+      tags:
+      - workspaces
       x-accepts:
       - application/json
     put:
-      operationId: lazy_endpoint_api_v1_workspaces__workspace_id__put
+      operationId: update
+      parameters:
+      - explode: false
+        in: path
+        name: workspace_id
+        required: true
+        schema:
+          type: string
+        style: simple
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WorkspaceUpdate"
+        required: true
       responses:
         "200":
           content:
             application/json:
-              schema: {}
-          description: Successful Response
-      summary: Lazy Endpoint
+              schema:
+                $ref: "#/components/schemas/WorkspaceRead"
+          description: Successful response
+        "422":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HTTPValidationError"
+          description: Validation Error
+      summary: Sparse-update a workspace. Only fields present in body are changed.
+      tags:
+      - workspaces
+      x-content-type: application/json
       x-accepts:
       - application/json
   /api/v1/workspaces/{workspace_id}:purge:
     delete:
-      operationId: lazy_endpoint_api_v1_workspaces__workspace_id__purge_delete
+      description: Returns 202 Accepted with a tombstone placeholder.
+      operationId: purge
+      parameters:
+      - explode: false
+        in: path
+        name: workspace_id
+        required: true
+        schema:
+          type: string
+        style: simple
       responses:
         "202":
-          content:
-            application/json:
-              schema: {}
-          description: Successful Response
-      summary: Lazy Endpoint
+          description: Successful response
+      summary: "Purge a workspace: mark PURGING + walk + delete all blobs."
+      tags:
+      - workspaces
       x-accepts:
       - application/json
 components:
-  schemas: {}
+  schemas:
+    AgentTokenCreated:
+      description: |-
+        Mint response: includes the full ``token`` ONCE.
+
+        Subsequent reads only ever expose ``prefix`` -- the secret hash
+        is stored server-side and never returned. Callers MUST
+        capture the token at mint time; there is no recovery path.
+      example:
+        last_used_at: 2000-01-23T04:56:07.000+00:00
+        expires_at: 2000-01-23T04:56:07.000+00:00
+        revoked_at: 2000-01-23T04:56:07.000+00:00
+        prefix: prefix
+        name: name
+        workspace_allowlist:
+        - workspace_allowlist
+        - workspace_allowlist
+        created_at: 2000-01-23T04:56:07.000+00:00
+        id: id
+        scopes:
+        - scopes
+        - scopes
+        created_by: created_by
+        rate_limit_rpm: 0
+        token: token
+      properties:
+        created_at:
+          format: date-time
+          title: Created At
+          type: string
+        created_by:
+          title: Created By
+          type: string
+        expires_at:
+          format: date-time
+          nullable: true
+          type: string
+        id:
+          title: Id
+          type: string
+        last_used_at:
+          format: date-time
+          nullable: true
+          type: string
+        name:
+          title: Name
+          type: string
+        prefix:
+          title: Prefix
+          type: string
+        rate_limit_rpm:
+          nullable: true
+          type: integer
+        revoked_at:
+          format: date-time
+          nullable: true
+          type: string
+        scopes:
+          items:
+            type: string
+          title: Scopes
+          type: array
+        token:
+          title: Token
+          type: string
+        workspace_allowlist:
+          items:
+            type: string
+          nullable: true
+          type: array
+      required:
+      - created_at
+      - created_by
+      - expires_at
+      - id
+      - last_used_at
+      - name
+      - prefix
+      - rate_limit_rpm
+      - revoked_at
+      - scopes
+      - token
+      - workspace_allowlist
+      title: AgentTokenCreated
+    AgentTokenMintRequest:
+      description: |-
+        Request body for ``POST /api/v1/agent-tokens``.
+
+        ``workspace_allowlist`` is optional -- ``None`` means the token
+        can be used in any workspace under the tenant. ``scopes``
+        defaults to ``["*"]`` (all scopes); the verify path treats
+        ``"*"`` as a wildcard. ``rate_limit_rpm`` is advisory metadata
+        today and reserved for the per-token rate limiter we add
+        later; ``expires_at`` is enforced by the verify path.
+      example:
+        expires_at: 2000-01-23T04:56:07.000+00:00
+        name: name
+        workspace_allowlist:
+        - workspace_allowlist
+        - workspace_allowlist
+        scopes:
+        - scopes
+        - scopes
+        rate_limit_rpm: 801
+      properties:
+        expires_at:
+          format: date-time
+          nullable: true
+          type: string
+        name:
+          maxLength: 128
+          minLength: 1
+          title: Name
+          type: string
+        rate_limit_rpm:
+          maximum: 10000
+          minimum: 1
+          nullable: true
+          type: integer
+        scopes:
+          items:
+            type: string
+          title: Scopes
+          type: array
+        workspace_allowlist:
+          items:
+            type: string
+          nullable: true
+          type: array
+      required:
+      - name
+      title: AgentTokenMintRequest
+    AgentTokenSummaryDto:
+      description: |-
+        Token surface as listed back to user-tier callers -- secret omitted.
+
+        Every read path through ``GET /api/v1/agent-tokens`` returns
+        this shape. The raw token is *only* available on the
+        :class:`AgentTokenCreated` returned by the mint endpoint and
+        is never round-tripped through any other endpoint.
+      example:
+        last_used_at: 2000-01-23T04:56:07.000+00:00
+        expires_at: 2000-01-23T04:56:07.000+00:00
+        revoked_at: 2000-01-23T04:56:07.000+00:00
+        prefix: prefix
+        name: name
+        workspace_allowlist:
+        - workspace_allowlist
+        - workspace_allowlist
+        created_at: 2000-01-23T04:56:07.000+00:00
+        id: id
+        scopes:
+        - scopes
+        - scopes
+        created_by: created_by
+        rate_limit_rpm: 0
+      properties:
+        created_at:
+          format: date-time
+          title: Created At
+          type: string
+        created_by:
+          title: Created By
+          type: string
+        expires_at:
+          format: date-time
+          nullable: true
+          type: string
+        id:
+          title: Id
+          type: string
+        last_used_at:
+          format: date-time
+          nullable: true
+          type: string
+        name:
+          title: Name
+          type: string
+        prefix:
+          title: Prefix
+          type: string
+        rate_limit_rpm:
+          nullable: true
+          type: integer
+        revoked_at:
+          format: date-time
+          nullable: true
+          type: string
+        scopes:
+          items:
+            type: string
+          title: Scopes
+          type: array
+        workspace_allowlist:
+          items:
+            type: string
+          nullable: true
+          type: array
+      required:
+      - created_at
+      - created_by
+      - expires_at
+      - id
+      - last_used_at
+      - name
+      - prefix
+      - rate_limit_rpm
+      - revoked_at
+      - scopes
+      - workspace_allowlist
+      title: AgentTokenSummaryDto
+    AnswerResponse:
+      description: Response from POST /api/v1/query (sync).
+      example:
+        preview:
+        - key: ""
+        - key: ""
+        chart_hint: line
+        query_id: 046b6c7f-0b8a-43b9-b35d-6489e6daee91
+        grounded_summary:
+          key: ""
+        elapsed_ms: 0
+        execution_status: OK
+        truncated: false
+        clarification: ""
+        explanation: explanation
+        snapshot_pins:
+          key: snapshot_pins
+        row_count: 6
+        sql: sql
+      properties:
+        chart_hint:
+          enum:
+          - line
+          - bar
+          - table
+          - pie
+          - none
+          nullable: true
+          type: string
+        clarification:
+          allOf:
+          - $ref: "#/components/schemas/ClarificationFrame"
+          nullable: true
+        elapsed_ms:
+          nullable: true
+          type: integer
+        execution_status:
+          enum:
+          - OK
+          - REFINED_OK
+          - FAILED
+          - REJECTED_BY_FIREWALL
+          nullable: true
+          type: string
+        explanation:
+          nullable: true
+          type: string
+        grounded_summary:
+          additionalProperties: true
+          nullable: true
+          type: object
+        preview:
+          items:
+            additionalProperties: true
+            nullable: true
+            type: object
+          nullable: true
+          type: array
+        query_id:
+          format: uuid
+          title: Query Id
+          type: string
+        row_count:
+          nullable: true
+          type: integer
+        snapshot_pins:
+          additionalProperties:
+            type: string
+          title: Snapshot Pins
+        sql:
+          nullable: true
+          type: string
+        truncated:
+          default: false
+          title: Truncated
+          type: boolean
+      required:
+      - elapsed_ms
+      - execution_status
+      - preview
+      - query_id
+      - row_count
+      - sql
+      title: AnswerResponse
+    CancelResponse:
+      description: "Response for POST /ingest-jobs/{id}:cancel."
+      example:
+        id: 046b6c7f-0b8a-43b9-b35d-6489e6daee91
+        message: message
+        status: status
+      properties:
+        id:
+          format: uuid
+          title: Id
+          type: string
+        message:
+          title: Message
+          type: string
+        status:
+          title: Status
+          type: string
+      required:
+      - id
+      - message
+      - status
+      title: CancelResponse
+    ClarificationFrame:
+      description: Emitted when grounding confidence is below the threshold and missing_info
+        is set.
+      properties:
+        questions:
+          items:
+            type: string
+          title: Questions
+          type: array
+        reasons:
+          items:
+            type: string
+          title: Reasons
+          type: array
+      required:
+      - questions
+      title: ClarificationFrame
+    ConversationCreate:
+      description: Request body for POST /api/v1/conversations.
+      example:
+        title: title
+      properties:
+        title:
+          maxLength: 500
+          nullable: true
+          type: string
+      title: ConversationCreate
+    ConversationRead:
+      description: "A conversation, optionally with its turns."
+      example:
+        actor: actor
+        summary: summary
+        tenant_id: tenant_id
+        workspace_id: 046b6c7f-0b8a-43b9-b35d-6489e6daee91
+        updated_at: 2000-01-23T04:56:07.000+00:00
+        created_at: 2000-01-23T04:56:07.000+00:00
+        id: 046b6c7f-0b8a-43b9-b35d-6489e6daee91
+        title: title
+        turns:
+        - executed_sql: executed_sql
+          summary: summary
+          tenant_id: tenant_id
+          question: question
+          table_qnames_json:
+          - table_qnames_json
+          - table_qnames_json
+          turn_index: 6
+          created_at: 2000-01-23T04:56:07.000+00:00
+          workspace_id: 046b6c7f-0b8a-43b9-b35d-6489e6daee91
+          conversation_id: 046b6c7f-0b8a-43b9-b35d-6489e6daee91
+          elapsed_ms: 0
+          no_answer: true
+          id: 046b6c7f-0b8a-43b9-b35d-6489e6daee91
+          snapshot_pins_json:
+            key: ""
+        - executed_sql: executed_sql
+          summary: summary
+          tenant_id: tenant_id
+          question: question
+          table_qnames_json:
+          - table_qnames_json
+          - table_qnames_json
+          turn_index: 6
+          created_at: 2000-01-23T04:56:07.000+00:00
+          workspace_id: 046b6c7f-0b8a-43b9-b35d-6489e6daee91
+          conversation_id: 046b6c7f-0b8a-43b9-b35d-6489e6daee91
+          elapsed_ms: 0
+          no_answer: true
+          id: 046b6c7f-0b8a-43b9-b35d-6489e6daee91
+          snapshot_pins_json:
+            key: ""
+      properties:
+        actor:
+          title: Actor
+          type: string
+        created_at:
+          format: date-time
+          title: Created At
+          type: string
+        id:
+          format: uuid
+          title: Id
+          type: string
+        summary:
+          nullable: true
+          type: string
+        tenant_id:
+          title: Tenant Id
+          type: string
+        title:
+          nullable: true
+          type: string
+        turns:
+          items:
+            $ref: "#/components/schemas/TurnRead"
+          title: Turns
+          type: array
+        updated_at:
+          format: date-time
+          title: Updated At
+          type: string
+        workspace_id:
+          format: uuid
+          title: Workspace Id
+          type: string
+      required:
+      - actor
+      - created_at
+      - id
+      - summary
+      - tenant_id
+      - title
+      - updated_at
+      - workspace_id
+      title: ConversationRead
+    ConversationTurnRequest:
+      description: "Request body for POST /api/v1/conversations/{id}/turn."
+      example:
+        question: question
+        dataset_id: 046b6c7f-0b8a-43b9-b35d-6489e6daee91
+      properties:
+        dataset_id:
+          format: uuid
+          title: Dataset Id
+          type: string
+        question:
+          maxLength: 4096
+          minLength: 1
+          title: Question
+          type: string
+      required:
+      - dataset_id
+      - question
+      title: ConversationTurnRequest
+    DatasetCreate:
+      example:
+        name: name
+        default_locale: default_locale
+        description: description
+        ingest_policy_json:
+          key: ""
+        drift_policy: AUTO
+        metadata_json:
+          key: ""
+      properties:
+        default_locale:
+          nullable: true
+          type: string
+        description:
+          nullable: true
+          type: string
+        drift_policy:
+          default: AUTO
+          enum:
+          - AUTO
+          - MANUAL
+          title: Drift Policy
+          type: string
+        ingest_policy_json:
+          additionalProperties: true
+          title: Ingest Policy Json
+          type: object
+        metadata_json:
+          additionalProperties: true
+          title: Metadata Json
+          type: object
+        name:
+          maxLength: 200
+          minLength: 1
+          title: Name
+          type: string
+      required:
+      - name
+      title: DatasetCreate
+    DatasetRead:
+      example:
+        tenant_id: tenant_id
+        workspace_id: 046b6c7f-0b8a-43b9-b35d-6489e6daee91
+        updated_at: 2000-01-23T04:56:07.000+00:00
+        name: name
+        created_at: 2000-01-23T04:56:07.000+00:00
+        default_locale: default_locale
+        description: description
+        id: 046b6c7f-0b8a-43b9-b35d-6489e6daee91
+        ingest_policy_json:
+          key: ""
+        drift_policy: AUTO
+        metadata_json:
+          key: ""
+        status: ACTIVE
+      properties:
+        created_at:
+          format: date-time
+          title: Created At
+          type: string
+        default_locale:
+          nullable: true
+          type: string
+        description:
+          nullable: true
+          type: string
+        drift_policy:
+          enum:
+          - AUTO
+          - MANUAL
+          title: Drift Policy
+          type: string
+        id:
+          format: uuid
+          title: Id
+          type: string
+        ingest_policy_json:
+          additionalProperties: true
+          title: Ingest Policy Json
+          type: object
+        metadata_json:
+          additionalProperties: true
+          title: Metadata Json
+          type: object
+        name:
+          title: Name
+          type: string
+        status:
+          enum:
+          - ACTIVE
+          - ARCHIVED
+          title: Status
+          type: string
+        tenant_id:
+          title: Tenant Id
+          type: string
+        updated_at:
+          format: date-time
+          title: Updated At
+          type: string
+        workspace_id:
+          format: uuid
+          title: Workspace Id
+          type: string
+      required:
+      - created_at
+      - default_locale
+      - description
+      - drift_policy
+      - id
+      - ingest_policy_json
+      - metadata_json
+      - name
+      - status
+      - tenant_id
+      - updated_at
+      - workspace_id
+      title: DatasetRead
+    DatasetUpdate:
+      example:
+        name: name
+        default_locale: default_locale
+        description: description
+        ingest_policy_json:
+          key: ""
+        drift_policy: AUTO
+        metadata_json:
+          key: ""
+      properties:
+        default_locale:
+          nullable: true
+          type: string
+        description:
+          nullable: true
+          type: string
+        drift_policy:
+          enum:
+          - AUTO
+          - MANUAL
+          nullable: true
+          type: string
+        ingest_policy_json:
+          additionalProperties: true
+          nullable: true
+          type: object
+        metadata_json:
+          additionalProperties: true
+          nullable: true
+          type: object
+        name:
+          nullable: true
+          type: string
+      title: DatasetUpdate
+    DeriveTableRequest:
+      description: Request body for POST /api/v1/tables:derive.
+      example:
+        dataset_id: 046b6c7f-0b8a-43b9-b35d-6489e6daee91
+        name: name
+        sql: sql
+      properties:
+        dataset_id:
+          format: uuid
+          title: Dataset Id
+          type: string
+        name:
+          maxLength: 200
+          minLength: 1
+          title: Name
+          type: string
+        sql:
+          maxLength: 65536
+          minLength: 1
+          title: Sql
+          type: string
+      required:
+      - dataset_id
+      - name
+      - sql
+      title: DeriveTableRequest
+    DeriveTableResponse:
+      description: Response from POST /api/v1/tables:derive.
+      example:
+        dataset_id: 046b6c7f-0b8a-43b9-b35d-6489e6daee91
+        name: name
+        table_id: 046b6c7f-0b8a-43b9-b35d-6489e6daee91
+      properties:
+        dataset_id:
+          format: uuid
+          title: Dataset Id
+          type: string
+        name:
+          title: Name
+          type: string
+        table_id:
+          format: uuid
+          title: Table Id
+          type: string
+      required:
+      - dataset_id
+      - name
+      - table_id
+      title: DeriveTableResponse
+    ExampleCreate:
+      description: Payload for creating a new example (question + SQL pair).
+      example:
+        citations_json:
+          key: ""
+        question: question
+        dataset_id: 046b6c7f-0b8a-43b9-b35d-6489e6daee91
+        generated_sql: generated_sql
+      properties:
+        citations_json:
+          additionalProperties: true
+          title: Citations Json
+          type: object
+        dataset_id:
+          format: uuid
+          nullable: true
+          type: string
+        generated_sql:
+          minLength: 1
+          title: Generated Sql
+          type: string
+        question:
+          maxLength: 4096
+          minLength: 1
+          title: Question
+          type: string
+      required:
+      - generated_sql
+      - question
+      title: ExampleCreate
+    ExampleRead:
+      description: Full read representation of a flyquery_examples row.
+      example:
+        citations_json:
+          key: ""
+        tenant_id: tenant_id
+        question: question
+        normalised_sql: normalised_sql
+        dataset_id: 046b6c7f-0b8a-43b9-b35d-6489e6daee91
+        created_at: 2000-01-23T04:56:07.000+00:00
+        source: USER_CURATED
+        generated_sql: generated_sql
+        created_by: created_by
+        quality: PROPOSED
+        workspace_id: 046b6c7f-0b8a-43b9-b35d-6489e6daee91
+        last_used_at: 2000-01-23T04:56:07.000+00:00
+        usage_count: 0
+        id: 046b6c7f-0b8a-43b9-b35d-6489e6daee91
+      properties:
+        citations_json:
+          additionalProperties: true
+          title: Citations Json
+          type: object
+        created_at:
+          format: date-time
+          title: Created At
+          type: string
+        created_by:
+          title: Created By
+          type: string
+        dataset_id:
+          format: uuid
+          nullable: true
+          type: string
+        generated_sql:
+          title: Generated Sql
+          type: string
+        id:
+          format: uuid
+          title: Id
+          type: string
+        last_used_at:
+          format: date-time
+          nullable: true
+          type: string
+        normalised_sql:
+          title: Normalised Sql
+          type: string
+        quality:
+          enum:
+          - PROPOSED
+          - APPROVED
+          - REJECTED
+          title: Quality
+          type: string
+        question:
+          title: Question
+          type: string
+        source:
+          enum:
+          - USER_CURATED
+          - AGENT_LEARNED
+          title: Source
+          type: string
+        tenant_id:
+          title: Tenant Id
+          type: string
+        usage_count:
+          title: Usage Count
+          type: integer
+        workspace_id:
+          format: uuid
+          title: Workspace Id
+          type: string
+      required:
+      - citations_json
+      - created_at
+      - created_by
+      - dataset_id
+      - generated_sql
+      - id
+      - last_used_at
+      - normalised_sql
+      - quality
+      - question
+      - source
+      - tenant_id
+      - usage_count
+      - workspace_id
+      title: ExampleRead
+    ExplainResponse:
+      description: Response from POST /api/v1/query:explain — Grounding + Generation
+        only.
+      example:
+        grounded_summary:
+          key: ""
+        confidence: 0.8008281904610115
+        reasoning: reasoning
+        clarification: ""
+        sql: sql
+      properties:
+        clarification:
+          allOf:
+          - $ref: "#/components/schemas/ClarificationFrame"
+          nullable: true
+        confidence:
+          nullable: true
+          type: number
+        grounded_summary:
+          additionalProperties: true
+          nullable: true
+          type: object
+        reasoning:
+          nullable: true
+          type: string
+        sql:
+          nullable: true
+          type: string
+      required:
+      - confidence
+      - reasoning
+      - sql
+      title: ExplainResponse
+    FileUploadResponse:
+      description: "Response from POST /datasets/{id}/files."
+      example:
+        tables:
+        - name: name
+          n_rows_estimate: 6
+          table_id: table_id
+          n_columns: 0
+        - name: name
+          n_rows_estimate: 6
+          table_id: table_id
+          n_columns: 0
+        file_id: file_id
+      properties:
+        file_id:
+          title: File Id
+          type: string
+        tables:
+          items:
+            $ref: "#/components/schemas/TableSummary"
+          title: Tables
+          type: array
+      required:
+      - file_id
+      - tables
+      title: FileUploadResponse
+    GlossaryTermCreate:
+      description: Payload for creating a new glossary term.
+      example:
+        related_metrics_json:
+        - related_metrics_json
+        - related_metrics_json
+        synonyms_json:
+        - synonyms_json
+        - synonyms_json
+        definition: definition
+        related_columns_json:
+        - related_columns_json
+        - related_columns_json
+        term: term
+        tags_json:
+        - tags_json
+        - tags_json
+      properties:
+        definition:
+          minLength: 1
+          title: Definition
+          type: string
+        related_columns_json:
+          items:
+            type: string
+          title: Related Columns Json
+          type: array
+        related_metrics_json:
+          items:
+            type: string
+          title: Related Metrics Json
+          type: array
+        synonyms_json:
+          items:
+            type: string
+          title: Synonyms Json
+          type: array
+        tags_json:
+          items:
+            type: string
+          title: Tags Json
+          type: array
+        term:
+          maxLength: 512
+          minLength: 1
+          title: Term
+          type: string
+      required:
+      - definition
+      - term
+      title: GlossaryTermCreate
+    GlossaryTermRead:
+      description: Full read representation of a flyquery_glossary_terms row.
+      example:
+        tenant_id: tenant_id
+        workspace_id: 046b6c7f-0b8a-43b9-b35d-6489e6daee91
+        related_metrics_json:
+        - related_metrics_json
+        - related_metrics_json
+        updated_at: 2000-01-23T04:56:07.000+00:00
+        synonyms_json:
+        - synonyms_json
+        - synonyms_json
+        created_at: 2000-01-23T04:56:07.000+00:00
+        definition: definition
+        related_columns_json:
+        - related_columns_json
+        - related_columns_json
+        term: term
+        id: 046b6c7f-0b8a-43b9-b35d-6489e6daee91
+        tags_json:
+        - tags_json
+        - tags_json
+      properties:
+        created_at:
+          format: date-time
+          title: Created At
+          type: string
+        definition:
+          title: Definition
+          type: string
+        id:
+          format: uuid
+          title: Id
+          type: string
+        related_columns_json:
+          items:
+            type: string
+          title: Related Columns Json
+          type: array
+        related_metrics_json:
+          items:
+            type: string
+          title: Related Metrics Json
+          type: array
+        synonyms_json:
+          items:
+            type: string
+          title: Synonyms Json
+          type: array
+        tags_json:
+          items:
+            type: string
+          title: Tags Json
+          type: array
+        tenant_id:
+          title: Tenant Id
+          type: string
+        term:
+          title: Term
+          type: string
+        updated_at:
+          format: date-time
+          title: Updated At
+          type: string
+        workspace_id:
+          format: uuid
+          title: Workspace Id
+          type: string
+      required:
+      - created_at
+      - definition
+      - id
+      - related_columns_json
+      - related_metrics_json
+      - synonyms_json
+      - tags_json
+      - tenant_id
+      - term
+      - updated_at
+      - workspace_id
+      title: GlossaryTermRead
+    GlossaryTermUpdate:
+      description: Sparse-update payload for an existing glossary term.
+      example:
+        related_metrics_json:
+        - related_metrics_json
+        - related_metrics_json
+        synonyms_json:
+        - synonyms_json
+        - synonyms_json
+        definition: definition
+        related_columns_json:
+        - related_columns_json
+        - related_columns_json
+        tags_json:
+        - tags_json
+        - tags_json
+      properties:
+        definition:
+          nullable: true
+          type: string
+        related_columns_json:
+          items:
+            type: string
+          nullable: true
+          type: array
+        related_metrics_json:
+          items:
+            type: string
+          nullable: true
+          type: array
+        synonyms_json:
+          items:
+            type: string
+          nullable: true
+          type: array
+        tags_json:
+          items:
+            type: string
+          nullable: true
+          type: array
+      title: GlossaryTermUpdate
+    HTTPValidationError:
+      example:
+        detail:
+        - detail:
+          - msg: msg
+            loc:
+            - Location_inner
+            - Location_inner
+            type: type
+          - msg: msg
+            loc:
+            - Location_inner
+            - Location_inner
+            type: type
+        - detail:
+          - msg: msg
+            loc:
+            - Location_inner
+            - Location_inner
+            type: type
+          - msg: msg
+            loc:
+            - Location_inner
+            - Location_inner
+            type: type
+      properties:
+        detail:
+          items:
+            $ref: "#/components/schemas/ValidationError"
+          title: Detail
+          type: array
+      title: HTTPValidationError
+    IngestEventListResponse:
+      description: "Paginated event ledger for GET /ingest-jobs/{id}/events."
+      example:
+        total: 5
+        offset: 1
+        limit: 6
+        items:
+        - stage: stage
+          created_at: 2000-01-23T04:56:07.000+00:00
+          ingest_job_id: 046b6c7f-0b8a-43b9-b35d-6489e6daee91
+          id: 0
+          message: message
+          payload_json:
+            key: ""
+          status: status
+        - stage: stage
+          created_at: 2000-01-23T04:56:07.000+00:00
+          ingest_job_id: 046b6c7f-0b8a-43b9-b35d-6489e6daee91
+          id: 0
+          message: message
+          payload_json:
+            key: ""
+          status: status
+      properties:
+        items:
+          items:
+            $ref: "#/components/schemas/IngestEventRead"
+          title: Items
+          type: array
+        limit:
+          title: Limit
+          type: integer
+        offset:
+          title: Offset
+          type: integer
+        total:
+          title: Total
+          type: integer
+      required:
+      - items
+      - limit
+      - offset
+      - total
+      title: IngestEventListResponse
+    IngestEventRead:
+      description: One row from flyquery_ingest_events.
+      example:
+        stage: stage
+        created_at: 2000-01-23T04:56:07.000+00:00
+        ingest_job_id: 046b6c7f-0b8a-43b9-b35d-6489e6daee91
+        id: 0
+        message: message
+        payload_json:
+          key: ""
+        status: status
+      properties:
+        created_at:
+          format: date-time
+          title: Created At
+          type: string
+        id:
+          title: Id
+          type: integer
+        ingest_job_id:
+          format: uuid
+          title: Ingest Job Id
+          type: string
+        message:
+          nullable: true
+          type: string
+        payload_json:
+          additionalProperties: true
+          title: Payload Json
+          type: object
+        stage:
+          title: Stage
+          type: string
+        status:
+          title: Status
+          type: string
+      required:
+      - created_at
+      - id
+      - ingest_job_id
+      - message
+      - payload_json
+      - stage
+      - status
+      title: IngestEventRead
+    IngestJobListResponse:
+      description: Paginated list of ingest jobs.
+      example:
+        total: 2
+        offset: 5
+        limit: 5
+        items:
+        - tenant_id: tenant_id
+          finished_at: 2000-01-23T04:56:07.000+00:00
+          snapshot_id: 046b6c7f-0b8a-43b9-b35d-6489e6daee91
+          dataset_id: 046b6c7f-0b8a-43b9-b35d-6489e6daee91
+          table_id: 046b6c7f-0b8a-43b9-b35d-6489e6daee91
+          job_kind: job_kind
+          workspace_id: 046b6c7f-0b8a-43b9-b35d-6489e6daee91
+          request_json:
+            key: ""
+          cost_cents: 6.027456183070403
+          result_json:
+            key: ""
+          elapsed_ms: 1
+          file_id: 046b6c7f-0b8a-43b9-b35d-6489e6daee91
+          started_at: 2000-01-23T04:56:07.000+00:00
+          id: 046b6c7f-0b8a-43b9-b35d-6489e6daee91
+          attempts: 0
+          status: status
+        - tenant_id: tenant_id
+          finished_at: 2000-01-23T04:56:07.000+00:00
+          snapshot_id: 046b6c7f-0b8a-43b9-b35d-6489e6daee91
+          dataset_id: 046b6c7f-0b8a-43b9-b35d-6489e6daee91
+          table_id: 046b6c7f-0b8a-43b9-b35d-6489e6daee91
+          job_kind: job_kind
+          workspace_id: 046b6c7f-0b8a-43b9-b35d-6489e6daee91
+          request_json:
+            key: ""
+          cost_cents: 6.027456183070403
+          result_json:
+            key: ""
+          elapsed_ms: 1
+          file_id: 046b6c7f-0b8a-43b9-b35d-6489e6daee91
+          started_at: 2000-01-23T04:56:07.000+00:00
+          id: 046b6c7f-0b8a-43b9-b35d-6489e6daee91
+          attempts: 0
+          status: status
+      properties:
+        items:
+          items:
+            $ref: "#/components/schemas/IngestJobRead"
+          title: Items
+          type: array
+        limit:
+          title: Limit
+          type: integer
+        offset:
+          title: Offset
+          type: integer
+        total:
+          title: Total
+          type: integer
+      required:
+      - items
+      - limit
+      - offset
+      - total
+      title: IngestJobListResponse
+    IngestJobRead:
+      description: "Response for GET /api/v1/ingest-jobs/{id} and list items."
+      example:
+        tenant_id: tenant_id
+        finished_at: 2000-01-23T04:56:07.000+00:00
+        snapshot_id: 046b6c7f-0b8a-43b9-b35d-6489e6daee91
+        dataset_id: 046b6c7f-0b8a-43b9-b35d-6489e6daee91
+        table_id: 046b6c7f-0b8a-43b9-b35d-6489e6daee91
+        job_kind: job_kind
+        workspace_id: 046b6c7f-0b8a-43b9-b35d-6489e6daee91
+        request_json:
+          key: ""
+        cost_cents: 6.027456183070403
+        result_json:
+          key: ""
+        elapsed_ms: 1
+        file_id: 046b6c7f-0b8a-43b9-b35d-6489e6daee91
+        started_at: 2000-01-23T04:56:07.000+00:00
+        id: 046b6c7f-0b8a-43b9-b35d-6489e6daee91
+        attempts: 0
+        status: status
+      properties:
+        attempts:
+          title: Attempts
+          type: integer
+        cost_cents:
+          $ref: "#/components/schemas/Cost_Cents"
+        dataset_id:
+          format: uuid
+          title: Dataset Id
+          type: string
+        elapsed_ms:
+          nullable: true
+          type: integer
+        file_id:
+          format: uuid
+          nullable: true
+          type: string
+        finished_at:
+          format: date-time
+          nullable: true
+          type: string
+        id:
+          format: uuid
+          title: Id
+          type: string
+        job_kind:
+          title: Job Kind
+          type: string
+        request_json:
+          additionalProperties: true
+          title: Request Json
+          type: object
+        result_json:
+          additionalProperties: true
+          title: Result Json
+          type: object
+        snapshot_id:
+          format: uuid
+          nullable: true
+          type: string
+        started_at:
+          format: date-time
+          nullable: true
+          type: string
+        status:
+          title: Status
+          type: string
+        table_id:
+          format: uuid
+          nullable: true
+          type: string
+        tenant_id:
+          title: Tenant Id
+          type: string
+        workspace_id:
+          format: uuid
+          title: Workspace Id
+          type: string
+      required:
+      - attempts
+      - cost_cents
+      - dataset_id
+      - elapsed_ms
+      - file_id
+      - finished_at
+      - id
+      - job_kind
+      - request_json
+      - result_json
+      - snapshot_id
+      - started_at
+      - status
+      - table_id
+      - tenant_id
+      - workspace_id
+      title: IngestJobRead
+    QueryRequest:
+      description: "Request body for POST /api/v1/query and /query:explain, /query:validate."
+      example:
+        question: question
+        conversation_id: 046b6c7f-0b8a-43b9-b35d-6489e6daee91
+        dataset_id: 046b6c7f-0b8a-43b9-b35d-6489e6daee91
+      properties:
+        conversation_id:
+          format: uuid
+          nullable: true
+          type: string
+        dataset_id:
+          format: uuid
+          title: Dataset Id
+          type: string
+        question:
+          maxLength: 4096
+          minLength: 1
+          title: Question
+          type: string
+      required:
+      - dataset_id
+      - question
+      title: QueryRequest
+    ReuploadResponse:
+      description: "Response from PUT /datasets/{ds}/tables/{id}:upload."
+      example:
+        snapshot_id: snapshot_id
+        file_id: file_id
+        n_rows_actual: 6
+        n_columns: 0
+      properties:
+        file_id:
+          title: File Id
+          type: string
+        n_columns:
+          title: N Columns
+          type: integer
+        n_rows_actual:
+          title: N Rows Actual
+          type: integer
+        snapshot_id:
+          title: Snapshot Id
+          type: string
+      required:
+      - file_id
+      - n_columns
+      - n_rows_actual
+      - snapshot_id
+      title: ReuploadResponse
+    SchemaChangeRead:
+      description: "Response for GET /tables/{id}/changes items."
+      example:
+        after_json:
+          key: ""
+        before_json:
+          key: ""
+        llm_rationale: llm_rationale
+        prev_snapshot_id: 046b6c7f-0b8a-43b9-b35d-6489e6daee91
+        approved_by: approved_by
+        approved_at: 2000-01-23T04:56:07.000+00:00
+        change: change
+        column_name: column_name
+        created_at: 2000-01-23T04:56:07.000+00:00
+        next_snapshot_id: 046b6c7f-0b8a-43b9-b35d-6489e6daee91
+        id: 046b6c7f-0b8a-43b9-b35d-6489e6daee91
+        table_id: 046b6c7f-0b8a-43b9-b35d-6489e6daee91
+      properties:
+        after_json:
+          additionalProperties: true
+          nullable: true
+          type: object
+        approved_at:
+          format: date-time
+          nullable: true
+          type: string
+        approved_by:
+          nullable: true
+          type: string
+        before_json:
+          additionalProperties: true
+          nullable: true
+          type: object
+        change:
+          title: Change
+          type: string
+        column_name:
+          title: Column Name
+          type: string
+        created_at:
+          format: date-time
+          title: Created At
+          type: string
+        id:
+          format: uuid
+          title: Id
+          type: string
+        llm_rationale:
+          nullable: true
+          type: string
+        next_snapshot_id:
+          format: uuid
+          title: Next Snapshot Id
+          type: string
+        prev_snapshot_id:
+          format: uuid
+          nullable: true
+          type: string
+        table_id:
+          format: uuid
+          title: Table Id
+          type: string
+      required:
+      - after_json
+      - before_json
+      - change
+      - column_name
+      - created_at
+      - id
+      - llm_rationale
+      - next_snapshot_id
+      - prev_snapshot_id
+      - table_id
+      title: SchemaChangeRead
+    SchemaObjectRead:
+      description: "Response for GET /schema-objects/{id} or PUT /schema-objects/{id}."
+      example:
+        tenant_id: tenant_id
+        business_owner: business_owner
+        is_active: true
+        is_nullable: true
+        pii_source: pii_source
+        snapshot_id: 046b6c7f-0b8a-43b9-b35d-6489e6daee91
+        kind: kind
+        created_at: 2000-01-23T04:56:07.000+00:00
+        description: description
+        table_id: 046b6c7f-0b8a-43b9-b35d-6489e6daee91
+        last_changed_at: 2000-01-23T04:56:07.000+00:00
+        pii_tag: pii_tag
+        workspace_id: 046b6c7f-0b8a-43b9-b35d-6489e6daee91
+        governance_json:
+          key: ""
+        qualified_name: qualified_name
+        description_source: description_source
+        data_type: data_type
+        synonyms_json:
+        - ""
+        - ""
+        id: 046b6c7f-0b8a-43b9-b35d-6489e6daee91
+      properties:
+        business_owner:
+          nullable: true
+          type: string
+        created_at:
+          format: date-time
+          title: Created At
+          type: string
+        data_type:
+          nullable: true
+          type: string
+        description:
+          nullable: true
+          type: string
+        description_source:
+          nullable: true
+          type: string
+        governance_json:
+          additionalProperties: true
+          nullable: true
+          type: object
+        id:
+          format: uuid
+          title: Id
+          type: string
+        is_active:
+          title: Is Active
+          type: boolean
+        is_nullable:
+          nullable: true
+          type: boolean
+        kind:
+          title: Kind
+          type: string
+        last_changed_at:
+          format: date-time
+          title: Last Changed At
+          type: string
+        pii_source:
+          nullable: true
+          type: string
+        pii_tag:
+          nullable: true
+          type: string
+        qualified_name:
+          title: Qualified Name
+          type: string
+        snapshot_id:
+          format: uuid
+          title: Snapshot Id
+          type: string
+        synonyms_json:
+          items: {}
+          nullable: true
+          type: array
+        table_id:
+          format: uuid
+          title: Table Id
+          type: string
+        tenant_id:
+          title: Tenant Id
+          type: string
+        workspace_id:
+          format: uuid
+          title: Workspace Id
+          type: string
+      required:
+      - business_owner
+      - created_at
+      - data_type
+      - description
+      - description_source
+      - governance_json
+      - id
+      - is_active
+      - is_nullable
+      - kind
+      - last_changed_at
+      - pii_source
+      - pii_tag
+      - qualified_name
+      - snapshot_id
+      - synonyms_json
+      - table_id
+      - tenant_id
+      - workspace_id
+      title: SchemaObjectRead
+    SchemaObjectUpdate:
+      description: "Request body for PUT /schema-objects/{id}."
+      example:
+        pii_tag: pii_tag
+        business_owner: business_owner
+        governance_json:
+          key: ""
+        synonyms_json:
+        - ""
+        - ""
+        description: description
+      properties:
+        business_owner:
+          nullable: true
+          type: string
+        description:
+          nullable: true
+          type: string
+        governance_json:
+          additionalProperties: true
+          nullable: true
+          type: object
+        pii_tag:
+          nullable: true
+          type: string
+        synonyms_json:
+          items: {}
+          nullable: true
+          type: array
+      title: SchemaObjectUpdate
+    SemanticDimensionCreate:
+      description: Payload for creating a new semantic dimension.
+      example:
+        definition_yaml: definition_yaml
+        dataset_id: 046b6c7f-0b8a-43b9-b35d-6489e6daee91
+        metric_type: SIMPLE
+        name: name
+        description: description
+        label: label
+      properties:
+        dataset_id:
+          format: uuid
+          title: Dataset Id
+          type: string
+        definition_yaml:
+          minLength: 1
+          title: Definition Yaml
+          type: string
+        description:
+          nullable: true
+          type: string
+        label:
+          nullable: true
+          type: string
+        metric_type:
+          default: SIMPLE
+          enum:
+          - SIMPLE
+          - RATIO
+          - DERIVED
+          - CUMULATIVE
+          title: Metric Type
+          type: string
+        name:
+          maxLength: 256
+          minLength: 1
+          title: Name
+          type: string
+      required:
+      - dataset_id
+      - definition_yaml
+      - name
+      title: SemanticDimensionCreate
+    SemanticDimensionRead:
+      description: Full read representation of a flyquery_semantic_dimensions row.
+      example:
+        tenant_id: tenant_id
+        dataset_id: 046b6c7f-0b8a-43b9-b35d-6489e6daee91
+        created_at: 2000-01-23T04:56:07.000+00:00
+        current_version: 0
+        description: description
+        label: label
+        compiled_sql_template: compiled_sql_template
+        workspace_id: 046b6c7f-0b8a-43b9-b35d-6489e6daee91
+        updated_at: 2000-01-23T04:56:07.000+00:00
+        definition_yaml: definition_yaml
+        metric_type: SIMPLE
+        name: name
+        id: 046b6c7f-0b8a-43b9-b35d-6489e6daee91
+        status: DRAFT
+      properties:
+        compiled_sql_template:
+          nullable: true
+          type: string
+        created_at:
+          format: date-time
+          title: Created At
+          type: string
+        current_version:
+          title: Current Version
+          type: integer
+        dataset_id:
+          format: uuid
+          title: Dataset Id
+          type: string
+        definition_yaml:
+          title: Definition Yaml
+          type: string
+        description:
+          nullable: true
+          type: string
+        id:
+          format: uuid
+          title: Id
+          type: string
+        label:
+          nullable: true
+          type: string
+        metric_type:
+          enum:
+          - SIMPLE
+          - RATIO
+          - DERIVED
+          - CUMULATIVE
+          title: Metric Type
+          type: string
+        name:
+          title: Name
+          type: string
+        status:
+          enum:
+          - DRAFT
+          - PUBLISHED
+          - RETIRED
+          title: Status
+          type: string
+        tenant_id:
+          title: Tenant Id
+          type: string
+        updated_at:
+          format: date-time
+          title: Updated At
+          type: string
+        workspace_id:
+          format: uuid
+          title: Workspace Id
+          type: string
+      required:
+      - compiled_sql_template
+      - created_at
+      - current_version
+      - dataset_id
+      - definition_yaml
+      - description
+      - id
+      - label
+      - metric_type
+      - name
+      - status
+      - tenant_id
+      - updated_at
+      - workspace_id
+      title: SemanticDimensionRead
+    SemanticDimensionUpdate:
+      description: Sparse-update payload for an existing semantic dimension.
+      example:
+        definition_yaml: definition_yaml
+        metric_type: SIMPLE
+        description: description
+        label: label
+      properties:
+        definition_yaml:
+          nullable: true
+          type: string
+        description:
+          nullable: true
+          type: string
+        label:
+          nullable: true
+          type: string
+        metric_type:
+          enum:
+          - SIMPLE
+          - RATIO
+          - DERIVED
+          - CUMULATIVE
+          nullable: true
+          type: string
+      title: SemanticDimensionUpdate
+    SemanticMetricCreate:
+      description: Payload for creating a new semantic metric.
+      example:
+        definition_yaml: definition_yaml
+        dataset_id: 046b6c7f-0b8a-43b9-b35d-6489e6daee91
+        metric_type: SIMPLE
+        name: name
+        description: description
+        label: label
+      properties:
+        dataset_id:
+          format: uuid
+          title: Dataset Id
+          type: string
+        definition_yaml:
+          minLength: 1
+          title: Definition Yaml
+          type: string
+        description:
+          nullable: true
+          type: string
+        label:
+          nullable: true
+          type: string
+        metric_type:
+          default: SIMPLE
+          enum:
+          - SIMPLE
+          - RATIO
+          - DERIVED
+          - CUMULATIVE
+          title: Metric Type
+          type: string
+        name:
+          maxLength: 256
+          minLength: 1
+          title: Name
+          type: string
+      required:
+      - dataset_id
+      - definition_yaml
+      - name
+      title: SemanticMetricCreate
+    SemanticMetricRead:
+      description: Full read representation of a flyquery_semantic_metrics row.
+      example:
+        tenant_id: tenant_id
+        dataset_id: 046b6c7f-0b8a-43b9-b35d-6489e6daee91
+        created_at: 2000-01-23T04:56:07.000+00:00
+        current_version: 0
+        description: description
+        label: label
+        compiled_sql_template: compiled_sql_template
+        workspace_id: 046b6c7f-0b8a-43b9-b35d-6489e6daee91
+        updated_at: 2000-01-23T04:56:07.000+00:00
+        definition_yaml: definition_yaml
+        metric_type: SIMPLE
+        name: name
+        id: 046b6c7f-0b8a-43b9-b35d-6489e6daee91
+        status: DRAFT
+      properties:
+        compiled_sql_template:
+          nullable: true
+          type: string
+        created_at:
+          format: date-time
+          title: Created At
+          type: string
+        current_version:
+          title: Current Version
+          type: integer
+        dataset_id:
+          format: uuid
+          title: Dataset Id
+          type: string
+        definition_yaml:
+          title: Definition Yaml
+          type: string
+        description:
+          nullable: true
+          type: string
+        id:
+          format: uuid
+          title: Id
+          type: string
+        label:
+          nullable: true
+          type: string
+        metric_type:
+          enum:
+          - SIMPLE
+          - RATIO
+          - DERIVED
+          - CUMULATIVE
+          title: Metric Type
+          type: string
+        name:
+          title: Name
+          type: string
+        status:
+          enum:
+          - DRAFT
+          - PUBLISHED
+          - RETIRED
+          title: Status
+          type: string
+        tenant_id:
+          title: Tenant Id
+          type: string
+        updated_at:
+          format: date-time
+          title: Updated At
+          type: string
+        workspace_id:
+          format: uuid
+          title: Workspace Id
+          type: string
+      required:
+      - compiled_sql_template
+      - created_at
+      - current_version
+      - dataset_id
+      - definition_yaml
+      - description
+      - id
+      - label
+      - metric_type
+      - name
+      - status
+      - tenant_id
+      - updated_at
+      - workspace_id
+      title: SemanticMetricRead
+    SemanticMetricUpdate:
+      description: Sparse-update payload for an existing semantic metric.
+      example:
+        definition_yaml: definition_yaml
+        metric_type: SIMPLE
+        description: description
+        label: label
+      properties:
+        definition_yaml:
+          nullable: true
+          type: string
+        description:
+          nullable: true
+          type: string
+        label:
+          nullable: true
+          type: string
+        metric_type:
+          enum:
+          - SIMPLE
+          - RATIO
+          - DERIVED
+          - CUMULATIVE
+          nullable: true
+          type: string
+      title: SemanticMetricUpdate
+    SqlExecuteRequest:
+      description: Request body for POST /api/v1/sql:execute.
+      example:
+        dataset_id: 046b6c7f-0b8a-43b9-b35d-6489e6daee91
+        sql: sql
+      properties:
+        dataset_id:
+          format: uuid
+          title: Dataset Id
+          type: string
+        sql:
+          maxLength: 65536
+          minLength: 1
+          title: Sql
+          type: string
+      required:
+      - dataset_id
+      - sql
+      title: SqlExecuteRequest
+    SqlExecuteResponse:
+      description: Response from POST /api/v1/sql:execute (sync).
+      example:
+        preview:
+        - key: ""
+        - key: ""
+        query_id: 046b6c7f-0b8a-43b9-b35d-6489e6daee91
+        elapsed_ms: 0
+        ast_classification: ast_classification
+        execution_status: OK
+        truncated: false
+        row_count: 6
+        sql: sql
+      properties:
+        ast_classification:
+          title: Ast Classification
+          type: string
+        elapsed_ms:
+          nullable: true
+          type: integer
+        execution_status:
+          enum:
+          - OK
+          - FAILED
+          - REJECTED_BY_FIREWALL
+          title: Execution Status
+          type: string
+        preview:
+          items:
+            additionalProperties: true
+            type: object
+          nullable: true
+          type: array
+        query_id:
+          format: uuid
+          title: Query Id
+          type: string
+        row_count:
+          nullable: true
+          type: integer
+        sql:
+          title: Sql
+          type: string
+        truncated:
+          default: false
+          title: Truncated
+          type: boolean
+      required:
+      - ast_classification
+      - elapsed_ms
+      - execution_status
+      - preview
+      - query_id
+      - row_count
+      - sql
+      title: SqlExecuteResponse
+    TableRead:
+      description: "Response for GET /tables/{id}."
+      example:
+        tenant_id: tenant_id
+        business_owner: business_owner
+        is_active: true
+        source_file_id: 046b6c7f-0b8a-43b9-b35d-6489e6daee91
+        kind: kind
+        dataset_id: 046b6c7f-0b8a-43b9-b35d-6489e6daee91
+        created_at: 2000-01-23T04:56:07.000+00:00
+        description: description
+        workspace_id: 046b6c7f-0b8a-43b9-b35d-6489e6daee91
+        qualified_name: qualified_name
+        updated_at: 2000-01-23T04:56:07.000+00:00
+        current_snapshot_id: 046b6c7f-0b8a-43b9-b35d-6489e6daee91
+        description_source: description_source
+        name: name
+        id: 046b6c7f-0b8a-43b9-b35d-6489e6daee91
+        sheet_or_json_path: sheet_or_json_path
+        n_columns: 0
+      properties:
+        business_owner:
+          nullable: true
+          type: string
+        created_at:
+          format: date-time
+          title: Created At
+          type: string
+        current_snapshot_id:
+          format: uuid
+          nullable: true
+          type: string
+        dataset_id:
+          format: uuid
+          title: Dataset Id
+          type: string
+        description:
+          nullable: true
+          type: string
+        description_source:
+          nullable: true
+          type: string
+        id:
+          format: uuid
+          title: Id
+          type: string
+        is_active:
+          title: Is Active
+          type: boolean
+        kind:
+          title: Kind
+          type: string
+        n_columns:
+          nullable: true
+          type: integer
+        name:
+          title: Name
+          type: string
+        qualified_name:
+          title: Qualified Name
+          type: string
+        sheet_or_json_path:
+          nullable: true
+          type: string
+        source_file_id:
+          format: uuid
+          nullable: true
+          type: string
+        tenant_id:
+          title: Tenant Id
+          type: string
+        updated_at:
+          format: date-time
+          title: Updated At
+          type: string
+        workspace_id:
+          format: uuid
+          title: Workspace Id
+          type: string
+      required:
+      - business_owner
+      - created_at
+      - current_snapshot_id
+      - dataset_id
+      - description
+      - description_source
+      - id
+      - is_active
+      - kind
+      - name
+      - qualified_name
+      - sheet_or_json_path
+      - source_file_id
+      - tenant_id
+      - updated_at
+      - workspace_id
+      title: TableRead
+    TableSummary:
+      description: Summary of a table created/updated by an upload.
+      example:
+        name: name
+        n_rows_estimate: 6
+        table_id: table_id
+        n_columns: 0
+      properties:
+        n_columns:
+          title: N Columns
+          type: integer
+        n_rows_estimate:
+          title: N Rows Estimate
+          type: integer
+        name:
+          title: Name
+          type: string
+        table_id:
+          title: Table Id
+          type: string
+      required:
+      - n_columns
+      - n_rows_estimate
+      - name
+      - table_id
+      title: TableSummary
+    TurnRead:
+      description: Single conversation turn.
+      example:
+        executed_sql: executed_sql
+        summary: summary
+        tenant_id: tenant_id
+        question: question
+        table_qnames_json:
+        - table_qnames_json
+        - table_qnames_json
+        turn_index: 6
+        created_at: 2000-01-23T04:56:07.000+00:00
+        workspace_id: 046b6c7f-0b8a-43b9-b35d-6489e6daee91
+        conversation_id: 046b6c7f-0b8a-43b9-b35d-6489e6daee91
+        elapsed_ms: 0
+        no_answer: true
+        id: 046b6c7f-0b8a-43b9-b35d-6489e6daee91
+        snapshot_pins_json:
+          key: ""
+      properties:
+        conversation_id:
+          format: uuid
+          title: Conversation Id
+          type: string
+        created_at:
+          format: date-time
+          title: Created At
+          type: string
+        elapsed_ms:
+          nullable: true
+          type: integer
+        executed_sql:
+          nullable: true
+          type: string
+        id:
+          format: uuid
+          title: Id
+          type: string
+        no_answer:
+          title: No Answer
+          type: boolean
+        question:
+          title: Question
+          type: string
+        snapshot_pins_json:
+          additionalProperties: true
+          title: Snapshot Pins Json
+          type: object
+        summary:
+          nullable: true
+          type: string
+        table_qnames_json:
+          items:
+            type: string
+          title: Table Qnames Json
+          type: array
+        tenant_id:
+          title: Tenant Id
+          type: string
+        turn_index:
+          title: Turn Index
+          type: integer
+        workspace_id:
+          format: uuid
+          title: Workspace Id
+          type: string
+      required:
+      - conversation_id
+      - created_at
+      - elapsed_ms
+      - executed_sql
+      - id
+      - no_answer
+      - question
+      - summary
+      - tenant_id
+      - turn_index
+      - workspace_id
+      title: TurnRead
+    ValidateResponse:
+      description: Response from POST /api/v1/query:validate — includes AST + scope
+        check.
+      example:
+        table_refs:
+        - table_refs
+        - table_refs
+        scope_error: scope_error
+        single_statement: true
+        ast_classification: ast_classification
+        clarification: ""
+        sql: sql
+      properties:
+        ast_classification:
+          nullable: true
+          type: string
+        clarification:
+          allOf:
+          - $ref: "#/components/schemas/ClarificationFrame"
+          nullable: true
+        scope_error:
+          nullable: true
+          type: string
+        single_statement:
+          default: true
+          title: Single Statement
+          type: boolean
+        sql:
+          nullable: true
+          type: string
+        table_refs:
+          items:
+            type: string
+          title: Table Refs
+          type: array
+      required:
+      - ast_classification
+      - sql
+      title: ValidateResponse
+    ValidationError:
+      example:
+        detail:
+        - msg: msg
+          loc:
+          - Location_inner
+          - Location_inner
+          type: type
+        - msg: msg
+          loc:
+          - Location_inner
+          - Location_inner
+          type: type
+      properties:
+        detail:
+          items:
+            $ref: "#/components/schemas/Detail_inner"
+          title: Detail
+          type: array
+      required:
+      - detail
+      title: ValidationError
+    WorkspaceCreate:
+      example:
+        retention_days: 1
+        name: name
+        default_locale: en-US
+        allow_direct_sql: false
+        kms_key_uri: kms_key_uri
+        slug: slug
+        metadata_json:
+          key: ""
+      properties:
+        allow_direct_sql:
+          default: false
+          title: Allow Direct Sql
+          type: boolean
+        default_locale:
+          default: en-US
+          title: Default Locale
+          type: string
+        kms_key_uri:
+          nullable: true
+          type: string
+        metadata_json:
+          additionalProperties: true
+          title: Metadata Json
+          type: object
+        name:
+          maxLength: 200
+          minLength: 1
+          title: Name
+          type: string
+        retention_days:
+          minimum: 1
+          nullable: true
+          type: integer
+        slug:
+          maxLength: 64
+          minLength: 1
+          title: Slug
+          type: string
+      required:
+      - name
+      - slug
+      title: WorkspaceCreate
+    WorkspaceRead:
+      example:
+        tenant_id: tenant_id
+        created_at: 2000-01-23T04:56:07.000+00:00
+        allow_direct_sql: true
+        kms_key_uri: kms_key_uri
+        storage_used_bytes: 6
+        updated_at: 2000-01-23T04:56:07.000+00:00
+        retention_days: 0
+        name: name
+        default_locale: default_locale
+        id: 046b6c7f-0b8a-43b9-b35d-6489e6daee91
+        slug: slug
+        metadata_json:
+          key: ""
+        status: ACTIVE
+      properties:
+        allow_direct_sql:
+          title: Allow Direct Sql
+          type: boolean
+        created_at:
+          format: date-time
+          title: Created At
+          type: string
+        default_locale:
+          title: Default Locale
+          type: string
+        id:
+          format: uuid
+          title: Id
+          type: string
+        kms_key_uri:
+          nullable: true
+          type: string
+        metadata_json:
+          additionalProperties: true
+          title: Metadata Json
+          type: object
+        name:
+          title: Name
+          type: string
+        retention_days:
+          nullable: true
+          type: integer
+        slug:
+          title: Slug
+          type: string
+        status:
+          enum:
+          - ACTIVE
+          - ARCHIVED
+          - PURGING
+          title: Status
+          type: string
+        storage_used_bytes:
+          title: Storage Used Bytes
+          type: integer
+        tenant_id:
+          title: Tenant Id
+          type: string
+        updated_at:
+          format: date-time
+          title: Updated At
+          type: string
+      required:
+      - allow_direct_sql
+      - created_at
+      - default_locale
+      - id
+      - kms_key_uri
+      - metadata_json
+      - name
+      - retention_days
+      - slug
+      - status
+      - storage_used_bytes
+      - tenant_id
+      - updated_at
+      title: WorkspaceRead
+    WorkspaceUpdate:
+      example:
+        retention_days: 1
+        name: name
+        default_locale: default_locale
+        allow_direct_sql: true
+        kms_key_uri: kms_key_uri
+        metadata_json:
+          key: ""
+      properties:
+        allow_direct_sql:
+          nullable: true
+          type: boolean
+        default_locale:
+          nullable: true
+          type: string
+        kms_key_uri:
+          nullable: true
+          type: string
+        metadata_json:
+          additionalProperties: true
+          nullable: true
+          type: object
+        name:
+          nullable: true
+          type: string
+        retention_days:
+          minimum: 1
+          nullable: true
+          type: integer
+      title: WorkspaceUpdate
+    Cost_Cents:
+      anyOf:
+      - type: number
+      - pattern: "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+        type: string
+      title: Cost Cents
+    Location_inner:
+      anyOf:
+      - type: string
+      - type: integer
+    Detail_inner:
+      example:
+        msg: msg
+        loc:
+        - Location_inner
+        - Location_inner
+        type: type
+      properties:
+        loc:
+          items:
+            $ref: "#/components/schemas/Location_inner"
+          title: Location
+          type: array
+        msg:
+          title: Message
+          type: string
+        type:
+          title: Error Type
+          type: string
+      required:
+      - loc
+      - msg
+      - type
 

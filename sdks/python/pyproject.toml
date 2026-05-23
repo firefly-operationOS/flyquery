@@ -3,8 +3,9 @@ name = "flyquery_sdk"
 version = "26.5.2"
 description = "flyquery"
 authors = [
-  {name = "OpenAPI Generator Community",email = "team@openapitools.org"},
+  {name = "Firefly OperationOS",email = "team@openapitools.org"},
 ]
+license = { text = "Proprietary -- service" }
 readme = "README.md"
 keywords = ["OpenAPI", "OpenAPI-Generator", "flyquery"]
 requires-python = ">=3.9"
