@@ -47,7 +47,6 @@ from flyquery.interfaces.conversations import (
 )
 from flyquery.interfaces.query import AnswerResponse
 from flyquery.web.conventions import ResourceNotFound, tenant_context_from_request
-from flyquery.web.conventions.deps import _parse_workspace_id as _pw
 
 _DEFAULT_SCOPES: set[str] = {"flyquery.query:read"}
 

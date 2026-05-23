@@ -6,7 +6,7 @@ Covers:
 - ``flyquery_examples``        (APPROVED quality only)
 - ``flyquery_semantic_metrics`` (PUBLISHED status only)
 - ``flyquery_glossary_terms``
-- ``flyquery_schema_relations`` (approved, high-confidence)
+- ``flyquery_relations`` (approved, high-confidence)
 """
 
 from __future__ import annotations
@@ -88,11 +88,11 @@ class SearchIndex:
             sa.text(
                 """
                 SELECT o.id, o.qualified_name, o.description, o.data_type, o.table_id,
-                       1 - (o.embedding <=> :emb::vector) AS score
+                       1 - (o.embedding <=> CAST(:emb AS vector)) AS score
                 FROM flyquery_schema_objects o
                 JOIN flyquery_tables t ON t.id = o.table_id
                 WHERE t.dataset_id = :ds AND o.is_active = true AND o.embedding IS NOT NULL
-                ORDER BY o.embedding <=> :emb::vector
+                ORDER BY o.embedding <=> CAST(:emb AS vector)
                 LIMIT :lim
                 """
             ),
@@ -141,7 +141,7 @@ class SearchIndex:
                     SELECT id, question, generated_sql,
                            CASE
                                WHEN embedding IS NOT NULL
-                               THEN 1 - (embedding <=> :emb::vector)
+                               THEN 1 - (embedding <=> CAST(:emb AS vector))
                                ELSE 0.5
                            END AS score
                     FROM flyquery_examples
@@ -263,14 +263,16 @@ class SearchIndex:
             sa.text(
                 """
                 SELECT r.id,
-                       r.from_qualified_name, r.to_qualified_name,
-                       r.relation_type, r.confidence_score
-                FROM flyquery_schema_relations r
-                JOIN flyquery_tables t ON t.id = r.from_table_id
-                WHERE t.dataset_id = :ds
+                       ft.qualified_name || '.' || r.from_column_name AS from_qname,
+                       tt.qualified_name || '.' || r.to_column_name   AS to_qname,
+                       r.kind, r.confidence
+                FROM flyquery_relations r
+                JOIN flyquery_tables ft ON ft.id = r.from_table_id
+                JOIN flyquery_tables tt ON tt.id = r.to_table_id
+                WHERE ft.dataset_id = :ds
                   AND r.status = 'APPROVED'
-                  AND r.confidence_score >= :threshold
-                ORDER BY r.confidence_score DESC
+                  AND r.confidence >= :threshold
+                ORDER BY r.confidence DESC
                 """
             ),
             {"ds": dataset_id, "threshold": threshold},
@@ -280,14 +282,14 @@ class SearchIndex:
                 source_kind="relation",
                 id=r.id,
                 text=(
-                    f"{r.from_qualified_name} {r.relation_type} {r.to_qualified_name}"
-                    f" (confidence={r.confidence_score:.2f})"
+                    f"{r.from_qname} {r.kind} {r.to_qname}"
+                    f" (confidence={r.confidence:.2f})"
                 ),
-                score=float(r.confidence_score),
+                score=float(r.confidence),
                 metadata={
-                    "from_qualified_name": r.from_qualified_name,
-                    "to_qualified_name": r.to_qualified_name,
-                    "relation_type": r.relation_type,
+                    "from_qualified_name": r.from_qname,
+                    "to_qualified_name": r.to_qname,
+                    "relation_type": r.kind,
                 },
             )
             for r in rows.mappings()

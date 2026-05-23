@@ -28,6 +28,7 @@ import sqlalchemy as sa
 from pyfly.container import service
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from flyquery.config import FlyquerySettings
 from flyquery.core.services.execution.ast_classifier import AstClassifier
 from flyquery.core.services.execution.duckdb_executor import (
     DuckDBExecutor,
@@ -69,7 +70,7 @@ class DerivedTableService:
         self,
         session: async_sessionmaker[AsyncSession],
         object_store: ObjectStore,
-        settings,
+        settings: FlyquerySettings,
     ) -> None:
         self._factory = session
         self._store = object_store

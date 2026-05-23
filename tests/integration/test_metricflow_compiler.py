@@ -37,16 +37,19 @@ async def test_publish_sets_compiled_sql(started_app: None) -> None:  # noqa: AR
     from flyquery.core.services.semantic.semantic_service import SemanticService
     from flyquery.interfaces.semantic import SemanticMetricCreate
 
+    admin_url = os.environ["FLYQUERY_DATABASE_URL_ADMIN"].replace("+psycopg", "+asyncpg")
     db_url = os.environ["FLYQUERY_DATABASE_URL"]
+    seed_engine = create_async_engine(admin_url)
     engine = create_async_engine(db_url)
+    seed_factory = async_sessionmaker(seed_engine, expire_on_commit=False)
     factory = async_sessionmaker(engine, expire_on_commit=False)
 
     tenant = "ten-sem"
     ws_id = uuid.uuid4()
     ds_id = uuid.uuid4()
 
-    # Seed workspace + dataset
-    async with factory() as s, s.begin():
+    # Seed workspace + dataset (admin role bypasses RLS for setup)
+    async with seed_factory() as s, s.begin():
         await s.execute(
             sa.text(
                 "INSERT INTO flyquery_workspaces (id, tenant_id, slug, name, status) "
@@ -61,8 +64,12 @@ async def test_publish_sets_compiled_sql(started_app: None) -> None:  # noqa: AR
             ),
             {"id": ds_id, "t": tenant, "ws": ws_id, "name": "Sem DS"},
         )
+    await seed_engine.dispose()
 
-    repo = SemanticRepository(factory)
+    # SemanticRepository uses its factory for all writes; use admin factory to
+    # bypass RLS in tests (mirrors how the HTTP layer sets tenant GUCs before inserts).
+    admin_factory2 = async_sessionmaker(create_async_engine(admin_url), expire_on_commit=False)
+    repo = SemanticRepository(admin_factory2)
     svc = SemanticService(repo)
 
     # Create metric
