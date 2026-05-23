@@ -11,10 +11,20 @@ def _local_factory(tmp: Path):
     return LocalFsObjectStore(base=str(tmp), presign_ttl_s=60)
 
 
-@pytest.fixture(params=["local"])
-def store(request, tmp_path):
+@pytest.fixture(params=["local", "s3"])
+def store(request, tmp_path, minio_container):
     if request.param == "local":
         return _local_factory(tmp_path)
+    if request.param == "s3":
+        from flyquery.core.services.storage.adapters.s3 import S3ObjectStore
+        cfg = minio_container.get_config()
+        return S3ObjectStore(
+            base="s3://flyquery-test",
+            endpoint_url=f"http://{cfg['endpoint']}",
+            access_key=minio_container.access_key,
+            secret_key=minio_container.secret_key,
+            presign_ttl_s=60,
+        )
     pytest.skip(f"no fixture for {request.param}")
 
 
