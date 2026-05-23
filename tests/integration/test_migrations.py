@@ -19,4 +19,9 @@ def test_alembic_upgrade_head_creates_all_tables() -> None:
     eng = create_engine(admin_url)
     insp = inspect(eng)
     names = set(insp.get_table_names())
-    assert {"flyquery_workspaces", "flyquery_datasets", "flyquery_files", "flyquery_tables"} <= names
+    expected = {
+        "flyquery_workspaces", "flyquery_datasets", "flyquery_files", "flyquery_tables",
+        "flyquery_schema_snapshots", "flyquery_schema_changes",
+        "flyquery_schema_objects", "flyquery_relations",
+    }
+    assert expected <= names
