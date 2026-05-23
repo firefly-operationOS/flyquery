@@ -151,6 +151,15 @@ async def run_reconcile(
             if new_name in added:
                 added.remove(new_name)
 
+    # --- Mark removed columns as is_active=false on their old schema_objects rows ---
+    if prev_snapshot and removed:
+        await _mark_removed_columns_inactive(
+            tenant_id=tenant_id,
+            prev_snapshot_id=prev_snap_id,
+            removed_names=removed,
+            session_factory=session_factory,
+        )
+
     # --- Write schema_changes ---
     if prev_snapshot and (added or removed or type_changed or confirmed_renames or candidate_renames):
         await _write_schema_changes(
@@ -212,8 +221,16 @@ async def run_reconcile(
             ).hexdigest()
             col_obj_id = uuid.uuid4()
 
-            # Transplant human annotations if this column existed before
+            # Transplant human annotations if this column existed before.
+            # Also check reverse of confirmed_renames: if new_col was renamed from
+            # old_col, carry old_col's annotations onto new_col.
             annotation = human_annotations.get(col.name, {})
+            if not annotation:
+                # Build reverse rename map: new_name → old_name
+                reverse_renames = {v: k for k, v in (confirmed_renames or {}).items()}
+                old_name = reverse_renames.get(col.name)
+                if old_name:
+                    annotation = human_annotations.get(old_name, {})
 
             await s.execute(
                 sa.text(
@@ -369,6 +386,41 @@ async def _load_human_annotations(
                 "governance_json": row["governance_json"],
             }
         return out
+
+
+async def _mark_removed_columns_inactive(
+    *,
+    tenant_id: str,
+    prev_snapshot_id: uuid.UUID,
+    removed_names: list[str],
+    session_factory: async_sessionmaker[AsyncSession],
+) -> None:
+    """Set is_active=false on schema_objects rows from the previous snapshot
+    whose column names are no longer present in the new upload.
+    The rows are preserved for historical pinning.
+    """
+    if not removed_names:
+        return
+    async with session_factory() as s, s.begin():
+        for col_name in removed_names:
+            # qualified_name ends with ".<col_name>", so we match the suffix.
+            await s.execute(
+                sa.text(
+                    """
+                    UPDATE flyquery_schema_objects
+                    SET is_active = false, last_changed_at = now()
+                    WHERE snapshot_id = :snap_id
+                      AND tenant_id = :tenant
+                      AND kind = 'COLUMN'
+                      AND qualified_name LIKE :pattern
+                    """
+                ),
+                {
+                    "snap_id": prev_snapshot_id,
+                    "tenant": tenant_id,
+                    "pattern": f"%.{col_name}",
+                },
+            )
 
 
 async def _write_schema_changes(

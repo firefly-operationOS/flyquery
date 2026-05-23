@@ -142,3 +142,125 @@ async def test_reupload_removes_column(started_app) -> None:  # noqa: ANN001
             ch["change"] == "REMOVED" and ch["column_name"] == "email"
             for ch in changes
         ), f"expected REMOVED:email in {changes}"
+
+
+@pytest.mark.integration
+@pytest.mark.asyncio
+async def test_removed_column_marked_inactive(started_app) -> None:  # noqa: ANN001
+    """Removed column's schema_objects row must have is_active=false after re-upload."""
+    import sqlalchemy as sa
+    from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+
+    from flyquery.main import app
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://t") as c:
+        r = await c.post(
+            "/api/v1/workspaces",
+            json={"slug": "reuprminact", "name": "Reupload Remove Inactive"},
+            headers={"X-Tenant-Id": "tenant-reuprminact", "X-Workspace-Id": "reuprminact"},
+        )
+        ws_id = r.json()["id"]
+        h = {"X-Tenant-Id": "tenant-reuprminact", "X-Workspace-Id": ws_id}
+
+        r = await c.post("/api/v1/datasets", json={"name": "inactive-test"}, headers=h)
+        ds_id = r.json()["id"]
+
+        csv_v1 = b"id,name,email\n1,Alice,a@b.com\n2,Bob,b@c.com\n"
+        r = await c.post(
+            f"/api/v1/datasets/{ds_id}/files",
+            files={"file": ("cols.csv", io.BytesIO(csv_v1), "text/csv")},
+            headers=h,
+        )
+        assert r.status_code == 201, r.text
+        table_id = r.json()["tables"][0]["table_id"]
+
+        # Re-upload without `email`
+        csv_v2 = b"id,name\n1,Alice\n2,Bob\n"
+        r = await c.put(
+            f"/api/v1/datasets/{ds_id}/tables/{table_id}:upload",
+            files={"file": ("cols.csv", io.BytesIO(csv_v2), "text/csv")},
+            headers=h,
+        )
+        assert r.status_code == 201, r.text
+        snap1_id = r.json()["snapshot_id"]
+
+        # The PREVIOUS snapshot's `email` row should be is_active=false.
+        # We need the first snapshot id — GET /tables/{id}/snapshots
+        r = await c.get(f"/api/v1/tables/{table_id}/snapshots", headers=h)
+        snaps = r.json()["items"]
+        # snaps ordered by taken_at; first one is the original
+        prev_snap_id = snaps[0]["id"]
+
+        # Check directly via DB (admin URL bypasses RLS so we can query freely).
+        import os
+        admin_url = os.environ["FLYQUERY_DATABASE_URL_ADMIN"]
+        # Admin URL is sync (+psycopg); convert to async (+asyncpg)
+        async_admin_url = admin_url.replace("+psycopg", "+asyncpg").replace("+psycopg2", "+asyncpg")
+        engine = create_async_engine(async_admin_url)
+        async with AsyncSession(engine) as session:
+            result = await session.execute(
+                sa.text(
+                    """
+                    SELECT is_active FROM flyquery_schema_objects
+                    WHERE snapshot_id = :snap AND kind = 'COLUMN'
+                      AND qualified_name LIKE '%.email'
+                    """
+                ),
+                {"snap": prev_snap_id},
+            )
+            rows = result.all()
+        await engine.dispose()
+
+        assert rows, "expected to find email column in prev snapshot"
+        assert all(row[0] is False for row in rows), (
+            f"expected is_active=false for removed email column, got {rows}"
+        )
+
+
+@pytest.mark.integration
+@pytest.mark.asyncio
+async def test_type_changed_recorded(started_app) -> None:  # noqa: ANN001
+    """TYPE_CHANGED entry is written when a column's data type changes across uploads."""
+    from flyquery.main import app
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://t") as c:
+        r = await c.post(
+            "/api/v1/workspaces",
+            json={"slug": "reuptc", "name": "Reupload TypeChange"},
+            headers={"X-Tenant-Id": "tenant-reuptc", "X-Workspace-Id": "reuptc"},
+        )
+        ws_id = r.json()["id"]
+        h = {"X-Tenant-Id": "tenant-reuptc", "X-Workspace-Id": ws_id}
+
+        r = await c.post("/api/v1/datasets", json={"name": "tc-demo"}, headers=h)
+        ds_id = r.json()["id"]
+
+        # v1: total as integer
+        csv_v1 = b"order_id,total\n1,10\n2,20\n3,30\n"
+        r = await c.post(
+            f"/api/v1/datasets/{ds_id}/files",
+            files={"file": ("orders.csv", io.BytesIO(csv_v1), "text/csv")},
+            headers=h,
+        )
+        assert r.status_code == 201, r.text
+        table_id = r.json()["tables"][0]["table_id"]
+
+        # v2: total as float
+        csv_v2 = b"order_id,total\n1,10.5\n2,20.75\n3,30.0\n"
+        r = await c.put(
+            f"/api/v1/datasets/{ds_id}/tables/{table_id}:upload",
+            files={"file": ("orders.csv", io.BytesIO(csv_v2), "text/csv")},
+            headers=h,
+        )
+        assert r.status_code == 201, r.text
+
+        r = await c.get(f"/api/v1/tables/{table_id}/changes", headers=h)
+        changes = r.json()["items"]
+        type_changes = [
+            ch for ch in changes
+            if ch["change"] == "TYPE_CHANGED" and ch["column_name"] == "total"
+        ]
+        assert type_changes, f"expected TYPE_CHANGED:total in {changes}"
+        tc = type_changes[0]
+        assert tc["before_json"] is not None
+        assert tc["after_json"] is not None
