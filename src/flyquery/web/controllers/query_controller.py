@@ -7,7 +7,8 @@ Path conventions:
 * ``POST /api/v1/query``          -- full pipeline (sync): Grounding → Gen → AST → Exec → Explainer
 * ``POST /api/v1/query:explain``  -- Grounding + Generation only (no execution)
 * ``POST /api/v1/query:validate`` -- Grounding + Generation + AST + ScopeGuard (no execution)
-* ``POST /api/v1/query/stream``   -- SSE event stream (schema_linked → sql_generated → executed → explained → final)
+* ``POST /api/v1/query/stream``   -- SSE event stream
+  (schema_linked → sql_generated → executed → explained → final)
 """
 
 from __future__ import annotations
@@ -38,7 +39,7 @@ from flyquery.core.services.execution.table_resolver import TableResolver
 from flyquery.core.services.query.query_repository import QueryRepository
 from flyquery.core.services.query.query_service import QueryService
 from flyquery.core.services.query.result_uploader import ResultUploader
-from flyquery.core.services.retrieval.embedder import OpenAiEmbedder
+from flyquery.core.services.retrieval.embedder import Embedder
 from flyquery.core.services.retrieval.hybrid_retriever import HybridRetriever
 from flyquery.core.services.retrieval.reranker import build_reranker
 from flyquery.core.services.retrieval.search_index import SearchIndex
@@ -88,7 +89,7 @@ class QueryController:
         object_store: ObjectStore,
         query_repository: QueryRepository,
         examples_service: ExamplesService,
-        embedder: OpenAiEmbedder,
+        embedder: Embedder,
     ) -> None:
         self._settings = settings
         self._session_factory = session

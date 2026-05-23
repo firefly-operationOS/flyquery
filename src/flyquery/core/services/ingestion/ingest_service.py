@@ -15,11 +15,14 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from flyquery.config import FlyquerySettings
 from flyquery.core.eda.ingest_publisher import IngestPublisher
+from flyquery.core.services.ingestion.stages.describe import run_describe
 from flyquery.core.services.ingestion.stages.embed import run_embed
 from flyquery.core.services.ingestion.stages.parse import run_parse
+from flyquery.core.services.ingestion.stages.profile import run_profile
 from flyquery.core.services.ingestion.stages.publish import run_publish
 from flyquery.core.services.ingestion.stages.receive import run_receive
 from flyquery.core.services.ingestion.stages.reconcile import run_reconcile
+from flyquery.core.services.ingestion.stages.sample import run_sample
 from flyquery.core.services.storage.object_store import ObjectStore
 from flyquery.core.services.workspaces.workspace_service import WorkspaceService
 
@@ -115,7 +118,10 @@ class IngestService:
             original_filename=filename,
         )
 
-        # --- Stages 3, 9, 10 per table ---
+        # --- Stages 3, 4, 5, 7, 9, 10 per table ---
+        # Stages 6 (relations), 8 (pii_tag) intentionally deferred to
+        # the async worker; they're not on the critical path for the
+        # first NL query against the table.
         ingested: list[IngestedTable] = []
         for pt in parsed_tables:
             rec = await run_reconcile(
@@ -128,10 +134,58 @@ class IngestService:
                 session_factory=self._session_factory,
             )
 
+            # --- Stage 4: sample ---
+            # PII-gated column sampling so DescribeAgent has real values
+            # to reason about. Without samples the agent only sees the
+            # column name + data type.
+            try:
+                await run_sample(
+                    tenant_id=tenant_id,
+                    snapshot_id=rec.snapshot_id,
+                    parquet_key=pt.parquet_key,
+                    session_factory=self._session_factory,
+                    settings=self._settings,
+                )
+            except Exception as exc:  # noqa: BLE001
+                logger.warning("stage=sample snapshot=%s skipped err=%s", rec.snapshot_id, exc)
+
+            # --- Stage 5: profile (small-table stats) ---
+            try:
+                await run_profile(
+                    tenant_id=tenant_id,
+                    snapshot_id=rec.snapshot_id,
+                    parquet_key=pt.parquet_key,
+                    n_rows_actual=rec.n_rows_actual,
+                    session_factory=self._session_factory,
+                    settings=self._settings,
+                )
+            except Exception as exc:  # noqa: BLE001
+                logger.warning("stage=profile snapshot=%s skipped err=%s", rec.snapshot_id, exc)
+
+            # --- Stage 7: describe (AI column descriptions + synonyms) ---
+            # CRITICAL for grounding: without descriptions the Grounding
+            # agent can't match user questions to actual tables/columns
+            # and falls back to hallucinated names. Skipped silently
+            # if no LLM key is configured -- ingestion still succeeds.
+            try:
+                await run_describe(
+                    tenant_id=tenant_id,
+                    snapshot_id=rec.snapshot_id,
+                    session_factory=self._session_factory,
+                    settings=self._settings,
+                )
+            except Exception as exc:  # noqa: BLE001
+                logger.warning("stage=describe snapshot=%s skipped err=%s", rec.snapshot_id, exc)
+
+            # --- Stage 9: embed ---
+            # Runs AFTER describe so embeddings include the AI-generated
+            # description + synonyms in the corpus, not just the bare
+            # column name.
             await run_embed(
                 tenant_id=tenant_id,
                 snapshot_id=rec.snapshot_id,
                 session_factory=self._session_factory,
+                settings=self._settings,
             )
 
             await run_publish(
@@ -228,10 +282,60 @@ class IngestService:
                 session_factory=self._session_factory,
             )
 
+            # Same stage order as the fresh-upload path: sample -> profile
+            # -> describe -> embed -> publish. Skipped silently if the
+            # individual stage fails; ingestion still completes so the
+            # raw data is queryable.
+            try:
+                await run_sample(
+                    tenant_id=tenant_id,
+                    snapshot_id=rec.snapshot_id,
+                    parquet_key=pt.parquet_key,
+                    session_factory=self._session_factory,
+                    settings=self._settings,
+                )
+            except Exception as exc:  # noqa: BLE001
+                logger.warning(
+                    "reupload stage=sample snapshot=%s skipped err=%s",
+                    rec.snapshot_id,
+                    exc,
+                )
+
+            try:
+                await run_profile(
+                    tenant_id=tenant_id,
+                    snapshot_id=rec.snapshot_id,
+                    parquet_key=pt.parquet_key,
+                    n_rows_actual=rec.n_rows_actual,
+                    session_factory=self._session_factory,
+                    settings=self._settings,
+                )
+            except Exception as exc:  # noqa: BLE001
+                logger.warning(
+                    "reupload stage=profile snapshot=%s skipped err=%s",
+                    rec.snapshot_id,
+                    exc,
+                )
+
+            try:
+                await run_describe(
+                    tenant_id=tenant_id,
+                    snapshot_id=rec.snapshot_id,
+                    session_factory=self._session_factory,
+                    settings=self._settings,
+                )
+            except Exception as exc:  # noqa: BLE001
+                logger.warning(
+                    "reupload stage=describe snapshot=%s skipped err=%s",
+                    rec.snapshot_id,
+                    exc,
+                )
+
             await run_embed(
                 tenant_id=tenant_id,
                 snapshot_id=rec.snapshot_id,
                 session_factory=self._session_factory,
+                settings=self._settings,
             )
 
             await run_publish(

@@ -10,7 +10,7 @@ from typing import Any, Protocol
 from pyfly.container import service as service_bean
 
 from flyquery.core.services.examples.examples_repository import ExamplesRepository
-from flyquery.core.services.retrieval.embedder import OpenAiEmbedder
+from flyquery.core.services.retrieval.embedder import Embedder
 from flyquery.interfaces.examples import ExampleCreate
 
 
@@ -49,7 +49,7 @@ class _Repo(Protocol):
 class ExamplesService:
     """Business logic for the examples knowledge base."""
 
-    def __init__(self, repo: ExamplesRepository, embedder: OpenAiEmbedder | None = None) -> None:
+    def __init__(self, repo: ExamplesRepository, embedder: Embedder | None = None) -> None:
         self._repo: _Repo = repo
         self._embedder = embedder  # may be None — embeddings stay NULL
 

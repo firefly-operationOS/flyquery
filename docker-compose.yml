@@ -43,6 +43,24 @@ services:
       timeout: 5s
       retries: 30
 
+  # Local embedding provider (default for ``settings.embedding_provider=ollama``).
+  # On first `docker compose up` the model is pulled lazily on demand --
+  # the embed-stage call to ``/api/embed`` triggers the download. Use
+  # ``docker compose exec ollama ollama pull nomic-embed-text`` to
+  # warm the cache ahead of the first ingest.
+  ollama:
+    image: ollama/ollama:latest
+    ports:
+      - "11552:11434"
+    volumes:
+      - flyquery_ollama:/root/.ollama
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
 volumes:
   flyquery_pgdata:
   flyquery_minio:
+  flyquery_ollama:

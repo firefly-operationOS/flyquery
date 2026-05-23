@@ -84,8 +84,26 @@ class FlyquerySettings(BaseSettings):
     agent_max_output_tokens: int = 8192
 
     # Embeddings + retrieval (lock-step with canon)
-    embedding_model: str = "openai:text-embedding-3-small"
+    #
+    # Provider selection lets the operator pick between hosted (OpenAI,
+    # Cohere, Voyage, Mistral, Azure, Google, Bedrock) and local
+    # (Ollama) embedding backends. The implementation is delegated to
+    # fireflyframework-agentic's ``BaseEmbedder`` registry so any
+    # provider supported there is available here.
+    #
+    # Default: ``ollama`` + ``nomic-embed-text`` (768-d). This lets a
+    # fresh ``docker compose up`` work end-to-end without an OpenAI
+    # account -- Ollama is bundled in the test stack. The schema
+    # column is ``vector(1536)`` so smaller-dim providers are
+    # zero-padded by the persistence helper; cosine similarity is
+    # preserved across the padding because the extra zero coordinates
+    # add zero to both the dot product and the L2 norms (the rankings
+    # in `embedding <=> CAST(:emb AS vector)` are stable).
+    embedding_provider: Literal["ollama", "openai", "cohere", "voyage", "azure", "google", "mistral", "bedrock", "null"] = "ollama"
+    embedding_model: str = "nomic-embed-text"
     embedding_dimensions: int = 1536
+    embedding_native_dim: int = 768  # native dim of the chosen model (used for padding)
+    embedding_base_url: str | None = None  # set for Ollama (http://localhost:11434) etc
     embedding_rate_limit_rpm: int = 3000
     vector_store: str = "pgvector"
     top_k_schema: int = 12

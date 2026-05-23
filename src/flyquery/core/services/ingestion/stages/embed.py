@@ -1,29 +1,45 @@
 # Copyright 2026 Firefly Software Solutions Inc
-"""Stage 9 — embed: build embedding text per schema object + update content_tsv.
+"""Stage 9 -- embed: build embedding text per schema object + refresh content_tsv.
 
-For each flyquery_schema_objects row in the snapshot:
-- Build embedding text: "<qualified_name>: <data_type>\\n<description>\\nSynonyms: <list>"
-- Call OpenAI text-embedding-3-small (1536-d) if OPENAI_API_KEY is available
-- Persist embedding + embedding_model columns
-- Refresh content_tsv via PostgreSQL to_tsvector
+For each ``flyquery_schema_objects`` row in the snapshot:
 
-If OPENAI_API_KEY is not set, embedding is skipped (NULL) and embeddings_written=0
-is emitted. The pipeline does not fail.
+* Build embedding text:
+  ``"<qualified_name>: <data_type>\\n<description>\\nSynonyms: <list>"``.
+* Call the configured embedding provider via
+  :func:`flyquery.core.services.retrieval.embedder.build_embedder`.
+  Supported providers (selected by ``settings.embedding_provider``):
+  ``ollama``, ``openai``, ``cohere``, ``voyage``, ``azure``,
+  ``google``, ``mistral``, ``bedrock``, ``null``.
+* Persist ``embedding`` + ``embedding_model`` when a vector was returned.
+* Always refresh ``content_tsv`` via PostgreSQL ``to_tsvector`` so
+  BM25 retrieval works even when the provider is down or set to
+  ``null``.
+
+When the provider is unavailable (missing API key, unreachable
+endpoint), the stage logs a warning and writes ``NULL`` vectors --
+ingestion does not fail, retrieval gracefully degrades to BM25 over
+``content_tsv``.
 """
 
 from __future__ import annotations
 
 import logging
-import os
 import uuid
+from typing import TYPE_CHECKING
 
 import sqlalchemy as sa
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-logger = logging.getLogger(__name__)
+from flyquery.core.services.retrieval.embedder import (
+    Embedder,
+    NullEmbedder,
+    build_embedder,
+)
 
-_EMBEDDING_MODEL = "text-embedding-3-small"
-_EMBEDDING_DIMS = 1536
+if TYPE_CHECKING:
+    from flyquery.config import FlyquerySettings
+
+logger = logging.getLogger(__name__)
 
 
 async def run_embed(
@@ -31,13 +47,35 @@ async def run_embed(
     tenant_id: str,
     snapshot_id: uuid.UUID,
     session_factory: async_sessionmaker[AsyncSession],
+    settings: FlyquerySettings | None = None,
+    embedder: Embedder | None = None,
 ) -> dict:
     """Execute Stage 9: embed + index.
 
-    Returns a result dict with embeddings_written count.
+    Parameters
+    ----------
+    tenant_id
+        Tenant scope for RLS.
+    snapshot_id
+        Schema snapshot to embed.
+    session_factory
+        Async sessionmaker for the persistence layer.
+    settings
+        When provided, used to build the configured embedder via
+        :func:`build_embedder`. Optional so existing call sites that
+        haven't been updated keep working (they fall back to the
+        Null embedder).
+    embedder
+        Direct embedder override -- used by tests to inject a stub
+        without touching settings.
+
+    Returns
+    -------
+    dict
+        ``{embeddings_written, objects_processed, model}``.
     """
-    api_key = os.environ.get("OPENAI_API_KEY", "")
-    embedder = _build_embedder(api_key)
+    if embedder is None:
+        embedder = build_embedder(settings) if settings is not None else NullEmbedder()
 
     # Load all schema_objects for this snapshot
     async with session_factory() as s:
@@ -54,39 +92,37 @@ async def run_embed(
         )
         rows = [dict(r) for r in result.mappings().all()]
 
+    # Batch-embed for throughput: one provider call per snapshot instead
+    # of one per row. For tiny snapshots this is the same; for hundreds
+    # of columns it cuts wall-clock dramatically.
+    embed_texts = [_build_embed_text(row) for row in rows]
+    vectors: list[list[float] | None] = await embedder.embed_batch(embed_texts) if rows else []
+
     embeddings_written = 0
-
-    for row in rows:
-        embed_text = _build_embed_text(row)
-
-        vector: list[float] | None = None
-        model_name: str | None = None
-
-        if embedder is not None:
-            try:
-                vector = await embedder(embed_text)
-                model_name = _EMBEDDING_MODEL
-                embeddings_written += 1
-            except Exception as exc:  # noqa: BLE001
-                logger.warning("embed failed for object %s: %s", row["id"], exc, exc_info=True)
-
-        # Update embedding + content_tsv
+    for row, embed_text, vector in zip(rows, embed_texts, vectors, strict=True):
+        if vector is not None:
+            embeddings_written += 1
         await _update_object(
             object_id=row["id"],
             embed_vector=vector,
-            model_name=model_name,
+            model_name=embedder.model if vector is not None else None,
             embed_text=embed_text,
             tenant_id=tenant_id,
             session_factory=session_factory,
         )
 
     logger.info(
-        "stage=embed snapshot_id=%s objects=%d embeddings_written=%d",
+        "stage=embed snapshot_id=%s objects=%d embeddings_written=%d model=%s",
         snapshot_id,
         len(rows),
         embeddings_written,
+        embedder.model,
     )
-    return {"embeddings_written": embeddings_written, "objects_processed": len(rows)}
+    return {
+        "embeddings_written": embeddings_written,
+        "objects_processed": len(rows),
+        "model": embedder.model,
+    }
 
 
 def _build_embed_text(row: dict) -> str:
@@ -104,30 +140,6 @@ def _build_embed_text(row: dict) -> str:
             if flat:
                 parts.append("Synonyms: " + ", ".join(str(s) for s in flat))
     return "\n".join(p for p in parts if p)
-
-
-def _build_embedder(api_key: str):
-    """Return an async callable (text → list[float]) or None."""
-    if not api_key:
-        logger.info("OPENAI_API_KEY not set — embedding step skipped (NULL)")
-        return None
-
-    async def _embed(text: str) -> list[float]:
-        try:
-            from openai import AsyncOpenAI  # type: ignore[import]
-        except ImportError:
-            logger.warning("openai package not installed — skipping embedding")
-            raise
-
-        client = AsyncOpenAI(api_key=api_key)
-        resp = await client.embeddings.create(
-            model=_EMBEDDING_MODEL,
-            input=text,
-            dimensions=_EMBEDDING_DIMS,
-        )
-        return resp.data[0].embedding
-
-    return _embed
 
 
 async def _update_object(

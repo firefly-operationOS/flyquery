@@ -40,7 +40,7 @@ from flyquery.core.services.query.conversation_service import ConversationServic
 from flyquery.core.services.query.query_repository import QueryRepository
 from flyquery.core.services.query.query_service import QueryService
 from flyquery.core.services.query.result_uploader import ResultUploader
-from flyquery.core.services.retrieval.embedder import OpenAiEmbedder
+from flyquery.core.services.retrieval.embedder import Embedder
 from flyquery.core.services.retrieval.hybrid_retriever import HybridRetriever
 from flyquery.core.services.retrieval.reranker import build_reranker
 from flyquery.core.services.retrieval.search_index import SearchIndex
@@ -101,7 +101,7 @@ class AgentQueryController:
         query_repository: QueryRepository,
         conversation_service: ConversationService,
         examples_service: ExamplesService,
-        embedder: OpenAiEmbedder,
+        embedder: Embedder,
         agent_token_service: AgentTokenService,
     ) -> None:
         self._settings = settings

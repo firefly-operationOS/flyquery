@@ -13,7 +13,7 @@ from flyquery.core.services.auth.agent_token_service import (
     _RateLimiter,
 )
 from flyquery.core.services.auth.redis_rate_limiter import RedisRateLimiter
-from flyquery.core.services.retrieval.embedder import OpenAiEmbedder
+from flyquery.core.services.retrieval.embedder import Embedder, build_embedder
 from flyquery.core.services.retrieval.reranker import NoopReranker, build_reranker
 from flyquery.core.services.storage.object_store import ObjectStore
 from flyquery.core.services.storage.object_store_factory import build_object_store
@@ -99,13 +99,15 @@ class FlyqueryConfiguration:
     # ------------------------------------------------------------------
 
     @bean
-    def openai_embedder(self, settings: FlyquerySettings) -> OpenAiEmbedder:
-        """OpenAI text-embedding-3-small wrapper.
+    def embedder(self, settings: FlyquerySettings) -> Embedder:
+        """Provider-agnostic embedder via fireflyframework-agentic.
 
-        Returns None from all embed methods when OPENAI_API_KEY is absent.
+        Reads ``settings.embedding_provider`` (default ``ollama``) and
+        builds the matching adapter. Falls back to a ``NullEmbedder``
+        when the provider is unavailable; retrieval gracefully
+        degrades to BM25 over ``content_tsv``.
         """
-        model = settings.embedding_model.replace("openai:", "")
-        return OpenAiEmbedder(model=model, dim=settings.embedding_dimensions)
+        return build_embedder(settings)
 
     @bean
     def reranker(self, settings: FlyquerySettings) -> NoopReranker:
