@@ -105,3 +105,25 @@ class WorkspaceRepository:
                 ),
                 {"id": workspace_id},
             )
+
+    async def increment_storage(self, workspace_id: uuid.UUID, delta_bytes: int) -> int:
+        """Atomically add *delta_bytes* to storage_used_bytes; returns new total.
+
+        Negative values are used on deletion to reclaim quota.
+        The column is clamped to 0 to guard against underflow from
+        concurrent deletes.
+        """
+        async with self._factory() as s, s.begin():
+            result = await s.execute(
+                sa.text(
+                    """
+                    UPDATE flyquery_workspaces
+                    SET storage_used_bytes = GREATEST(0, storage_used_bytes + :delta),
+                        updated_at = now()
+                    WHERE id = :id
+                    RETURNING storage_used_bytes
+                    """
+                ),
+                {"id": workspace_id, "delta": delta_bytes},
+            )
+            return result.scalar_one()

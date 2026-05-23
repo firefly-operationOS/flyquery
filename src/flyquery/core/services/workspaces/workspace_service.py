@@ -20,6 +20,7 @@ class _Repo(Protocol):
     async def update(self, workspace_id: uuid.UUID, **fields: Any) -> dict[str, Any]: ...
     async def archive(self, workspace_id: uuid.UUID) -> None: ...
     async def mark_purging(self, workspace_id: uuid.UUID) -> None: ...
+    async def increment_storage(self, workspace_id: uuid.UUID, delta_bytes: int) -> int: ...
 
 
 @service_bean
@@ -52,6 +53,13 @@ class WorkspaceService:
 
     async def archive(self, workspace_id: uuid.UUID) -> None:
         await self._repo.archive(workspace_id)
+
+    async def track_storage(self, workspace_id: uuid.UUID, delta_bytes: int) -> int:
+        """Atomically update storage_used_bytes by *delta_bytes*; returns new total.
+
+        Use positive delta on upload, negative on deletion.
+        """
+        return await self._repo.increment_storage(workspace_id, delta_bytes)
 
     async def purge(self, workspace_id: uuid.UUID, object_store: ObjectStore, tenant_id: str) -> None:
         # 1. Archive in DB (sets status=PURGING → tombstone for 30 days)
