@@ -45,6 +45,13 @@ dependencies = [
 
     # Logging.
     "structlog>=25.5.0",
+
+    # Prompt engine -- YAML files under ``flyquery/resources/prompts``
+    # rendered through Jinja2 (byte-equivalent pattern to flycanon +
+    # flyradar). Operators tune agent instructions and user-prompt
+    # templates without a Python redeploy.
+    "PyYAML>=6.0",
+    "jinja2>=3.1",
 ]
 
 [project.scripts]

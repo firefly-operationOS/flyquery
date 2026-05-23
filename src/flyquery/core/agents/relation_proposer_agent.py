@@ -29,24 +29,18 @@ class ProposedRelations(BaseModel):
     items: list[ProposedRelation]
 
 
-_INSTRUCTIONS = (
-    "You receive a list of tables in a single dataset, each with column names, "
-    "descriptions, samples and approximate cardinality. Identify cross-table "
-    "join candidates that are NOT exact name matches (the heuristic detector "
-    "already covers those). Examples: orders.email <-> customers.email "
-    "(non-PK match); shipments.tracking_no <-> tracking_events.tracking_id "
-    "(naming-mismatch but semantically equivalent). Output up to N proposals "
-    "per table-pair with confidence in [0,1] and a brief reason. Never invent "
-    "columns; only refer to ones actually present in the input."
-)
-
-
 def build_relation_proposer_agent(settings):
-    """Build a RelationProposerAgent for stage 6b."""
+    """Build a RelationProposerAgent for stage 6b.
+
+    Instructions loaded from ``resources/prompts/relation_proposer.yaml``.
+    """
+    from flyquery.core.agents.prompt_loader import load_prompt
+
+    prompt = load_prompt("relation_proposer")
     return build_agent(
         name="flyquery-relation-proposer",
         model=settings.relation_proposer_model,
         output_type=ProposedRelations,
-        instructions=_INSTRUCTIONS,
+        instructions=prompt.instructions,
         settings=settings,
     )

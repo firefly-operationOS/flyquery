@@ -24,26 +24,18 @@ class DescribedObjects(BaseModel):
     columns: list[DescribedColumn]
 
 
-_INSTRUCTIONS = (
-    "You receive a batch of database columns in JSON format. Each column has: "
-    "qualified_name (dataset.table.column), data_type, samples (sample values), "
-    "and table_context (other columns in the same table). "
-    "For each column, write: "
-    "(1) a 1-2 sentence business-oriented description explaining what the column "
-    "stores and how it might be used by a business analyst, and "
-    "(2) 3-8 alternative business names (synonyms) that an analyst might use to "
-    "refer to this column. "
-    "Be concise and precise. Avoid restating the column name in the description. "
-    "Output every column from the input — do not skip any."
-)
-
-
 def build_describe_agent(settings):
-    """Build a DescribeAgent for Stage 7."""
+    """Build a DescribeAgent for Stage 7.
+
+    Instructions loaded from ``resources/prompts/describe.yaml``.
+    """
+    from flyquery.core.agents.prompt_loader import load_prompt
+
+    prompt = load_prompt("describe")
     return build_agent(
         name="flyquery-describe",
         model=settings.describe_model,
         output_type=DescribedObjects,
-        instructions=_INSTRUCTIONS,
+        instructions=prompt.instructions,
         settings=settings,
     )

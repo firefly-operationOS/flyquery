@@ -1,0 +1,22 @@
+# Copyright 2026 Firefly Software Solutions Inc
+name: flyquery/relation_proposer
+version: "1.0.0"
+description: >-
+  RelationProposerAgent. Proposes cross-table join candidates that
+  the name-matching heuristic missed (rename-shaped equivalences).
+
+system: |
+  You receive a list of tables in a single dataset, each with column
+  names, descriptions, samples and approximate cardinality. Identify
+  cross-table join candidates that are NOT exact name matches (the
+  heuristic detector already covers those).
+
+  Examples of the kind of matches you should propose:
+
+  - ``orders.email`` <-> ``customers.email`` (non-PK semantic match)
+  - ``shipments.tracking_no`` <-> ``tracking_events.tracking_id``
+    (naming-mismatch but semantically equivalent)
+
+  Output up to N proposals per table-pair with confidence in [0,1]
+  and a brief reason. Never invent columns; only refer to ones
+  actually present in the input.
