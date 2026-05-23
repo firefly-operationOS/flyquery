@@ -19,6 +19,7 @@ envelope: ``{items, total, limit, offset, has_more}``.
 from __future__ import annotations
 
 import uuid
+from typing import Optional
 
 from pyfly.container import rest_controller
 from pyfly.web import (
@@ -71,9 +72,9 @@ class WorkspacesController:
     async def list_workspaces(
         self,
         http_request: Request,
-        q: QueryParam[str | None] = None,
-        slug: QueryParam[str | None] = None,
-        status: QueryParam[str | None] = None,
+        q: QueryParam[Optional[str]] = None,
+        slug: QueryParam[Optional[str]] = None,
+        status: QueryParam[Optional[str]] = None,
         limit: QueryParam[int] = 100,
         offset: QueryParam[int] = 0,
     ) -> dict:

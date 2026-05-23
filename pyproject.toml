@@ -141,6 +141,12 @@ select = ["E", "F", "I", "N", "UP", "B", "SIM"]
 "src/flyquery/core/services/**" = ["N818", "E501"]
 "src/flyquery/core/agents/**" = ["F401"]
 "src/flyquery/web/conventions/**" = ["N818"]
+# Pyfly's QueryParam resolver chokes on Python 3.10+ PEP 604 unions
+# (``str | None`` -> ``types.UnionType`` has no ``__name__``) -- we
+# pin ``typing.Optional`` here so the resolver gets ``Union[X, None]``
+# which it knows how to introspect. UP007 + UP045 want to rewrite to
+# the modern syntax; turn them off for the controller surface.
+"src/flyquery/web/controllers/**" = ["UP007", "UP045"]
 # Tests: tolerate long lines, blind ``Exception`` in validation-error
 # tests, useless-attribute-access probes (assertion helpers), the
 # openapi-generated mixedCase test names, and per-test unused imports.

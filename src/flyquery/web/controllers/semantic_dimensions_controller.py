@@ -16,6 +16,7 @@ Path conventions:
 from __future__ import annotations
 
 import uuid
+from typing import Optional
 
 from pyfly.container import rest_controller
 from pyfly.web import (
@@ -66,7 +67,7 @@ class SemanticDimensionsController:
     async def list_dimensions(
         self,
         http_request: Request,
-        dataset_id: QueryParam[uuid.UUID | None] = None,
+        dataset_id: QueryParam[Optional[uuid.UUID]] = None,
     ) -> dict:
         """List all semantic dimensions for the caller's workspace."""
         ctx = tenant_context_from_request(http_request)

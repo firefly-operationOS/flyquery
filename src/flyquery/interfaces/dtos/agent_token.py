@@ -57,8 +57,7 @@ class AgentTokenMintRequest(BaseModel):
 
             raise PydanticCustomError(
                 "invalid_scope",
-                "unknown scope(s) {unknown}. See "
-                "``flyquery.core.services.auth.scope_catalog.ALL_SCOPES``.",
+                "unknown scope(s) {unknown}. See ``flyquery.core.services.auth.scope_catalog.ALL_SCOPES``.",
                 {"unknown": list(unknown)},
             )
         return value

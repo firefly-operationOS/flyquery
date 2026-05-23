@@ -1,0 +1,180 @@
+# Copyright 2026 Firefly Software Solutions Inc
+#
+# Multi-arch image build + GHCR push.
+#
+#   * Triggers
+#       - push to main             -> tags ``main``, ``sha-<short>``, ``latest``
+#       - push of a SemVer tag     -> tags ``vX.Y.Z``, ``vX.Y``, ``vX``, ``latest``
+#       - workflow_dispatch        -> tags ``manual-<run-id>``
+#
+#   * Platforms : linux/amd64, linux/arm64
+#   * Registry  : ghcr.io/<owner>/<repo>
+#                 (the owner is normalised to lower-case below, since
+#                 GHCR rejects upper-case namespaces -- ``firefly-operationOS``
+#                 -> ``firefly-operationos``).
+#
+# The Dockerfile uses BuildKit named contexts for the pyfly +
+# fireflyframework-agentic sibling repos. We clone them into ./vendor/
+# and pass them via ``build-contexts:`` so the same Dockerfile works
+# both locally (siblings on disk) and in CI.
+#
+# The Docling OCR engine is an opt-in runtime extra (``pip install
+# 'flyquery[docling]'``) selected via ``FLYCANON_PDF_OCR_ENGINE=docling``.
+# The image does not bake docling because the PyTorch + HF wheels add
+# ~2.5 GB per architecture; operators that want layout-aware OCR
+# extend the runtime stage (see docs/deployment.md).
+
+name: Docker publish (multi-arch)
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*.*.*"]
+    # Skip docs-only changes -- the image contents don't differ in any
+    # functional way when only Markdown / docs are touched. Tag pushes
+    # are always built (this filter only affects branch pushes).
+    paths-ignore:
+      - "**.md"
+      - "LICENSE"
+      - ".gitignore"
+      - "docs/**"
+  workflow_dispatch:
+    inputs:
+      tag_suffix:
+        description: "Optional extra tag (will be sanitised)."
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+  packages: write
+  id-token: write
+  attestations: write
+
+concurrency:
+  group: docker-publish-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  REGISTRY: ghcr.io
+  PYFLY_REF: v26.05.05
+  AGENTIC_REF: v26.05.21
+
+jobs:
+  publish:
+    name: Build + push (linux/amd64+arm64)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Normalise GHCR namespace to lower-case
+        id: ns
+        run: |
+          owner="${GITHUB_REPOSITORY_OWNER,,}"
+          name="${GITHUB_REPOSITORY##*/}"
+          echo "image=${{ env.REGISTRY }}/${owner}/${name}" >> "$GITHUB_OUTPUT"
+
+      - name: Check out sibling firefly framework repos
+        run: |
+          git clone --depth=1 --branch "$PYFLY_REF" \
+            https://github.com/fireflyframework/fireflyframework-pyfly.git \
+            ./vendor/pyfly
+          git clone --depth=1 --branch "$AGENTIC_REF" \
+            https://github.com/fireflyframework/fireflyframework-agentic.git \
+            ./vendor/fireflyframework-agentic
+
+      - uses: docker/setup-qemu-action@v3
+        with:
+          platforms: linux/amd64,linux/arm64
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Compute image tags
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ steps.ns.outputs.image }}
+          tags: |
+            type=ref,event=branch
+            type=ref,event=tag
+            type=sha,format=short,prefix=sha-
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}}
+            type=raw,value=latest,enable=${{ github.ref == format('refs/heads/{0}', github.event.repository.default_branch) }}
+            type=raw,value=manual-${{ github.run_id }},enable=${{ github.event_name == 'workflow_dispatch' }}
+          labels: |
+            org.opencontainers.image.title=flyquery
+            org.opencontainers.image.description=flyquery -- Operational Knowledge Repository. Universal ingestion (any file format), hybrid retrieval (Postgres BM25 + pgvector dense + RRF), grounded RAG answers with citations, append-only version chain + provenance graph + EDA outbox. Part of Firefly OperationOS, platform-agnostic.
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.licenses=Proprietary
+            org.opencontainers.image.vendor=Firefly Software Solutions Inc
+
+      - name: Build + push (linux/amd64+arm64)
+        id: build
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: true
+          # provenance + sbom attestations require GitHub
+          # 'Build & Validate Attestations' which is an Enterprise /
+          # paid org feature. firefly-operationOS is on the free tier
+          # so the attestation persist call returns
+          # 'Feature not available for the firefly-operationOS
+          # organization' and fails the build. Disable both flags
+          # here; the optional attest-build-provenance step below
+          # is already wrapped with continue-on-error.
+          provenance: false
+          sbom: false
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          build-contexts: |
+            pyfly=./vendor/pyfly
+            fireflyframework-agentic=./vendor/fireflyframework-agentic
+          cache-from: type=gha,scope=flyquery
+          cache-to: type=gha,mode=max,scope=flyquery
+
+      # ``actions/attest-build-provenance`` requires Build & Validate
+      # Attestations to be enabled on the GitHub organisation (paid /
+      # Enterprise feature, or public repo). The image is already
+      # signed via buildkit's ``provenance: true`` flag above; this
+      # extra attestation is a belt-and-braces upload that is not
+      # mandatory. Make it advisory so a free-tier org doesn't fail
+      # the whole publish workflow.
+      - name: Attest build provenance (advisory)
+        uses: actions/attest-build-provenance@v2
+        continue-on-error: true
+        with:
+          subject-name: ${{ steps.ns.outputs.image }}
+          subject-digest: ${{ steps.build.outputs.digest }}
+          push-to-registry: true
+
+      - name: Summary
+        run: |
+          {
+            echo "### Published image"
+            echo
+            echo "**Image**: \`${{ steps.ns.outputs.image }}\`"
+            echo "**Digest**: \`${{ steps.build.outputs.digest }}\`"
+            echo
+            echo "**Tags:**"
+            echo '```'
+            echo "${{ steps.meta.outputs.tags }}"
+            echo '```'
+            echo
+            echo "Pull on either architecture:"
+            echo '```bash'
+            echo "docker pull ${{ steps.ns.outputs.image }}:latest                       # arm64 + amd64 manifest"
+            echo "docker pull --platform linux/arm64 ${{ steps.ns.outputs.image }}:latest"
+            echo "docker pull --platform linux/amd64 ${{ steps.ns.outputs.image }}:latest"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"

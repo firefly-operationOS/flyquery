@@ -131,6 +131,65 @@ app.openapi = _wrapped_openapi  # type: ignore[method-assign]
 # the service layer keeps its HTTP status + RFC 7807 code instead of
 # being flattened to 400 COMMAND_PROCESSING_ERROR.
 register_exception_handlers(app)
+
+
+# Pyfly raises ``pyfly.kernel.exceptions.ValidationException`` when a
+# request body fails Pydantic validation (its resolver wraps the
+# underlying ``ValidationError`` before returning to the controller).
+# The conventions handler table (lock-step with canon) registers
+# ``RequestValidationError`` (FastAPI's wrapper) but NOT pyfly's
+# ``ValidationException`` -- and ``ASGITransport``-based tests don't
+# get the implicit uvicorn-only catch-all, so the exception bubbles up
+# as a test failure. Add a flyquery-local handler that mirrors the
+# 422 RFC 7807 shape used by the rest of the validation surface.
+from fastapi.responses import JSONResponse as _JSONResponse  # noqa: E402
+from pyfly.kernel.exceptions import (  # noqa: E402
+    ValidationException as _PyflyValidationException,
+)
+from starlette.requests import Request as _StarletteRequest  # noqa: E402
+
+
+def _on_pyfly_validation(_request: _StarletteRequest, exc: Exception) -> _JSONResponse:
+    """Convert pyfly's ``ValidationException`` to the RFC 7807 envelope."""
+    assert isinstance(exc, _PyflyValidationException)
+    # Pyfly stashes the Pydantic per-field errors in the wrapped cause
+    # when available; surface them at ``error.context.errors`` so the
+    # invalid_scope test + any DTO field validator round-trips its
+    # ``type`` code through the envelope.
+    cause = getattr(exc, "__cause__", None) or getattr(exc, "cause", None)
+    field_errors: list[dict[str, Any]] = []
+    if hasattr(cause, "errors") and callable(cause.errors):
+        try:
+            for err in cause.errors():
+                field_errors.append(
+                    {
+                        "type": err.get("type"),
+                        "loc": [str(x) for x in err.get("loc", [])],
+                        "msg": err.get("msg"),
+                        "input": err.get("input"),
+                        "ctx": {
+                            k: list(v) if isinstance(v, list) else v
+                            for k, v in (err.get("ctx") or {}).items()
+                        },
+                    }
+                )
+        except Exception:  # noqa: BLE001
+            pass
+    return _JSONResponse(
+        {
+            "error": {
+                "message": str(exc),
+                "code": "VALIDATION_ERROR",
+                "status": 422,
+                "path": str(_request.url.path),
+                "context": {"errors": field_errors},
+            }
+        },
+        status_code=422,
+    )
+
+
+app.add_exception_handler(_PyflyValidationException, _on_pyfly_validation)
 # Bind the request-scoped TenantContext from headers BEFORE any route
 # (or DB session) runs. Pyfly's @rest_controller resolver bypasses
 # FastAPI Depends, so require_tenant_context never fires for pyfly

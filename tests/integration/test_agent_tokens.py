@@ -72,11 +72,7 @@ async def test_mint_token_and_use_on_agent_route() -> None:
         assert r.status_code in (400, 422), r.text
         body = r.json()
         # RFC 7807 nests the envelope under ``error``; accept both shapes.
-        code = (
-            body.get("code")
-            or body.get("error", {}).get("code", "").lower()
-            or ""
-        )
+        code = body.get("code") or body.get("error", {}).get("code", "").lower() or ""
         assert code.lower() in ("invalid_scope", "validation_error"), body
         # Per-field error code lives inside the validation context.
         errors = body.get("error", {}).get("context", {}).get("errors", [])
