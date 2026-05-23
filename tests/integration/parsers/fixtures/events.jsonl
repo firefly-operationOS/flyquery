@@ -1,0 +1,10 @@
+{"event_id": 1, "user_id": 42, "action": "login", "ts": "2026-01-15T08:00:00Z", "ip": "10.0.0.1"}
+{"event_id": 2, "user_id": 42, "action": "view_product", "ts": "2026-01-15T08:01:00Z", "ip": "10.0.0.1"}
+{"event_id": 3, "user_id": 7, "action": "login", "ts": "2026-01-15T08:02:00Z", "ip": "10.0.0.2"}
+{"event_id": 4, "user_id": 7, "action": "add_to_cart", "ts": "2026-01-15T08:03:00Z", "ip": "10.0.0.2"}
+{"event_id": 5, "user_id": 42, "action": "purchase", "ts": "2026-01-15T08:05:00Z", "ip": "10.0.0.1"}
+{"event_id": 6, "user_id": 13, "action": "login", "ts": "2026-01-15T08:10:00Z", "ip": "10.0.0.3"}
+{"event_id": 7, "user_id": 13, "action": "view_product", "ts": "2026-01-15T08:11:00Z", "ip": "10.0.0.3"}
+{"event_id": 8, "user_id": 7, "action": "purchase", "ts": "2026-01-15T08:15:00Z", "ip": "10.0.0.2"}
+{"event_id": 9, "user_id": 42, "action": "logout", "ts": "2026-01-15T08:20:00Z", "ip": "10.0.0.1"}
+{"event_id": 10, "user_id": 13, "action": "logout", "ts": "2026-01-15T08:25:00Z", "ip": "10.0.0.3"}

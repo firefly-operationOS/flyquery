@@ -1,0 +1,11 @@
+{
+  "orders": [
+    {"order_id": 1, "customer_id": 42, "total": 9.95, "ordered_at": "2026-01-15"},
+    {"order_id": 2, "customer_id": 42, "total": 12.50, "ordered_at": "2026-01-16"},
+    {"order_id": 3, "customer_id": 7, "total": 7.00, "ordered_at": "2026-01-17"}
+  ],
+  "customers": [
+    {"customer_id": 42, "name": "Alice Smith", "email": "alice@example.com", "region": "EMEA"},
+    {"customer_id": 7, "name": "Bob Jones", "email": "bob@example.com", "region": "APAC"}
+  ]
+}
