@@ -6,9 +6,12 @@ from __future__ import annotations
 import os
 import subprocess
 from collections.abc import AsyncIterator, Iterator
+from typing import Any
 
 import pytest
 import pytest_asyncio
+from testcontainers.core.container import DockerContainer
+from testcontainers.core.waiting_utils import wait_for_logs
 from testcontainers.minio import MinioContainer
 from testcontainers.postgres import PostgresContainer
 from testcontainers.redis import RedisContainer
@@ -34,6 +37,84 @@ def redis_container() -> Iterator[RedisContainer]:
 def minio_container() -> Iterator[MinioContainer]:
     with MinioContainer() as m:
         yield m
+
+
+# ---------------------------------------------------------------------------
+# fake-gcs-server (Task 31 / GCS conformance)
+# ---------------------------------------------------------------------------
+
+class FakeGcsContainer(DockerContainer):
+    """Thin wrapper around fsouza/fake-gcs-server for integration tests."""
+
+    GCS_PORT = 4443
+
+    def __init__(self) -> None:
+        super().__init__("fsouza/fake-gcs-server:latest")
+        self.with_command("-scheme http -port 4443")
+        self.with_exposed_ports(self.GCS_PORT)
+
+    def get_url(self) -> str:
+        host = self.get_container_host_ip()
+        port = self.get_exposed_port(self.GCS_PORT)
+        return f"http://{host}:{port}"
+
+
+@pytest.fixture(scope="session")
+def fake_gcs_container() -> Iterator[Any]:
+    """Session-scoped fake-gcs-server testcontainer.
+
+    If Docker is unavailable or the image cannot be pulled the fixture
+    yields ``None`` and GCS tests are skipped via the ``store`` fixture
+    below.
+    """
+    try:
+        with FakeGcsContainer() as c:
+            wait_for_logs(c, "server started", timeout=30)
+            yield c
+    except Exception:  # pragma: no cover
+        yield None
+
+
+# ---------------------------------------------------------------------------
+# Azurite (Task 32 / Azure Blob conformance)
+# ---------------------------------------------------------------------------
+
+class AzuriteContainer(DockerContainer):
+    """Thin wrapper around mcr.microsoft.com/azure-storage/azurite."""
+
+    BLOB_PORT = 10000
+    # Well-known Azurite dev account + key
+    ACCOUNT_NAME = "devstoreaccount1"
+    ACCOUNT_KEY = "Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tiqIFBg=="
+
+    def __init__(self) -> None:
+        super().__init__("mcr.microsoft.com/azure-storage/azurite:latest")
+        self.with_command("azurite-blob --blobHost 0.0.0.0 --blobPort 10000")
+        self.with_exposed_ports(self.BLOB_PORT)
+
+    def get_connection_string(self) -> str:
+        host = self.get_container_host_ip()
+        port = self.get_exposed_port(self.BLOB_PORT)
+        return (
+            f"DefaultEndpointsProtocol=http;"
+            f"AccountName={self.ACCOUNT_NAME};"
+            f"AccountKey={self.ACCOUNT_KEY};"
+            f"BlobEndpoint=http://{host}:{port}/{self.ACCOUNT_NAME};"
+        )
+
+
+@pytest.fixture(scope="session")
+def azurite_container() -> Iterator[Any]:
+    """Session-scoped Azurite testcontainer.
+
+    Yields ``None`` when Docker is unavailable so Azure tests can skip.
+    """
+    try:
+        with AzuriteContainer() as c:
+            wait_for_logs(c, "Azurite Blob service is successfully listening", timeout=30)
+            yield c
+    except Exception:  # pragma: no cover
+        yield None
 
 
 def _build_urls(postgres_container: PostgresContainer) -> tuple[str, str, str]:

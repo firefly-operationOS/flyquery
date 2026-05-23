@@ -11,8 +11,8 @@ def _local_factory(tmp: Path):
     return LocalFsObjectStore(base=str(tmp), presign_ttl_s=60)
 
 
-@pytest.fixture(params=["local", "s3"])
-def store(request, tmp_path, minio_container):
+@pytest.fixture(params=["local", "s3", "gcs", "azure"])
+def store(request, tmp_path, minio_container, fake_gcs_container, azurite_container):
     if request.param == "local":
         return _local_factory(tmp_path)
     if request.param == "s3":
@@ -23,6 +23,26 @@ def store(request, tmp_path, minio_container):
             endpoint_url=f"http://{cfg['endpoint']}",
             access_key=minio_container.access_key,
             secret_key=minio_container.secret_key,
+            presign_ttl_s=60,
+        )
+    if request.param == "gcs":
+        if fake_gcs_container is None:
+            pytest.skip("fake-gcs-server container unavailable")
+        pytest.importorskip("gcloud.aio.storage", reason="[gcs] extra not installed")
+        from flyquery.core.services.storage.adapters.gcs import GcsObjectStore
+        return GcsObjectStore(
+            base="gs://flyquery-test",
+            endpoint_url=fake_gcs_container.get_url(),
+            presign_ttl_s=60,
+        )
+    if request.param == "azure":
+        if azurite_container is None:
+            pytest.skip("Azurite container unavailable")
+        pytest.importorskip("azure.storage.blob", reason="[azure] extra not installed")
+        from flyquery.core.services.storage.adapters.azure_blob import AzureBlobObjectStore
+        return AzureBlobObjectStore(
+            base="azure://flyquery-test",
+            connection_string=azurite_container.get_connection_string(),
             presign_ttl_s=60,
         )
     pytest.skip(f"no fixture for {request.param}")
@@ -96,10 +116,11 @@ async def test_rejects_path_traversal(store) -> None:
 @pytest.mark.asyncio
 async def test_kms_round_trip_when_supported(store) -> None:
     # LocalFs ignores kms_key_uri (no KMS in dev); just confirm it's
-    # accepted + reflected in ObjectMeta. S3 against MinIO would
-    # require KMS configuration — skip there.
-    if store.__class__.__name__ == "S3ObjectStore":
-        pytest.skip("MinIO KMS support varies by version")
+    # accepted + reflected in ObjectMeta.
+    # S3 against MinIO, GCS against fake-gcs-server, and Azure against
+    # Azurite do not support KMS configuration -- skip there.
+    if store.__class__.__name__ in ("S3ObjectStore", "GcsObjectStore", "AzureBlobObjectStore"):
+        pytest.skip(f"{store.__class__.__name__} KMS requires real cloud provider setup")
     meta = await store.put(
         f"unit/{uuid.uuid4()}/kms.bin", b"k", content_type="text/plain",
         kms_key_uri="arn:aws:kms:us-east-1:000:key/abc",

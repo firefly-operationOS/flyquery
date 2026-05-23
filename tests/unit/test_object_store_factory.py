@@ -14,3 +14,17 @@ def test_factory_raises_on_s3_without_extra(monkeypatch) -> None:
     monkeypatch.setattr("flyquery.core.services.storage.object_store_factory._HAS_S3", False)
     with pytest.raises(RuntimeError, match="extra"):
         build_object_store(s)
+
+
+def test_factory_raises_on_gcs_without_extra(monkeypatch) -> None:
+    s = FlyquerySettings(object_store="gcs", object_store_base="gs://bucket")
+    monkeypatch.setattr("flyquery.core.services.storage.object_store_factory._HAS_GCS", False)
+    with pytest.raises(RuntimeError, match="gcs"):
+        build_object_store(s)
+
+
+def test_factory_raises_on_azure_without_extra(monkeypatch) -> None:
+    s = FlyquerySettings(object_store="azure", object_store_base="azure://container")
+    monkeypatch.setattr("flyquery.core.services.storage.object_store_factory._HAS_AZURE", False)
+    with pytest.raises(RuntimeError, match="azure"):
+        build_object_store(s)
