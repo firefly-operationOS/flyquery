@@ -1,7 +1,9 @@
 # Copyright 2026 Firefly Software Solutions Inc
 import gzip
-import pytest
 from pathlib import Path
+
+import pytest
+
 from flyquery.core.services.ingestion.compression import decompress_to_temp
 
 FIX = Path(__file__).parent / "fixtures"
@@ -34,8 +36,8 @@ async def test_zip_rejects_multifile(tmp_path):
 @pytest.mark.asyncio
 async def test_gz_fixture_decompresses_to_csv(tmp_path):
     """Verify orders.csv.gz decompresses and is parseable by CsvReader."""
-    from flyquery.core.services.ingestion.readers.csv_reader import CsvReader
     from flyquery.core.services.ingestion.reader import TableExtractionRules
+    from flyquery.core.services.ingestion.readers.csv_reader import CsvReader
 
     out = await decompress_to_temp(str(FIX / "orders.csv.gz"), compression="gz")
     r = CsvReader()

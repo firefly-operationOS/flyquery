@@ -20,7 +20,7 @@ from flyquery.core.agents.builder import build_agent
 class RenameProposal(BaseModel):
     removed_column: str
     new_column: str
-    confidence: float   # 0..1
+    confidence: float  # 0..1
     rationale: str
 
 

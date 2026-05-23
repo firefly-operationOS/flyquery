@@ -13,13 +13,13 @@ from __future__ import annotations
 
 import uuid
 
+from pydantic import BaseModel, ConfigDict, Field
 from pyfly.container import rest_controller
 from pyfly.web import Body, Valid, post_mapping, request_mapping
 from starlette.requests import Request
 
 from flyquery.core.services.derived.derived_table_service import DerivedTableService
 from flyquery.web.conventions import tenant_context_from_request
-from pydantic import BaseModel, ConfigDict, Field
 
 
 class DeriveTableRequest(BaseModel):

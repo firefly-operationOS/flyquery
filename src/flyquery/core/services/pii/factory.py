@@ -27,16 +27,17 @@ def build_pii_scanner(name: str | None = None):
 
     if key == "disabled":
         from flyquery.core.services.pii.adapters.disabled_scanner import DisabledPiiScanner
+
         return DisabledPiiScanner()
 
     if key == "presidio":
         from flyquery.core.services.pii.adapters.presidio_scanner import PresidioPiiScanner
+
         return PresidioPiiScanner()  # ImportError raised here if extra missing
 
     if key != "regex":
-        logger.warning(
-            "unknown FLYQUERY_PII_SCANNER=%r — falling back to regex scanner", name
-        )
+        logger.warning("unknown FLYQUERY_PII_SCANNER=%r — falling back to regex scanner", name)
 
     from flyquery.core.services.pii.adapters.regex_scanner import RegexPiiScanner
+
     return RegexPiiScanner()

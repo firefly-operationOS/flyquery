@@ -51,9 +51,7 @@ class WorkspaceRepository:
     async def list_by_tenant(self, tenant_id: str) -> list[dict[str, Any]]:
         async with self._factory() as s:
             result = await s.execute(
-                sa.text(
-                    "SELECT * FROM flyquery_workspaces WHERE tenant_id = :tenant_id ORDER BY created_at"
-                ),
+                sa.text("SELECT * FROM flyquery_workspaces WHERE tenant_id = :tenant_id ORDER BY created_at"),
                 {"tenant_id": tenant_id},
             )
             return [dict(row) for row in result.mappings().all()]
@@ -75,14 +73,12 @@ class WorkspaceRepository:
         if "metadata_json" in fields and isinstance(fields["metadata_json"], dict):
             fields = {**fields, "metadata_json": json.dumps(fields["metadata_json"])}
         sets = ", ".join(
-            f"{k} = CAST(:{k} AS jsonb)" if k == "metadata_json" else f"{k} = :{k}"
-            for k in fields
+            f"{k} = CAST(:{k} AS jsonb)" if k == "metadata_json" else f"{k} = :{k}" for k in fields
         )
         async with self._factory() as s, s.begin():
             result = await s.execute(
                 sa.text(
-                    f"UPDATE flyquery_workspaces SET {sets}, updated_at = now() "
-                    "WHERE id = :id RETURNING *"
+                    f"UPDATE flyquery_workspaces SET {sets}, updated_at = now() WHERE id = :id RETURNING *"
                 ),
                 {"id": workspace_id, **fields},
             )
@@ -91,18 +87,14 @@ class WorkspaceRepository:
     async def archive(self, workspace_id: uuid.UUID) -> None:
         async with self._factory() as s, s.begin():
             await s.execute(
-                sa.text(
-                    "UPDATE flyquery_workspaces SET status='ARCHIVED', updated_at=now() WHERE id = :id"
-                ),
+                sa.text("UPDATE flyquery_workspaces SET status='ARCHIVED', updated_at=now() WHERE id = :id"),
                 {"id": workspace_id},
             )
 
     async def mark_purging(self, workspace_id: uuid.UUID) -> None:
         async with self._factory() as s, s.begin():
             await s.execute(
-                sa.text(
-                    "UPDATE flyquery_workspaces SET status='PURGING', updated_at=now() WHERE id = :id"
-                ),
+                sa.text("UPDATE flyquery_workspaces SET status='PURGING', updated_at=now() WHERE id = :id"),
                 {"id": workspace_id},
             )
 

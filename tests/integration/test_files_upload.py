@@ -95,6 +95,4 @@ async def test_upload_csv_first_time_creates_file_and_table() -> None:
         assert r.status_code == 200, r.text
         changes = r.json()["items"]
         added = [ch for ch in changes if ch["change"] == "ADDED"]
-        assert any(ch["column_name"] == "status" for ch in added), (
-            f"expected ADDED:status in {changes}"
-        )
+        assert any(ch["column_name"] == "status" for ch in added), f"expected ADDED:status in {changes}"

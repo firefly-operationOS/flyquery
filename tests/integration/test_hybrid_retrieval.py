@@ -82,9 +82,14 @@ async def _seed_table_with_column(
                 """
             ),
             {
-                "t": tenant, "ws": ws_id, "tbl": tbl_id, "snap": snap_id,
-                "qname": col_qname, "hash": "colhash",
-                "tsv_text": tsv_text, "emb": vec,
+                "t": tenant,
+                "ws": ws_id,
+                "tbl": tbl_id,
+                "snap": snap_id,
+                "qname": col_qname,
+                "hash": "colhash",
+                "tsv_text": tsv_text,
+                "emb": vec,
             },
         )
     else:
@@ -102,8 +107,13 @@ async def _seed_table_with_column(
                 """
             ),
             {
-                "t": tenant, "ws": ws_id, "tbl": tbl_id, "snap": snap_id,
-                "qname": col_qname, "hash": "colhash", "tsv_text": tsv_text,
+                "t": tenant,
+                "ws": ws_id,
+                "tbl": tbl_id,
+                "snap": snap_id,
+                "qname": col_qname,
+                "hash": "colhash",
+                "tsv_text": tsv_text,
             },
         )
 

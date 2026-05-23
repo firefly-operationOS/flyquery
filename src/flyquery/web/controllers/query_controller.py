@@ -25,10 +25,10 @@ from starlette.requests import Request
 from starlette.responses import StreamingResponse
 
 from flyquery.config import FlyquerySettings
-from flyquery.core.agents.grounding_agent import build_grounding_agent
-from flyquery.core.agents.generation_agent import build_generation_agent
 from flyquery.core.agents.critic_agent import build_critic_agent
 from flyquery.core.agents.explainer_agent import build_explainer_agent
+from flyquery.core.agents.generation_agent import build_generation_agent
+from flyquery.core.agents.grounding_agent import build_grounding_agent
 from flyquery.core.services.examples.auto_learner import AutoLearner
 from flyquery.core.services.examples.examples_service import ExamplesService
 from flyquery.core.services.execution.ast_classifier import AstClassifier
@@ -61,7 +61,7 @@ _DEFAULT_USER_SCOPES: set[str] = {"flyquery.query:read"}
 
 def _sse_frame(event: str, payload: Any) -> bytes:
     """Format one SSE frame: ``event: <name>\\ndata: <json>\\n\\n``."""
-    return f"event: {event}\ndata: {json.dumps(payload, default=str)}\n\n".encode("utf-8")
+    return f"event: {event}\ndata: {json.dumps(payload, default=str)}\n\n".encode()
 
 
 @rest_controller
@@ -206,13 +206,9 @@ class QueryController:
         ctx = tenant_context_from_request(http_request)
         workspace_id = _parse_workspace_id(ctx.workspace_id)
 
-
-
         async with self._session_factory() as db_session:
             index = SearchIndex(db_session)
-            retriever = HybridRetriever(
-                index=index, embedder=self._embedder, rrf_k=self._settings.rrf_k
-            )
+            retriever = HybridRetriever(index=index, embedder=self._embedder, rrf_k=self._settings.rrf_k)
             reranker = build_reranker(self._settings)
 
             bundle = await retriever.retrieve(
@@ -222,9 +218,7 @@ class QueryController:
                 top_k_schema=self._settings.top_k_schema * 3,
             )
             schema_hits = bundle.get("schema_objects", [])
-            reranked = await reranker.rerank(
-                body.question, schema_hits, top_n=self._settings.top_k_schema
-            )
+            reranked = await reranker.rerank(body.question, schema_hits, top_n=self._settings.top_k_schema)
             bundle["schema_objects"] = reranked
 
             grounding_agent = build_grounding_agent(self._settings)
@@ -239,13 +233,8 @@ class QueryController:
             candidate = gen_out.candidates[0]
 
         clarification: ClarificationFrame | None = None
-        if (
-            grounded.confidence < self._settings.grounding_min_confidence
-            and grounded.missing_info
-        ):
-            clarification = ClarificationFrame(
-                questions=grounded.missing_info, reasons=[]
-            )
+        if grounded.confidence < self._settings.grounding_min_confidence and grounded.missing_info:
+            clarification = ClarificationFrame(questions=grounded.missing_info, reasons=[])
 
         return ExplainResponse(
             sql=candidate.sql,
@@ -280,13 +269,9 @@ class QueryController:
         ctx = tenant_context_from_request(http_request)
         workspace_id = _parse_workspace_id(ctx.workspace_id)
 
-
-
         async with self._session_factory() as db_session:
             index = SearchIndex(db_session)
-            retriever = HybridRetriever(
-                index=index, embedder=self._embedder, rrf_k=self._settings.rrf_k
-            )
+            retriever = HybridRetriever(index=index, embedder=self._embedder, rrf_k=self._settings.rrf_k)
             reranker = build_reranker(self._settings)
 
             bundle = await retriever.retrieve(
@@ -296,9 +281,7 @@ class QueryController:
                 top_k_schema=self._settings.top_k_schema * 3,
             )
             schema_hits = bundle.get("schema_objects", [])
-            reranked = await reranker.rerank(
-                body.question, schema_hits, top_n=self._settings.top_k_schema
-            )
+            reranked = await reranker.rerank(body.question, schema_hits, top_n=self._settings.top_k_schema)
             bundle["schema_objects"] = reranked
 
             grounding_agent = build_grounding_agent(self._settings)
@@ -327,13 +310,8 @@ class QueryController:
             scope_error = str(exc)
 
         clarification: ClarificationFrame | None = None
-        if (
-            grounded.confidence < self._settings.grounding_min_confidence
-            and grounded.missing_info
-        ):
-            clarification = ClarificationFrame(
-                questions=grounded.missing_info, reasons=[]
-            )
+        if grounded.confidence < self._settings.grounding_min_confidence and grounded.missing_info:
+            clarification = ClarificationFrame(questions=grounded.missing_info, reasons=[])
 
         return ValidateResponse(
             sql=chosen_sql,
@@ -393,16 +371,14 @@ class QueryController:
         request: QueryRequest,
     ) -> AsyncIterator[bytes]:
         """Async generator that yields SSE frames for each pipeline stage."""
-        from flyquery.core.services.execution.duckdb_executor import ExecutionResult, ExecutionError
-        import time
+
+        from flyquery.core.services.execution.duckdb_executor import ExecutionError, ExecutionResult
 
         start_ms = _now_ms()
 
         async with self._session_factory() as db_session:
             index = SearchIndex(db_session)
-            retriever = HybridRetriever(
-                index=index, embedder=self._embedder, rrf_k=self._settings.rrf_k
-            )
+            retriever = HybridRetriever(index=index, embedder=self._embedder, rrf_k=self._settings.rrf_k)
             reranker = build_reranker(self._settings)
 
             # Stage 1: retrieve + ground
@@ -413,9 +389,7 @@ class QueryController:
                 top_k_schema=self._settings.top_k_schema * 3,
             )
             schema_hits = bundle.get("schema_objects", [])
-            reranked = await reranker.rerank(
-                request.question, schema_hits, top_n=self._settings.top_k_schema
-            )
+            reranked = await reranker.rerank(request.question, schema_hits, top_n=self._settings.top_k_schema)
             bundle["schema_objects"] = reranked
 
             grounding_agent = build_grounding_agent(self._settings)
@@ -423,27 +397,30 @@ class QueryController:
                 {"question": request.question, "bundle": bundle, "starting_point_sql": None}
             )
 
-            yield _sse_frame("schema_linked", {
-                "semantic_path": grounded.path,
-                "confidence": grounded.confidence,
-                "candidate_table_count": len(grounded.tables),
-                "missing_info": grounded.missing_info,
-                "grounded_summary": {
-                    "path": grounded.path,
+            yield _sse_frame(
+                "schema_linked",
+                {
+                    "semantic_path": grounded.path,
                     "confidence": grounded.confidence,
-                    "table_count": len(grounded.tables),
+                    "candidate_table_count": len(grounded.tables),
+                    "missing_info": grounded.missing_info,
+                    "grounded_summary": {
+                        "path": grounded.path,
+                        "confidence": grounded.confidence,
+                        "table_count": len(grounded.tables),
+                    },
                 },
-            })
+            )
 
             # Stage 2 (optional): clarification
-            if (
-                grounded.confidence < self._settings.grounding_min_confidence
-                and grounded.missing_info
-            ):
-                yield _sse_frame("clarification", {
-                    "questions": grounded.missing_info,
-                    "reasons": [],
-                })
+            if grounded.confidence < self._settings.grounding_min_confidence and grounded.missing_info:
+                yield _sse_frame(
+                    "clarification",
+                    {
+                        "questions": grounded.missing_info,
+                        "reasons": [],
+                    },
+                )
 
             # Stage 3: generate SQL
             generation_agent = build_generation_agent(self._settings)
@@ -453,33 +430,35 @@ class QueryController:
             candidates = gen_out.candidates
             chosen_sql = candidates[0].sql
 
-            yield _sse_frame("sql_generated", {
-                "candidate_count": len(candidates),
-                "chosen_index": 0,
-                "candidate_summaries": [
-                    {"sql_preview": c.sql[:120], "confidence": c.confidence}
-                    for c in candidates
-                ],
-            })
+            yield _sse_frame(
+                "sql_generated",
+                {
+                    "candidate_count": len(candidates),
+                    "chosen_index": 0,
+                    "candidate_summaries": [
+                        {"sql_preview": c.sql[:120], "confidence": c.confidence} for c in candidates
+                    ],
+                },
+            )
 
             # Stage 4: execute (with critic loop)
             ast = self._ast_classifier.classify(chosen_sql)
             table_resolver = TableResolver(session=db_session, settings=self._settings)
-            attached = await table_resolver.resolve(
-                request.dataset_id, list(ast.table_refs)
-            )
+            attached = await table_resolver.resolve(request.dataset_id, list(ast.table_refs))
 
             exec_result = await self._executor.execute(chosen_sql, attached)
             retries = 0
 
             while isinstance(exec_result, ExecutionError) and retries < self._settings.max_refine_retries:
                 critic_agent = build_critic_agent(self._settings)
-                refined = await critic_agent.run({
-                    "sql": chosen_sql,
-                    "error": exec_result.message,
-                    "grounded": grounded,
-                    "question": request.question,
-                })
+                refined = await critic_agent.run(
+                    {
+                        "sql": chosen_sql,
+                        "error": exec_result.message,
+                        "grounded": grounded,
+                        "question": request.question,
+                    }
+                )
                 chosen_sql = refined.sql
                 ast = self._ast_classifier.classify(chosen_sql)
                 attached = await table_resolver.resolve(request.dataset_id, list(ast.table_refs))
@@ -488,34 +467,45 @@ class QueryController:
 
             snapshot_pins: dict = {}
             if isinstance(exec_result, ExecutionResult):
-                yield _sse_frame("executed", {
-                    "row_count": exec_result.row_count,
-                    "elapsed_ms": _now_ms() - start_ms,
-                    "retried_after_error": retries > 0,
-                    "truncated": exec_result.truncated,
-                    "snapshot_pins": snapshot_pins,
-                })
+                yield _sse_frame(
+                    "executed",
+                    {
+                        "row_count": exec_result.row_count,
+                        "elapsed_ms": _now_ms() - start_ms,
+                        "retried_after_error": retries > 0,
+                        "truncated": exec_result.truncated,
+                        "snapshot_pins": snapshot_pins,
+                    },
+                )
             else:
-                yield _sse_frame("executed", {
-                    "error": exec_result.message,
-                    "retried_after_error": retries > 0,
-                    "snapshot_pins": snapshot_pins,
-                })
+                yield _sse_frame(
+                    "executed",
+                    {
+                        "error": exec_result.message,
+                        "retried_after_error": retries > 0,
+                        "snapshot_pins": snapshot_pins,
+                    },
+                )
 
             # Stage 5: explain
             explanation_obj = None
             if isinstance(exec_result, ExecutionResult):
                 explainer_agent = build_explainer_agent(self._settings)
-                explanation_obj = await explainer_agent.run({
-                    "question": request.question,
-                    "sql": chosen_sql,
-                    "row_count": exec_result.row_count,
-                    "preview_rows": exec_result.rows[:50],
-                })
-                yield _sse_frame("explained", {
-                    "summary": explanation_obj.summary,
-                    "chart_hint": explanation_obj.chart_hint,
-                })
+                explanation_obj = await explainer_agent.run(
+                    {
+                        "question": request.question,
+                        "sql": chosen_sql,
+                        "row_count": exec_result.row_count,
+                        "preview_rows": exec_result.rows[:50],
+                    }
+                )
+                yield _sse_frame(
+                    "explained",
+                    {
+                        "summary": explanation_obj.summary,
+                        "chart_hint": explanation_obj.chart_hint,
+                    },
+                )
 
             # Persist + upload
             uploader = ResultUploader(
@@ -526,8 +516,13 @@ class QueryController:
             auto_learner = AutoLearner(examples_service=self._examples_service)
             elapsed = _now_ms() - start_ms
 
-            execution_status = "OK" if isinstance(exec_result, ExecutionResult) and retries == 0 else \
-                               "REFINED_OK" if isinstance(exec_result, ExecutionResult) else "FAILED"
+            execution_status = (
+                "OK"
+                if isinstance(exec_result, ExecutionResult) and retries == 0
+                else "REFINED_OK"
+                if isinstance(exec_result, ExecutionResult)
+                else "FAILED"
+            )
 
             query_id = await self._query_repo.create_query(
                 tenant_id=tenant_id,
@@ -543,10 +538,13 @@ class QueryController:
                 retries=retries,
                 row_count=exec_result.row_count if isinstance(exec_result, ExecutionResult) else None,
                 elapsed_ms=elapsed,
-                clarification_emitted=grounded.confidence < self._settings.grounding_min_confidence and bool(grounded.missing_info),
+                clarification_emitted=grounded.confidence < self._settings.grounding_min_confidence
+                and bool(grounded.missing_info),
                 clarification_json=None,
                 pii_findings_json=None,
-                error_json={"message": exec_result.message} if isinstance(exec_result, ExecutionError) else None,
+                error_json={"message": exec_result.message}
+                if isinstance(exec_result, ExecutionError)
+                else None,
                 model_grounding=self._settings.grounding_model,
                 model_generation=self._settings.generation_model,
             )
@@ -582,9 +580,9 @@ class QueryController:
                 elapsed_ms=elapsed,
                 chart_hint=explanation_obj.chart_hint if explanation_obj else None,
                 explanation=explanation_obj.summary if explanation_obj else None,
-                clarification=ClarificationFrame(
-                    questions=grounded.missing_info or [], reasons=[]
-                ) if grounded.confidence < self._settings.grounding_min_confidence and grounded.missing_info else None,
+                clarification=ClarificationFrame(questions=grounded.missing_info or [], reasons=[])
+                if grounded.confidence < self._settings.grounding_min_confidence and grounded.missing_info
+                else None,
                 grounded_summary={
                     "path": grounded.path,
                     "confidence": grounded.confidence,
@@ -597,6 +595,7 @@ class QueryController:
 def _now_ms() -> int:
     """Return current monotonic time in milliseconds."""
     import time
+
     return time.monotonic_ns() // 1_000_000
 
 

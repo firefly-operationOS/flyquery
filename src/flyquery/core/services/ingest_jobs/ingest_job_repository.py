@@ -4,8 +4,8 @@
 from __future__ import annotations
 
 import uuid
-from decimal import Decimal
-from typing import Any, Sequence
+from collections.abc import Sequence
+from typing import Any
 
 import sqlalchemy as sa
 from pyfly.container import repository
@@ -210,9 +210,7 @@ class IngestJobRepository:
     ) -> tuple[list[dict[str, Any]], int]:
         """Returns (events, total_count) ordered by id ascending."""
         async with self._factory() as s:
-            base_cond = (
-                "ingest_job_id = :job_id AND tenant_id = :tenant AND workspace_id = :ws"
-            )
+            base_cond = "ingest_job_id = :job_id AND tenant_id = :tenant AND workspace_id = :ws"
             params: dict[str, Any] = {"job_id": job_id, "tenant": tenant_id, "ws": workspace_id}
 
             extra = ""

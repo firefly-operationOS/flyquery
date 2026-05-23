@@ -38,7 +38,7 @@ from __future__ import annotations
 import asyncio
 import os
 import tempfile
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 
 @dataclass(frozen=True)
@@ -152,15 +152,10 @@ class DuckDBExecutor:
 
             # Create a VIEW for each parquet-backed table.
             for name, parquet_path in attached_tables.items():
-                conn.execute(
-                    f"CREATE VIEW {name} AS SELECT * FROM read_parquet('{parquet_path}')"
-                )
+                conn.execute(f"CREATE VIEW {name} AS SELECT * FROM read_parquet('{parquet_path}')")
 
             # Wrap in LIMIT row_cap+1 to detect truncation.
-            wrapped = (
-                f"SELECT * FROM ({sql.rstrip(';')}) AS q"
-                f" LIMIT {self._row_cap + 1}"
-            )
+            wrapped = f"SELECT * FROM ({sql.rstrip(';')}) AS q LIMIT {self._row_cap + 1}"
             cursor = conn.execute(wrapped)
             cols = [d[0] for d in cursor.description]
             rows = cursor.fetchall()
@@ -170,7 +165,7 @@ class DuckDBExecutor:
                 rows = rows[: self._row_cap]
 
             return ExecutionResult(
-                rows=[dict(zip(cols, r)) for r in rows],
+                rows=[dict(zip(cols, r, strict=False)) for r in rows],
                 columns=cols,
                 row_count=len(rows),
                 truncated=truncated,
@@ -214,14 +209,11 @@ class DuckDBExecutor:
             for name, path in attached_tables.items():
                 if name == target_name:
                     continue
-                conn.execute(
-                    f"CREATE VIEW {name} AS SELECT * FROM read_parquet('{path}')"
-                )
+                conn.execute(f"CREATE VIEW {name} AS SELECT * FROM read_parquet('{path}')")
 
             # Load the DERIVED table as a mutable TABLE (not a VIEW).
             conn.execute(
-                f"CREATE TABLE {target_name} AS "
-                f"SELECT * FROM read_parquet('{current_parquet_path}')"
+                f"CREATE TABLE {target_name} AS SELECT * FROM read_parquet('{current_parquet_path}')"
             )
 
             # Execute the DML statement.
@@ -234,9 +226,7 @@ class DuckDBExecutor:
             # Export the mutated table to a temp Parquet file.
             fd, tmp_path = tempfile.mkstemp(suffix=".parquet")
             os.close(fd)
-            conn.execute(
-                f"COPY {target_name} TO '{tmp_path}' (FORMAT PARQUET, COMPRESSION SNAPPY)"
-            )
+            conn.execute(f"COPY {target_name} TO '{tmp_path}' (FORMAT PARQUET, COMPRESSION SNAPPY)")
 
             with open(tmp_path, "rb") as fh:
                 new_parquet_bytes = fh.read()

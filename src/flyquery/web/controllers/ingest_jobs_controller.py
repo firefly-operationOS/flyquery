@@ -111,17 +111,13 @@ class IngestJobsController:
         """Get a single ingest job."""
         ctx = tenant_context_from_request(http_request)
         workspace_id = _parse_workspace_id(ctx.workspace_id)
-        job = await self._service.get_job(
-            job_id, tenant_id=ctx.tenant_id, workspace_id=workspace_id
-        )
+        job = await self._service.get_job(job_id, tenant_id=ctx.tenant_id, workspace_id=workspace_id)
         if job is None:
             raise ResourceNotFound(f"ingest job {job_id!r} not found")
         return job
 
     @get_mapping("/{job_id}/events")
-    async def list_events(
-        self, http_request: Request, job_id: PathVar[uuid.UUID]
-    ) -> IngestEventListResponse:
+    async def list_events(self, http_request: Request, job_id: PathVar[uuid.UUID]) -> IngestEventListResponse:
         """Paginated event ledger for a job."""
         ctx = tenant_context_from_request(http_request)
         workspace_id = _parse_workspace_id(ctx.workspace_id)
@@ -131,9 +127,7 @@ class IngestJobsController:
         offset = int(params.get("offset", "0"))
 
         # Verify job exists
-        job = await self._service.get_job(
-            job_id, tenant_id=ctx.tenant_id, workspace_id=workspace_id
-        )
+        job = await self._service.get_job(job_id, tenant_id=ctx.tenant_id, workspace_id=workspace_id)
         if job is None:
             raise ResourceNotFound(f"ingest job {job_id!r} not found")
 
@@ -147,9 +141,7 @@ class IngestJobsController:
         )
 
     @get_mapping("/{job_id}/stream")
-    async def stream_job(
-        self, http_request: Request, job_id: PathVar[uuid.UUID]
-    ) -> StreamingResponse:
+    async def stream_job(self, http_request: Request, job_id: PathVar[uuid.UUID]) -> StreamingResponse:
         """SSE stream for real-time job progress.
 
         Mirrors canon's ingest_jobs_controller SSE pattern:
@@ -162,9 +154,7 @@ class IngestJobsController:
         workspace_id = _parse_workspace_id(ctx.workspace_id)
 
         # Verify the job exists before opening the stream
-        job = await self._service.get_job(
-            job_id, tenant_id=ctx.tenant_id, workspace_id=workspace_id
-        )
+        job = await self._service.get_job(job_id, tenant_id=ctx.tenant_id, workspace_id=workspace_id)
         if job is None:
             raise ResourceNotFound(f"ingest job {job_id!r} not found")
 
@@ -223,15 +213,11 @@ class IngestJobsController:
         )
 
     @post_mapping("/{job_id}:cancel", status_code=200)
-    async def cancel_job(
-        self, http_request: Request, job_id: PathVar[uuid.UUID]
-    ) -> CancelResponse:
+    async def cancel_job(self, http_request: Request, job_id: PathVar[uuid.UUID]) -> CancelResponse:
         """Cooperatively cancel a job (idempotent for terminal jobs)."""
         ctx = tenant_context_from_request(http_request)
         workspace_id = _parse_workspace_id(ctx.workspace_id)
-        result = await self._service.cancel_job(
-            job_id, tenant_id=ctx.tenant_id, workspace_id=workspace_id
-        )
+        result = await self._service.cancel_job(job_id, tenant_id=ctx.tenant_id, workspace_id=workspace_id)
         if result is None:
             raise ResourceNotFound(f"ingest job {job_id!r} not found")
         return result
@@ -245,7 +231,7 @@ class IngestJobsController:
 def _sse_frame(event_type: str, data: Any) -> bytes:
     """Format one SSE frame: ``event: <type>\\ndata: <json>\\n\\n``."""
     data_json = json.dumps(data, default=str)
-    return f"event: {event_type}\ndata: {data_json}\n\n".encode("utf-8")
+    return f"event: {event_type}\ndata: {data_json}\n\n".encode()
 
 
 async def _repo_list_events_since(

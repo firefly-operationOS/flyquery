@@ -43,6 +43,7 @@ def minio_container() -> Iterator[MinioContainer]:
 # fake-gcs-server (Task 31 / GCS conformance)
 # ---------------------------------------------------------------------------
 
+
 class FakeGcsContainer(DockerContainer):
     """Thin wrapper around fsouza/fake-gcs-server for integration tests."""
 
@@ -78,6 +79,7 @@ def fake_gcs_container() -> Iterator[Any]:
 # ---------------------------------------------------------------------------
 # Azurite (Task 32 / Azure Blob conformance)
 # ---------------------------------------------------------------------------
+
 
 class AzuriteContainer(DockerContainer):
     """Thin wrapper around mcr.microsoft.com/azure-storage/azurite."""
@@ -204,7 +206,9 @@ def configure_env(
     redis_port = redis_container.get_exposed_port(redis_container.port)
     monkeypatch.setenv("FLYQUERY_REDIS_URL", f"redis://{redis_host}:{redis_port}/0")
     monkeypatch.setenv("FLYQUERY_OBJECT_STORE", "s3")
-    monkeypatch.setenv("FLYQUERY_OBJECT_STORE_BASE", f"s3://{minio_container.get_config()['endpoint']}/flyquery-test")
+    monkeypatch.setenv(
+        "FLYQUERY_OBJECT_STORE_BASE", f"s3://{minio_container.get_config()['endpoint']}/flyquery-test"
+    )
     monkeypatch.setenv("AWS_ACCESS_KEY_ID", minio_container.access_key)
     monkeypatch.setenv("AWS_SECRET_ACCESS_KEY", minio_container.secret_key)
     monkeypatch.setenv("FLYQUERY_RUN_MIGRATIONS", "false")

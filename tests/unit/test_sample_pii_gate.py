@@ -8,8 +8,8 @@ from __future__ import annotations
 
 import pytest
 
-from flyquery.core.services.pii.adapters.regex_scanner import RegexPiiScanner
 from flyquery.core.services.pii.adapters.disabled_scanner import DisabledPiiScanner
+from flyquery.core.services.pii.adapters.regex_scanner import RegexPiiScanner
 
 
 class TestPiiGateOrdering:
@@ -70,8 +70,10 @@ class TestParquetColumnQuote:
 
     def test_simple_name(self):
         from flyquery.core.services.ingestion.stages.sample import _quote_ident
+
         assert _quote_ident("customer_id") == '"customer_id"'
 
     def test_name_with_quotes(self):
         from flyquery.core.services.ingestion.stages.sample import _quote_ident
+
         assert _quote_ident('a"b') == '"a""b"'

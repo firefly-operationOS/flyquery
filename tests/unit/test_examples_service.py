@@ -29,11 +29,7 @@ class FakeRepo:
         dataset_id: uuid.UUID | None = None,
         limit: int = 50,
     ) -> list[dict]:
-        result = [
-            r
-            for r in self.rows
-            if r["tenant_id"] == tenant_id and r["workspace_id"] == workspace_id
-        ]
+        result = [r for r in self.rows if r["tenant_id"] == tenant_id and r["workspace_id"] == workspace_id]
         if quality is not None:
             result = [r for r in result if r.get("quality") == quality]
         if dataset_id is not None:

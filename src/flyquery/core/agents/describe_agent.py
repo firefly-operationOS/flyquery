@@ -16,8 +16,8 @@ from flyquery.core.agents.builder import build_agent
 
 class DescribedColumn(BaseModel):
     qualified_name: str
-    description: str          # 1-2 sentences, business-flavoured
-    synonyms: list[str]       # 3-8 alternative business names
+    description: str  # 1-2 sentences, business-flavoured
+    synonyms: list[str]  # 3-8 alternative business names
 
 
 class DescribedObjects(BaseModel):

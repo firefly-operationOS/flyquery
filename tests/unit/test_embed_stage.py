@@ -9,8 +9,6 @@ Verifies:
 
 from __future__ import annotations
 
-import os
-
 import pytest
 
 from flyquery.core.services.ingestion.stages.embed import (
@@ -79,16 +77,12 @@ class TestBuildEmbedder:
         embedder = _build_embedder("")
         assert embedder is None
 
-    def test_returns_callable_when_api_key_present(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_returns_callable_when_api_key_present(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setenv("OPENAI_API_KEY", "sk-fake-key-for-test")
         embedder = _build_embedder("sk-fake-key-for-test")
         assert callable(embedder)
 
-    def test_pipeline_does_not_crash_without_openai_key(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_pipeline_does_not_crash_without_openai_key(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """Graceful skip: embeddings_written=0 when key is absent."""
         monkeypatch.delenv("OPENAI_API_KEY", raising=False)
         # Verify _build_embedder(""  ) returns None (no API call will be made)

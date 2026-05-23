@@ -11,7 +11,6 @@ from pathlib import Path
 
 from flyquery.core.services.ingestion.reader import (
     ColumnSchema,
-    FileReader,
     MaterialiseResult,
     ProposedTable,
     TableExtractionRules,
@@ -21,9 +20,7 @@ from flyquery.core.services.ingestion.reader import (
 class JsonReader:
     formats = ("json", "jsonl")
 
-    async def enumerate_tables(
-        self, source_path: str, rules: TableExtractionRules
-    ) -> list[ProposedTable]:
+    async def enumerate_tables(self, source_path: str, rules: TableExtractionRules) -> list[ProposedTable]:
         return await asyncio.to_thread(self._enumerate_sync, source_path, rules)
 
     async def materialise(
@@ -156,9 +153,7 @@ class JsonReader:
                     "SELECT * FROM (DESCRIBE SELECT * FROM read_parquet(?))", [target_parquet_key]
                 ).fetchall()
                 columns = tuple(
-                    ColumnSchema(
-                        name=r[0], data_type=r[1], is_nullable=(r[2] == "YES"), position=i
-                    )
+                    ColumnSchema(name=r[0], data_type=r[1], is_nullable=(r[2] == "YES"), position=i)
                     for i, r in enumerate(schema)
                 )
             finally:

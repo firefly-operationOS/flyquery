@@ -1,5 +1,6 @@
 # Copyright 2026 Firefly Software Solutions Inc
 import pytest
+
 from flyquery.core.services.ingestion.format_detect import detect_format
 
 

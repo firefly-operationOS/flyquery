@@ -3,22 +3,16 @@
 
 from __future__ import annotations
 
-import pytest
-
 from flyquery.core.services.semantic.metricflow_compiler import MetricFlowCompiler
 
 
 def test_simple_count() -> None:
-    sql = MetricFlowCompiler.compile(
-        {"name": "order_count", "agg": "count", "expr": "orders.id"}
-    )
+    sql = MetricFlowCompiler.compile({"name": "order_count", "agg": "count", "expr": "orders.id"})
     assert sql == "SELECT COUNT(orders.id) AS order_count FROM orders"
 
 
 def test_simple_sum() -> None:
-    sql = MetricFlowCompiler.compile(
-        {"name": "total_revenue", "agg": "sum", "expr": "orders.total"}
-    )
+    sql = MetricFlowCompiler.compile({"name": "total_revenue", "agg": "sum", "expr": "orders.total"})
     assert sql == "SELECT SUM(orders.total) AS total_revenue FROM orders"
 
 

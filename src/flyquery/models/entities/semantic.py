@@ -107,9 +107,7 @@ class SemanticVersion(Base):
 
 class GlossaryTerm(Base):
     __tablename__ = "flyquery_glossary_terms"
-    __table_args__ = (
-        UniqueConstraint("workspace_id", "term", name="uq_glossary_workspace_term"),
-    )
+    __table_args__ = (UniqueConstraint("workspace_id", "term", name="uq_glossary_workspace_term"),)
 
     id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()")
@@ -120,8 +118,12 @@ class GlossaryTerm(Base):
     definition: Mapped[str] = mapped_column(String, nullable=False)
     synonyms_json: Mapped[list] = mapped_column(JSONB, nullable=False, server_default=text("'[]'::jsonb"))
     tags_json: Mapped[list] = mapped_column(JSONB, nullable=False, server_default=text("'[]'::jsonb"))
-    related_columns_json: Mapped[list] = mapped_column(JSONB, nullable=False, server_default=text("'[]'::jsonb"))
-    related_metrics_json: Mapped[list] = mapped_column(JSONB, nullable=False, server_default=text("'[]'::jsonb"))
+    related_columns_json: Mapped[list] = mapped_column(
+        JSONB, nullable=False, server_default=text("'[]'::jsonb")
+    )
+    related_metrics_json: Mapped[list] = mapped_column(
+        JSONB, nullable=False, server_default=text("'[]'::jsonb")
+    )
     created_at: Mapped[datetime] = mapped_column(
         TIMESTAMP(timezone=True), nullable=False, server_default=text("now()")
     )

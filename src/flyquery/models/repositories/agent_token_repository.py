@@ -38,7 +38,7 @@ class AgentTokenRepository:
         return self._engine
 
     @classmethod
-    def from_url(cls, database_url: str, *, echo: bool = False) -> "AgentTokenRepository":
+    def from_url(cls, database_url: str, *, echo: bool = False) -> AgentTokenRepository:
         """Build a repository from a database URL (configuration @bean path)."""
         from flyquery.web.conventions.db import install_tenant_guc_hook
 

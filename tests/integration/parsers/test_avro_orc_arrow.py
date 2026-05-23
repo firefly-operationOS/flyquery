@@ -1,6 +1,8 @@
 # Copyright 2026 Firefly Software Solutions Inc
-import pytest
 from pathlib import Path
+
+import pytest
+
 from flyquery.core.services.ingestion.reader import TableExtractionRules
 
 FIX = Path(__file__).parent / "fixtures"

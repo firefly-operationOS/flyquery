@@ -21,7 +21,6 @@ import re
 
 from flyquery.core.services.pii.scanner import PiiFinding, PiiTag
 
-
 # ---------------------------------------------------------------------------
 # Patterns (byte-equivalent to canon's _PATTERNS where they overlap)
 # ---------------------------------------------------------------------------
@@ -52,9 +51,7 @@ _PATTERNS: tuple[tuple[str, re.Pattern[str]], ...] = (
     (
         "IP_ADDRESS",
         # IPv4 dotted-quad; exclude obvious non-IPs like version strings.
-        re.compile(
-            r"(?<!\d)(?:(?:25[0-5]|2[0-4]\d|[01]?\d\d?)\.){3}(?:25[0-5]|2[0-4]\d|[01]?\d\d?)(?!\d)"
-        ),
+        re.compile(r"(?<!\d)(?:(?:25[0-5]|2[0-4]\d|[01]?\d\d?)\.){3}(?:25[0-5]|2[0-4]\d|[01]?\d\d?)(?!\d)"),
     ),
 )
 

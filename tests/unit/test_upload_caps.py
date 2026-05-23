@@ -1,9 +1,10 @@
 # Copyright 2026 Firefly Software Solutions Inc
 import pytest
+
 from flyquery.core.services.ingestion.caps import (
-    enforce_upload_cap,
     FileTooLargeError,
     WorkspaceQuotaExceededError,
+    enforce_upload_cap,
 )
 
 
@@ -41,7 +42,8 @@ def test_workspace_quota_exceeded_raises_507():
     with pytest.raises(WorkspaceQuotaExceededError) as exc_info:
         enforce_upload_cap(
             size_bytes=50 * 1024 * 1024,  # 50 MB file
-            workspace_storage_used_bytes=9 * 1024 * 1024 * 1024 + 990 * 1024 * 1024,  # 9990 MB used → total > 10 GB
+            workspace_storage_used_bytes=9 * 1024 * 1024 * 1024
+            + 990 * 1024 * 1024,  # 9990 MB used → total > 10 GB
             settings=settings,
         )
     assert exc_info.value.http_status == 507

@@ -7,7 +7,7 @@ import uuid
 from datetime import datetime
 
 from pgvector.sqlalchemy import Vector
-from sqlalchemy import BigInteger, Boolean, CheckConstraint, Float, Integer, String, UniqueConstraint, text
+from sqlalchemy import BigInteger, Boolean, CheckConstraint, Float, Integer, String, text
 from sqlalchemy.dialects.postgresql import JSONB, TIMESTAMP, TSVECTOR, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -76,9 +76,7 @@ class SchemaChange(Base):
 
 class SchemaObject(Base):
     __tablename__ = "flyquery_schema_objects"
-    __table_args__ = (
-        CheckConstraint("kind IN ('TABLE','COLUMN')", name="ck_objects_kind"),
-    )
+    __table_args__ = (CheckConstraint("kind IN ('TABLE','COLUMN')", name="ck_objects_kind"),)
 
     id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()")

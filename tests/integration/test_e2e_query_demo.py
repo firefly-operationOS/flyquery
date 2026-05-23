@@ -30,13 +30,13 @@ FIX = Path(__file__).parent / "parsers" / "fixtures"
 @pytest.mark.asyncio
 async def test_e2e_query_pipeline_with_mocked_agents(started_app, monkeypatch) -> None:  # noqa: ANN001
     """Upload Northwind fixtures → mock agents to canned responses → POST /query → assert wiring."""
+    from flyquery.core.agents.explainer_agent import ResultExplanation
+    from flyquery.core.agents.generation_agent import GeneratedCandidate, GeneratedCandidates
     from flyquery.core.agents.grounding_agent import (
-        GroundedContext,
         GroundedColumn,
+        GroundedContext,
         GroundedTable,
     )
-    from flyquery.core.agents.generation_agent import GeneratedCandidate, GeneratedCandidates
-    from flyquery.core.agents.explainer_agent import ResultExplanation
 
     # ------------------------------------------------------------------
     # Canned agent outputs
@@ -114,8 +114,9 @@ async def test_e2e_query_pipeline_with_mocked_agents(started_app, monkeypatch) -
     # Drive the HTTP surface
     # ------------------------------------------------------------------
 
-    from flyquery.main import app
     from httpx import ASGITransport, AsyncClient
+
+    from flyquery.main import app
 
     async with AsyncClient(
         transport=ASGITransport(app=app),
@@ -193,15 +194,11 @@ async def test_e2e_query_pipeline_with_mocked_agents(started_app, monkeypatch) -
                         break  # stop once terminal event received
 
         assert events, "no SSE events received"
-        assert events[0] == "schema_linked", (
-            f"first event should be 'schema_linked', got {events[0]!r}"
-        )
+        assert events[0] == "schema_linked", f"first event should be 'schema_linked', got {events[0]!r}"
         assert "sql_generated" in events, f"'sql_generated' missing from events: {events}"
         assert "executed" in events, f"'executed' missing from events: {events}"
         assert "explained" in events, f"'explained' missing from events: {events}"
-        assert events[-1] == "final", (
-            f"last event should be 'final', got {events[-1]!r}"
-        )
+        assert events[-1] == "final", f"last event should be 'final', got {events[-1]!r}"
 
 
 # ---------------------------------------------------------------------------
@@ -220,8 +217,9 @@ async def test_e2e_query_pipeline_with_real_agents(started_app) -> None:  # noqa
     if not (os.environ.get("ANTHROPIC_API_KEY") and os.environ.get("OPENAI_API_KEY")):
         pytest.skip("requires ANTHROPIC_API_KEY and OPENAI_API_KEY")
 
-    from flyquery.main import app
     from httpx import ASGITransport, AsyncClient
+
+    from flyquery.main import app
 
     async with AsyncClient(
         transport=ASGITransport(app=app),

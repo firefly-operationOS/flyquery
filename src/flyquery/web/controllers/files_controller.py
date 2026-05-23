@@ -125,9 +125,7 @@ class FilesController:
         )
 
         if not result.tables:
-            raise ResourceNotFound(
-                f"table {table_id!r} not found or no tables parsed from upload"
-            )
+            raise ResourceNotFound(f"table {table_id!r} not found or no tables parsed from upload")
 
         first = result.tables[0]
         return ReuploadResponse(
@@ -149,6 +147,4 @@ def _parse_workspace_id(workspace_id_str: str) -> uuid.UUID:
     try:
         return uuid.UUID(str(workspace_id_str))
     except (ValueError, AttributeError) as exc:
-        raise ValueError(
-            f"workspace_id header {workspace_id_str!r} is not a valid UUID"
-        ) from exc
+        raise ValueError(f"workspace_id header {workspace_id_str!r} is not a valid UUID") from exc

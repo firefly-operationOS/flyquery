@@ -9,23 +9,18 @@ the returned AnswerResult contains.
 
 from __future__ import annotations
 
-import os
-import tempfile
 import uuid
 
-import pyarrow as pa
-import pyarrow.parquet as pq
 import pytest
 
-from flyquery.core.agents.grounding_agent import GroundedContext, GroundedTable, GroundedColumn
-from flyquery.core.agents.generation_agent import GeneratedCandidates, GeneratedCandidate
 from flyquery.core.agents.critic_agent import RefinedSql
 from flyquery.core.agents.explainer_agent import ResultExplanation
+from flyquery.core.agents.generation_agent import GeneratedCandidate, GeneratedCandidates
+from flyquery.core.agents.grounding_agent import GroundedColumn, GroundedContext, GroundedTable
 from flyquery.core.services.execution.ast_classifier import AstClassifier
-from flyquery.core.services.execution.duckdb_executor import DuckDBExecutor, ExecutionResult, ExecutionError
+from flyquery.core.services.execution.duckdb_executor import ExecutionError, ExecutionResult
 from flyquery.core.services.execution.scope_guard import ScopeGuard
 from flyquery.core.services.query.query_service import QueryService
-
 
 # ---------------------------------------------------------------------------
 # Fake implementations
@@ -157,9 +152,7 @@ def _make_grounded(confidence: float = 0.9, path: str = "SYNTHESIS") -> Grounded
 
 
 def _make_candidates(sql: str = "SELECT 1") -> GeneratedCandidates:
-    return GeneratedCandidates(
-        candidates=[GeneratedCandidate(sql=sql, reasoning="test", confidence=0.9)]
-    )
+    return GeneratedCandidates(candidates=[GeneratedCandidate(sql=sql, reasoning="test", confidence=0.9)])
 
 
 def _make_service(

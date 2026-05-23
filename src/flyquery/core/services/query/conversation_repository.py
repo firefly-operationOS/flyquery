@@ -221,9 +221,7 @@ class ConversationRepository:
 
             # Touch updated_at on the parent conversation.
             await s.execute(
-                sa.text(
-                    "UPDATE flyquery_conversations SET updated_at = now() WHERE id = :id"
-                ),
+                sa.text("UPDATE flyquery_conversations SET updated_at = now() WHERE id = :id"),
                 {"id": conversation_id},
             )
             return turn

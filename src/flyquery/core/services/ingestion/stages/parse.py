@@ -23,7 +23,6 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from flyquery.core.services.ingestion.compression import decompress_to_temp
 from flyquery.core.services.ingestion.reader import (
     MaterialiseResult,
-    ProposedTable,
     TableExtractionRules,
 )
 from flyquery.core.services.ingestion.reader_factory import get_reader
@@ -79,9 +78,7 @@ async def run_parse(
         reader = get_reader(file_format=file_format, compression="none")
         rules = TableExtractionRules()
         proposed = await reader.enumerate_tables(decompressed_path, rules)
-        logger.info(
-            "stage=parse format=%s tables_found=%d", file_format, len(proposed)
-        )
+        logger.info("stage=parse format=%s tables_found=%d", file_format, len(proposed))
 
         parsed: list[ParsedTable] = []
 
@@ -97,47 +94,49 @@ async def run_parse(
                 )
                 break
 
-            if existing_table_id is not None:
-                table_id = existing_table_id
-            else:
-                table_id = uuid.uuid4()
+            table_id = existing_table_id if existing_table_id is not None else uuid.uuid4()
 
             # If there's only one table (CSV/TSV/single-sheet), prefer the
             # original filename stem so the table is named "orders" not a
             # temp path like "tmpXXXX".
-            if original_filename and len(proposed) == 1:
-                raw_name = Path(original_filename).stem
-            else:
-                raw_name = pt.name
+            raw_name = Path(original_filename).stem if original_filename and len(proposed) == 1 else pt.name
             safe_name = _sanitise_name(raw_name)
             qualified_name = f"{_sanitise_name(dataset_name)}.{safe_name}"
 
             # Build the Parquet key: determine version number
-            snap_version = await _next_version(
-                table_id, tenant_id, workspace_id, session_factory
-            )
+            snap_version = await _next_version(table_id, tenant_id, workspace_id, session_factory)
             parquet_key = (
-                f"flyquery/{tenant_id}/{workspace_id}/{dataset_id}/"
-                f"tables/{table_id}/v{snap_version}.parquet"
+                f"flyquery/{tenant_id}/{workspace_id}/{dataset_id}/tables/{table_id}/v{snap_version}.parquet"
             )
 
-            # Materialise Parquet to a local temp path first, then upload
+            # Materialise Parquet to a local temp path first, then upload.
+            # Per-section failures (e.g. a dashboard-XLSX section with
+            # un-sniffable CSV after compaction) are logged and skipped
+            # rather than aborting the whole upload -- a 60-section file
+            # with 1 quirky section should still ingest the other 59.
             local_parquet = tempfile.mktemp(suffix=".parquet")  # noqa: S306
             try:
-                mat_result = await reader.materialise(
-                    decompressed_path,
-                    pt,
-                    local_parquet,
-                    workspace_locale=workspace_locale,
-                    type_infer_sample_rows=settings.type_infer_sample_rows,
-                    max_title_rows=settings.max_title_rows,
-                )
+                try:
+                    mat_result = await reader.materialise(
+                        decompressed_path,
+                        pt,
+                        local_parquet,
+                        workspace_locale=workspace_locale,
+                        type_infer_sample_rows=settings.type_infer_sample_rows,
+                        max_title_rows=settings.max_title_rows,
+                    )
+                except Exception as exc:  # noqa: BLE001
+                    logger.warning(
+                        "stage=parse failed_to_materialise table=%s path=%s err=%s",
+                        pt.name,
+                        pt.sheet_or_json_path,
+                        exc,
+                    )
+                    continue
 
                 # Upload Parquet to object store
                 parquet_bytes = Path(local_parquet).read_bytes()
-                await object_store.put(
-                    parquet_key, parquet_bytes, "application/octet-stream"
-                )
+                await object_store.put(parquet_key, parquet_bytes, "application/octet-stream")
             finally:
                 Path(local_parquet).unlink(missing_ok=True)
 
@@ -195,8 +194,7 @@ async def _next_version(
     async with session_factory() as s:
         result = await s.execute(
             sa.text(
-                "SELECT count(*) FROM flyquery_schema_snapshots "
-                "WHERE table_id = :tid AND tenant_id = :tenant"
+                "SELECT count(*) FROM flyquery_schema_snapshots WHERE table_id = :tid AND tenant_id = :tenant"
             ),
             {"tid": table_id, "tenant": tenant_id},
         )
@@ -252,9 +250,6 @@ async def _update_table_file(
 ) -> None:
     async with session_factory() as s, s.begin():
         await s.execute(
-            sa.text(
-                "UPDATE flyquery_tables SET source_file_id = :fid, updated_at = now() "
-                "WHERE id = :tid"
-            ),
+            sa.text("UPDATE flyquery_tables SET source_file_id = :fid, updated_at = now() WHERE id = :tid"),
             {"fid": file_id, "tid": table_id},
         )

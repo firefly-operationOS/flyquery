@@ -65,6 +65,7 @@ class InvalidScopeRequest(FireflyHTTPException):
     code = "invalid_scope"
     title = "Invalid scope"
 
+
 logger = logging.getLogger(__name__)
 
 

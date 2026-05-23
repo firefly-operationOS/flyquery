@@ -19,10 +19,8 @@ from __future__ import annotations
 
 import hashlib
 import io
-import json
 import logging
 import uuid
-from typing import Any
 
 import sqlalchemy as sa
 from pyfly.container import service
@@ -35,7 +33,7 @@ from flyquery.core.services.execution.duckdb_executor import (
     ExecutionError,
     ExecutionResult,
 )
-from flyquery.core.services.execution.scope_guard import ScopeGuard, ScopeGuardError
+from flyquery.core.services.execution.scope_guard import ScopeGuard
 from flyquery.core.services.execution.table_resolver import TableResolver
 from flyquery.core.services.storage.object_store import ObjectStore
 from flyquery.web.conventions import FireflyHTTPException
@@ -106,9 +104,7 @@ class DerivedTableService:
         # ------------------------------------------------------------------
         ast = self._ast_classifier.classify(sql)
         if ast.classification != "SELECT":
-            raise DeriveTableForbidden(
-                f"/tables:derive only accepts SELECT; got {ast.classification!r}"
-            )
+            raise DeriveTableForbidden(f"/tables:derive only accepts SELECT; got {ast.classification!r}")
 
         # ------------------------------------------------------------------
         # 2. Resolve parquet paths for the source tables
@@ -130,10 +126,7 @@ class DerivedTableService:
         # 4. Write Parquet to object store
         # ------------------------------------------------------------------
         table_id = uuid.uuid4()
-        object_key = (
-            f"flyquery/{tenant_id}/{workspace_id}/{dataset_id}"
-            f"/derived/{table_id}/v1.parquet"
-        )
+        object_key = f"flyquery/{tenant_id}/{workspace_id}/{dataset_id}/derived/{table_id}/v1.parquet"
         parquet_bytes = _rows_to_parquet(result.rows, result.columns)
         await self._store.put(object_key, parquet_bytes, content_type="application/x-parquet")
 
@@ -283,9 +276,7 @@ class DerivedTableService:
 
             # Step 7 — atomic flip: snapshot READY + tables.current_snapshot_id
             await s.execute(
-                sa.text(
-                    "UPDATE flyquery_schema_snapshots SET status='READY' WHERE id = :id"
-                ),
+                sa.text("UPDATE flyquery_schema_snapshots SET status='READY' WHERE id = :id"),
                 {"id": snapshot_id},
             )
             await s.execute(

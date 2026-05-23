@@ -4,7 +4,7 @@
 from __future__ import annotations
 
 from collections.abc import AsyncIterator
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 from urllib.parse import urlparse
 
@@ -53,7 +53,7 @@ class GcsObjectStore:
     def _strip_prefix(self, full_key: str) -> str:
         """Remove stored prefix to return the caller-visible key."""
         if self._prefix and full_key.startswith(self._prefix + "/"):
-            return full_key[len(self._prefix) + 1:]
+            return full_key[len(self._prefix) + 1 :]
         return full_key
 
     # ------------------------------------------------------------------
@@ -80,8 +80,8 @@ class GcsObjectStore:
         content_type: str,
         kms_key_uri: str | None = None,
     ) -> ObjectMeta:
-        from gcloud.aio.storage import Storage
         import aiohttp
+        from gcloud.aio.storage import Storage
 
         full = self._full_key(key)
 
@@ -114,13 +114,13 @@ class GcsObjectStore:
             size_bytes=size,
             content_type=content_type,
             etag=None,
-            last_modified=datetime.now(tz=timezone.utc),
+            last_modified=datetime.now(tz=UTC),
             kms_key_uri=kms_key_uri,
         )
 
     async def get(self, key: str) -> AsyncIterator[bytes]:
-        from gcloud.aio.storage import Storage
         import aiohttp
+        from gcloud.aio.storage import Storage
 
         full = self._full_key(key)
 
@@ -133,8 +133,8 @@ class GcsObjectStore:
         return _stream()
 
     async def head(self, key: str) -> ObjectMeta:
-        from gcloud.aio.storage import Storage
         import aiohttp
+        from gcloud.aio.storage import Storage
         from gcloud.aio.storage.storage import DownloadError
 
         full = self._full_key(key)
@@ -156,9 +156,10 @@ class GcsObjectStore:
             lm_raw = meta.get("updated", "")
             try:
                 from datetime import datetime as _dt
+
                 lm = _dt.fromisoformat(lm_raw.replace("Z", "+00:00"))
             except (ValueError, AttributeError):
-                lm = datetime.now(tz=timezone.utc)
+                lm = datetime.now(tz=UTC)
             return ObjectMeta(
                 key=key,
                 size_bytes=size,
@@ -168,8 +169,8 @@ class GcsObjectStore:
             )
 
     async def delete(self, key: str) -> None:
-        from gcloud.aio.storage import Storage
         import aiohttp
+        from gcloud.aio.storage import Storage
 
         full = self._full_key(key)
         async with aiohttp.ClientSession() as session:
@@ -177,8 +178,8 @@ class GcsObjectStore:
             await storage.delete(self._bucket, full)
 
     async def list(self, prefix: str) -> AsyncIterator[ObjectMeta]:
-        from gcloud.aio.storage import Storage
         import aiohttp
+        from gcloud.aio.storage import Storage
 
         full_prefix = self._full_key(prefix)
 
@@ -197,9 +198,10 @@ class GcsObjectStore:
                     lm_raw = item.get("updated", "")
                     try:
                         from datetime import datetime as _dt
+
                         lm = _dt.fromisoformat(lm_raw.replace("Z", "+00:00"))
                     except (ValueError, AttributeError):
-                        lm = datetime.now(tz=timezone.utc)
+                        lm = datetime.now(tz=UTC)
                     yield ObjectMeta(
                         key=self._strip_prefix(obj_key),
                         size_bytes=size,
@@ -218,8 +220,8 @@ class GcsObjectStore:
         has no IAM) we fabricate a plain URL so the conformance test passes
         without needing real GCP credentials.
         """
-        from gcloud.aio.storage import Storage
         import aiohttp
+        from gcloud.aio.storage import Storage
 
         full = self._full_key(key)
         # fake-gcs-server returns a plain download URL from generate_download_url.
@@ -228,6 +230,7 @@ class GcsObjectStore:
             # JSON API endpoint: /download/storage/v1/b/{bucket}/o/{object}
             base = self._endpoint_url.rstrip("/")
             import urllib.parse
+
             encoded = urllib.parse.quote(full, safe="")
             return f"{base}/download/storage/v1/b/{self._bucket}/o/{encoded}?alt=media"
 
@@ -244,8 +247,8 @@ class GcsObjectStore:
             return str(url)
 
     async def copy(self, src_key: str, dst_key: str) -> None:
-        from gcloud.aio.storage import Storage
         import aiohttp
+        from gcloud.aio.storage import Storage
 
         src_full = self._full_key(src_key)
         dst_full = self._full_key(dst_key)

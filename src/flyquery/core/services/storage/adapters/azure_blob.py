@@ -5,7 +5,7 @@ from __future__ import annotations
 
 import os
 from collections.abc import AsyncIterator
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 from urllib.parse import urlparse
 
@@ -44,10 +44,7 @@ class AzureBlobObjectStore:
             raise ValueError(f"AzureBlob base must be azure://...; got {base!r}")
         self._container = u.netloc
         self._prefix = u.path.lstrip("/")
-        self._conn_str: str = (
-            connection_string
-            or os.environ.get("AZURE_STORAGE_CONNECTION_STRING", "")
-        )
+        self._conn_str: str = connection_string or os.environ.get("AZURE_STORAGE_CONNECTION_STRING", "")
         self._encryption_scope = encryption_scope
         self._presign_ttl_s = presign_ttl_s
 
@@ -62,7 +59,7 @@ class AzureBlobObjectStore:
 
     def _strip_prefix(self, full_key: str) -> str:
         if self._prefix and full_key.startswith(self._prefix + "/"):
-            return full_key[len(self._prefix) + 1:]
+            return full_key[len(self._prefix) + 1 :]
         return full_key
 
     # ------------------------------------------------------------------
@@ -134,7 +131,7 @@ class AzureBlobObjectStore:
             size_bytes=size,
             content_type=content_type,
             etag=None,
-            last_modified=datetime.now(tz=timezone.utc),
+            last_modified=datetime.now(tz=UTC),
             kms_key_uri=kms_key_uri,
         )
 
@@ -161,9 +158,12 @@ class AzureBlobObjectStore:
             except ResourceNotFoundError as exc:
                 raise FileNotFoundError(key) from exc
             size = props.get("size", 0) or 0
-            ct = props.get("content_settings", {}).get("content_type", "application/octet-stream") or "application/octet-stream"
+            ct = (
+                props.get("content_settings", {}).get("content_type", "application/octet-stream")
+                or "application/octet-stream"
+            )
             etag = props.get("etag")
-            lm = props.get("last_modified") or datetime.now(tz=timezone.utc)
+            lm = props.get("last_modified") or datetime.now(tz=UTC)
             return ObjectMeta(
                 key=key,
                 size_bytes=int(size),
@@ -187,9 +187,11 @@ class AzureBlobObjectStore:
                 async for blob in container_client.list_blobs(name_starts_with=full_prefix):
                     name = blob["name"]
                     size = blob.get("size", 0) or 0
-                    ct = (blob.get("content_settings") or {}).get("content_type", "application/octet-stream") or "application/octet-stream"
+                    ct = (blob.get("content_settings") or {}).get(
+                        "content_type", "application/octet-stream"
+                    ) or "application/octet-stream"
                     etag = blob.get("etag")
-                    lm = blob.get("last_modified") or datetime.now(tz=timezone.utc)
+                    lm = blob.get("last_modified") or datetime.now(tz=UTC)
                     yield ObjectMeta(
                         key=self._strip_prefix(name),
                         size_bytes=int(size),
@@ -207,6 +209,7 @@ class AzureBlobObjectStore:
         works offline without real Azure credentials.
         """
         from datetime import timedelta
+
         from azure.storage.blob import (  # type: ignore[import-untyped]
             BlobSasPermissions,
             generate_blob_sas,
@@ -223,7 +226,7 @@ class AzureBlobObjectStore:
             blob_name=full,
             account_key=account_key,
             permission=BlobSasPermissions(read=True),
-            expiry=datetime.now(tz=timezone.utc) + timedelta(seconds=ttl_s),
+            expiry=datetime.now(tz=UTC) + timedelta(seconds=ttl_s),
         )
         # Build the full URL; use endpoint from connection string if present.
         endpoint = _parse_blob_endpoint(self._conn_str, account_name)
@@ -244,9 +247,11 @@ class AzureBlobObjectStore:
 # Helpers
 # ------------------------------------------------------------------
 
+
 def _content_settings(content_type: str) -> Any:
     """Return a ContentSettings object for upload."""
     from azure.storage.blob import ContentSettings  # type: ignore[import-untyped]
+
     return ContentSettings(content_type=content_type)
 
 

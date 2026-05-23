@@ -14,7 +14,6 @@ Fixtures live in tests/integration/fixtures/ (Northwind-style, 10-20 rows).
 from __future__ import annotations
 
 import asyncio
-import io
 import uuid
 from pathlib import Path
 
@@ -62,9 +61,7 @@ async def test_northwind_demo_full_pipeline(started_app) -> None:  # noqa: ANN00
             assert fpath.exists(), f"fixture {fpath} missing"
             with open(fpath, "rb") as f:
                 files = {"file": (fname, f, "application/octet-stream")}
-                r = await c.post(
-                    f"/api/v1/datasets/{ds_id}/files", files=files, headers=h
-                )
+                r = await c.post(f"/api/v1/datasets/{ds_id}/files", files=files, headers=h)
             assert r.status_code == 201, f"upload {fname} failed: {r.text}"
             for t in r.json()["tables"]:
                 uploaded_table_ids.append(t["table_id"])
@@ -77,23 +74,21 @@ async def test_northwind_demo_full_pipeline(started_app) -> None:  # noqa: ANN00
         r = await c.get(f"/api/v1/datasets/{ds_id}/tables", headers=h)
         assert r.status_code == 200, r.text
         tables = r.json()["items"]
-        assert len(tables) >= 5, (
-            f"expected ≥5 tables, got {len(tables)}: {[t['name'] for t in tables]}"
-        )
+        assert len(tables) >= 5, f"expected ≥5 tables, got {len(tables)}: {[t['name'] for t in tables]}"
 
         # Every table has a current_snapshot_id (pipeline ran to completion)
         for t in tables:
-            assert t["current_snapshot_id"] is not None, (
-                f"table {t['name']} has no current_snapshot_id"
-            )
+            assert t["current_snapshot_id"] is not None, f"table {t['name']} has no current_snapshot_id"
 
         # ------------------------------------------------------------------ #
         # Run heuristic relation discovery directly (no EDA worker needed)   #
         # ------------------------------------------------------------------ #
         import os
+
         from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
-        from flyquery.core.services.ingestion.stages.relations import run_relations
+
         from flyquery.config import FlyquerySettings
+        from flyquery.core.services.ingestion.stages.relations import run_relations
 
         db_url = os.environ["FLYQUERY_DATABASE_URL"]
         engine = create_async_engine(db_url)
@@ -102,7 +97,6 @@ async def test_northwind_demo_full_pipeline(started_app) -> None:  # noqa: ANN00
         admin_url = os.environ["FLYQUERY_DATABASE_URL_ADMIN"]
         async_admin_url = admin_url.replace("+psycopg", "+asyncpg").replace("+psycopg2", "+asyncpg")
         admin_engine = create_async_engine(async_admin_url)
-        from sqlalchemy.ext.asyncio import AsyncSession
         admin_factory = async_sessionmaker(admin_engine, expire_on_commit=False)
 
         # Load minimal settings (only fields used by run_relations)
@@ -125,9 +119,9 @@ async def test_northwind_demo_full_pipeline(started_app) -> None:  # noqa: ANN00
         assert r.status_code == 200, r.text
         rels = r.json()["items"]
         customer_id_rels = [
-            rel for rel in rels
-            if rel["from_column_name"] == "customer_id"
-            and rel["to_column_name"] == "customer_id"
+            rel
+            for rel in rels
+            if rel["from_column_name"] == "customer_id" and rel["to_column_name"] == "customer_id"
         ]
         assert customer_id_rels, (
             f"expected customer_id↔customer_id relation, "
@@ -167,7 +161,7 @@ async def test_northwind_demo_full_pipeline(started_app) -> None:  # noqa: ANN00
                             seen_events.append(line.split(": ", 1)[1].strip())
                         if "final" in seen_events or "error" in seen_events:
                             break
-        except (TimeoutError, asyncio.TimeoutError, Exception):  # noqa: BLE001
+        except (TimeoutError, Exception):  # noqa: BLE001
             pass  # Timeout or stream close — acceptable per escalation guidance
 
         # The stream endpoint must have opened (status 200). Job must exist in a

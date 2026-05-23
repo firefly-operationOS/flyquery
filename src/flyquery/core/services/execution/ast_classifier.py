@@ -62,12 +62,8 @@ class AstClassifier:
         kind = self._kind(stmt)
 
         # Collect table refs — skip anonymous subquery aliases
-        tables = tuple(
-            sorted({t.name for t in stmt.find_all(sqlglot.expressions.Table) if t.name})
-        )
-        columns = tuple(
-            sorted({c.name for c in stmt.find_all(sqlglot.expressions.Column) if c.name})
-        )
+        tables = tuple(sorted({t.name for t in stmt.find_all(sqlglot.expressions.Table) if t.name}))
+        columns = tuple(sorted({c.name for c in stmt.find_all(sqlglot.expressions.Column) if c.name}))
         has_subquery = bool(list(stmt.find_all(sqlglot.expressions.Subquery)))
 
         return AstClassification(
@@ -79,7 +75,9 @@ class AstClassifier:
         )
 
     @staticmethod
-    def _kind(stmt: sqlglot.expressions.Expression) -> Literal["SELECT", "INSERT", "UPDATE", "DELETE", "DDL", "UNKNOWN"]:
+    def _kind(
+        stmt: sqlglot.expressions.Expression,
+    ) -> Literal["SELECT", "INSERT", "UPDATE", "DELETE", "DDL", "UNKNOWN"]:
         if isinstance(stmt, sqlglot.expressions.Select):
             return "SELECT"
         if isinstance(stmt, sqlglot.expressions.Insert):
@@ -88,6 +86,8 @@ class AstClassifier:
             return "UPDATE"
         if isinstance(stmt, sqlglot.expressions.Delete):
             return "DELETE"
-        if isinstance(stmt, (sqlglot.expressions.Create, sqlglot.expressions.Drop, sqlglot.expressions.Alter)):
+        if isinstance(
+            stmt, (sqlglot.expressions.Create, sqlglot.expressions.Drop, sqlglot.expressions.Alter)
+        ):
             return "DDL"
         return "UNKNOWN"

@@ -13,9 +13,6 @@ from __future__ import annotations
 import hashlib
 import json
 
-import pytest
-
-from flyquery.core.services.ingestion.reader import ColumnSchema
 from flyquery.core.services.ingestion.stages.embed import _build_embed_text
 
 
@@ -46,8 +43,12 @@ def _col_hash(cols: list[tuple[str, str]]) -> str:
 
 class TestEmbedText:
     def test_minimal_object(self) -> None:
-        row = {"qualified_name": "ds.tbl.col", "data_type": "VARCHAR",
-               "description": None, "synonyms_json": None}
+        row = {
+            "qualified_name": "ds.tbl.col",
+            "data_type": "VARCHAR",
+            "description": None,
+            "synonyms_json": None,
+        }
         text = _build_embed_text(row)
         assert "ds.tbl.col" in text
         assert "VARCHAR" in text
@@ -64,8 +65,7 @@ class TestEmbedText:
         assert "amount" in text
 
     def test_no_qualified_name(self) -> None:
-        row = {"qualified_name": None, "data_type": "INTEGER",
-               "description": None, "synonyms_json": None}
+        row = {"qualified_name": None, "data_type": "INTEGER", "description": None, "synonyms_json": None}
         text = _build_embed_text(row)
         # should not raise
         assert text is not None

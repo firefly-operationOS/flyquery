@@ -86,8 +86,7 @@ class DatasetRepository:
         async with self._factory() as s, s.begin():
             result = await s.execute(
                 sa.text(
-                    f"UPDATE flyquery_datasets SET {sets}, updated_at = now() "
-                    "WHERE id = :id RETURNING *"
+                    f"UPDATE flyquery_datasets SET {sets}, updated_at = now() WHERE id = :id RETURNING *"
                 ),
                 {"id": dataset_id, **fields},
             )
@@ -96,8 +95,6 @@ class DatasetRepository:
     async def archive(self, dataset_id: uuid.UUID) -> None:
         async with self._factory() as s, s.begin():
             await s.execute(
-                sa.text(
-                    "UPDATE flyquery_datasets SET status='ARCHIVED', updated_at=now() WHERE id = :id"
-                ),
+                sa.text("UPDATE flyquery_datasets SET status='ARCHIVED', updated_at=now() WHERE id = :id"),
                 {"id": dataset_id},
             )

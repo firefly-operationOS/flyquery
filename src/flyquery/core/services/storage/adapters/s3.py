@@ -89,19 +89,28 @@ class S3ObjectStore:
                 size = 0
                 async for chunk in body:
                     p = await client.upload_part(
-                        Bucket=self._bucket, Key=full, PartNumber=part_n,
-                        UploadId=upload_id, Body=chunk,
+                        Bucket=self._bucket,
+                        Key=full,
+                        PartNumber=part_n,
+                        UploadId=upload_id,
+                        Body=chunk,
                     )
                     parts.append({"ETag": p["ETag"], "PartNumber": part_n})
                     part_n += 1
                     size += len(chunk)
                 await client.complete_multipart_upload(
-                    Bucket=self._bucket, Key=full,
-                    UploadId=upload_id, MultipartUpload={"Parts": parts},
+                    Bucket=self._bucket,
+                    Key=full,
+                    UploadId=upload_id,
+                    MultipartUpload={"Parts": parts},
                 )
         return ObjectMeta(
-            key=key, size_bytes=size, content_type=content_type,
-            etag=None, last_modified=datetime.utcnow(), kms_key_uri=kms_key_uri,
+            key=key,
+            size_bytes=size,
+            content_type=content_type,
+            etag=None,
+            last_modified=datetime.utcnow(),
+            kms_key_uri=kms_key_uri,
         )
 
     async def get(self, key) -> AsyncIterator[bytes]:
@@ -112,6 +121,7 @@ class S3ObjectStore:
                 resp = await client.get_object(Bucket=self._bucket, Key=full)
                 async for chunk in resp["Body"]:
                     yield chunk
+
         return _stream()
 
     async def head(self, key) -> ObjectMeta:
@@ -147,12 +157,13 @@ class S3ObjectStore:
                 async for page in paginator.paginate(Bucket=self._bucket, Prefix=full_prefix):
                     for item in page.get("Contents", []):
                         yield ObjectMeta(
-                            key=item["Key"][len(self._prefix):].lstrip("/") if self._prefix else item["Key"],
+                            key=item["Key"][len(self._prefix) :].lstrip("/") if self._prefix else item["Key"],
                             size_bytes=int(item["Size"]),
                             content_type="application/octet-stream",
                             etag=item.get("ETag"),
                             last_modified=item["LastModified"],
                         )
+
         return _gen()
 
     async def presign_get(self, key, ttl_s) -> str:
@@ -169,6 +180,7 @@ class S3ObjectStore:
         dst_full = self._full_key(dst_key)
         async with await self._client() as client:
             await client.copy_object(
-                Bucket=self._bucket, Key=dst_full,
+                Bucket=self._bucket,
+                Key=dst_full,
                 CopySource={"Bucket": self._bucket, "Key": src_full},
             )

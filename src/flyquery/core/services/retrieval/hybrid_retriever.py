@@ -98,9 +98,7 @@ class HybridRetriever:
         :param top_k_metrics: how many published metrics to return
         :return: dict with keys schema_objects, examples, metrics, glossary, relations
         """
-        bm25_schema = await self._index.bm25_schema_objects(
-            query, dataset_id, limit=top_k_schema * 3
-        )
+        bm25_schema = await self._index.bm25_schema_objects(query, dataset_id, limit=top_k_schema * 3)
 
         query_embedding: list[float] | None = None
         if self._embedder is not None:

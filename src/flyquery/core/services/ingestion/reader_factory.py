@@ -15,9 +15,7 @@ _SUPPORTED_COMPRESSIONS = frozenset({"none", "gz", "zip", "bz2"})
 
 def get_reader(file_format: str, compression: str = "none") -> FileReader:
     if compression not in _SUPPORTED_COMPRESSIONS:
-        raise UnsupportedFormatError(
-            f"compression {compression!r} not in {sorted(_SUPPORTED_COMPRESSIONS)}"
-        )
+        raise UnsupportedFormatError(f"compression {compression!r} not in {sorted(_SUPPORTED_COMPRESSIONS)}")
     fmt = file_format.lower()
     if fmt in ("csv", "tsv"):
         from flyquery.core.services.ingestion.readers.csv_reader import CsvReader

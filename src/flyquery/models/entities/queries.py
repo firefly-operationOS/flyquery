@@ -55,9 +55,7 @@ class Query(Base):
     row_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
     elapsed_ms: Mapped[int | None] = mapped_column(Integer, nullable=True)
     cost_cents: Mapped[Decimal] = mapped_column(NUMERIC, nullable=False, server_default=text("0"))
-    clarification_emitted: Mapped[bool] = mapped_column(
-        Boolean, nullable=False, server_default=text("false")
-    )
+    clarification_emitted: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("false"))
     clarification_json: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
     pii_findings_json: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
     error_json: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
@@ -108,9 +106,7 @@ class Conversation(Base):
 
 class ConversationTurn(Base):
     __tablename__ = "flyquery_conversation_turns"
-    __table_args__ = (
-        UniqueConstraint("conversation_id", "turn_index", name="uq_turns_conversation_index"),
-    )
+    __table_args__ = (UniqueConstraint("conversation_id", "turn_index", name="uq_turns_conversation_index"),)
 
     id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()")
@@ -123,7 +119,9 @@ class ConversationTurn(Base):
     executed_sql: Mapped[str | None] = mapped_column(String, nullable=True)
     summary: Mapped[str | None] = mapped_column(String, nullable=True)
     table_qnames_json: Mapped[list] = mapped_column(JSONB, nullable=False, server_default=text("'[]'::jsonb"))
-    snapshot_pins_json: Mapped[dict] = mapped_column(JSONB, nullable=False, server_default=text("'{}'::jsonb"))
+    snapshot_pins_json: Mapped[dict] = mapped_column(
+        JSONB, nullable=False, server_default=text("'{}'::jsonb")
+    )
     citations_json: Mapped[list] = mapped_column(JSONB, nullable=False, server_default=text("'[]'::jsonb"))
     no_answer: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("false"))
     elapsed_ms: Mapped[int | None] = mapped_column(Integer, nullable=True)

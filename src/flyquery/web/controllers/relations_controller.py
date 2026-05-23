@@ -9,7 +9,7 @@ POST /api/v1/relations/{relation_id}:reject    -- reject a PROPOSED relation
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import sqlalchemy as sa
 from pyfly.container import rest_controller
@@ -90,7 +90,7 @@ class RelationsController:
         """Approve a PROPOSED relation."""
         ctx = tenant_context_from_request(http_request)
         approved_by = ctx.actor or ctx.tenant_id
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
 
         async with self._factory() as s, s.begin():
             result = await s.execute(
@@ -118,7 +118,7 @@ class RelationsController:
     ) -> dict:
         """Reject a PROPOSED relation."""
         ctx = tenant_context_from_request(http_request)
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
 
         async with self._factory() as s, s.begin():
             result = await s.execute(

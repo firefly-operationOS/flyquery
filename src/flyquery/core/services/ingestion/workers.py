@@ -203,7 +203,9 @@ class IngestWorker:
         # --- Claim the job ---
         claimed = await self._mark_running(job_id)
         if not claimed:
-            logger.info("job %s could not be claimed (held by another worker or already terminal) — skipping", job_id)
+            logger.info(
+                "job %s could not be claimed (held by another worker or already terminal) — skipping", job_id
+            )
             return
 
         await emit_running(
@@ -324,9 +326,7 @@ class IngestWorker:
         # via the flyquery_files row referenced by file_id.
         file_info = await self._load_file(file_id_raw) if file_id_raw else None
         if file_info is None:
-            raise RuntimeError(
-                f"REPARSE job {job_id} has no resolvable file_id={file_id_raw!r}"
-            )
+            raise RuntimeError(f"REPARSE job {job_id} has no resolvable file_id={file_id_raw!r}")
 
         object_store = build_object_store(self._settings)
 
@@ -343,6 +343,7 @@ class IngestWorker:
         # Stage 1: receive
         await self._check_cancelled(job_id)
         from flyquery.core.services.workspaces.workspace_repository import WorkspaceRepository
+
         ws_repo = WorkspaceRepository(self._session_factory)
         ws_service = WorkspaceService(ws_repo)
         ws = await ws_service.get(workspace_id)
@@ -489,9 +490,7 @@ class IngestWorker:
             raise RuntimeError(f"SAMPLE_REFRESH job {job_id} missing table_id")
 
         # Load the current snapshot for the table
-        snapshot_id, parquet_key = await self._load_current_snapshot(
-            uuid.UUID(str(table_id_raw)), tenant_id
-        )
+        snapshot_id, parquet_key = await self._load_current_snapshot(uuid.UUID(str(table_id_raw)), tenant_id)
         if snapshot_id is None:
             raise RuntimeError(f"SAMPLE_REFRESH job {job_id}: table has no READY snapshot")
 
@@ -536,7 +535,8 @@ class IngestWorker:
         table_id_raw = job.get("table_id")
 
         snapshots = await self._load_dataset_snapshots(
-            tenant_id, dataset_id,
+            tenant_id,
+            dataset_id,
             table_id=uuid.UUID(str(table_id_raw)) if table_id_raw else None,
         )
 
@@ -624,10 +624,7 @@ class IngestWorker:
     async def _load_file(self, file_id: Any) -> dict[str, Any] | None:
         async with self._session_factory() as s:
             result = await s.execute(
-                sa.text(
-                    "SELECT id, original_filename, object_store_key "
-                    "FROM flyquery_files WHERE id = :id"
-                ),
+                sa.text("SELECT id, original_filename, object_store_key FROM flyquery_files WHERE id = :id"),
                 {"id": file_id},
             )
             row = result.mappings().first()

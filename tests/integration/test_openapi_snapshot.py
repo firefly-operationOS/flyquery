@@ -1,12 +1,14 @@
 # Copyright 2026 Firefly Software Solutions Inc
 import json
-import pytest
 from pathlib import Path
+
+import pytest
 
 
 @pytest.mark.integration
 def test_openapi_snapshot_matches_running_app():
     from flyquery.main import app
+
     expected = app.openapi()
     snapshot_path = Path(__file__).parent.parent.parent / "openapi.json"
     actual = json.loads(snapshot_path.read_text())

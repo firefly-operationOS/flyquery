@@ -21,15 +21,17 @@ from typing import Protocol
 @dataclass(frozen=True, slots=True)
 class PiiFinding:
     """One PII match on a single value."""
-    entity_type: str   # "EMAIL", "SSN", "PHONE", "CREDIT_CARD", "IP_ADDRESS", ...
-    score: float       # 0..1
+
+    entity_type: str  # "EMAIL", "SSN", "PHONE", "CREDIT_CARD", "IP_ADDRESS", ...
+    score: float  # 0..1
 
 
 @dataclass(frozen=True, slots=True)
 class PiiTag:
     """Aggregate tag for a column (post scan_column)."""
-    tag: str           # primary entity type or "NONE"
-    source: str        # "REGEX" | "PRESIDIO" | "AGENT"
+
+    tag: str  # primary entity type or "NONE"
+    source: str  # "REGEX" | "PRESIDIO" | "AGENT"
 
 
 class PiiScanner(Protocol):

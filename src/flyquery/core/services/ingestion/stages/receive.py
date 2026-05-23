@@ -23,8 +23,6 @@ import sqlalchemy as sa
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from flyquery.core.services.ingestion.caps import (
-    FileTooLargeError,
-    WorkspaceQuotaExceededError,
     enforce_upload_cap,
 )
 from flyquery.core.services.ingestion.format_detect import detect_format
@@ -74,9 +72,7 @@ async def run_receive(
     # --- 4. Assign file_id + build storage key ---
     file_id = uuid.uuid4()
     ext = _pick_ext(filename, file_format, compression)
-    object_store_key = (
-        f"flyquery/{tenant_id}/{workspace_id}/{dataset_id}/files/{file_id}{ext}"
-    )
+    object_store_key = f"flyquery/{tenant_id}/{workspace_id}/{dataset_id}/files/{file_id}{ext}"
 
     # --- 5. Store in object store ---
     content_type = _content_type(file_format)

@@ -57,24 +57,18 @@ class ScopeGuard:
             for tbl in classification.table_refs:
                 kind = table_kinds_by_name.get(tbl)
                 if kind == "UPLOADED":
-                    raise ScopeGuardError(
-                        f"DML on UPLOADED table {tbl!r} not allowed (use re-upload)"
-                    )
+                    raise ScopeGuardError(f"DML on UPLOADED table {tbl!r} not allowed (use re-upload)")
                 if kind != "DERIVED":
                     raise ScopeGuardError(
                         f"DML on unknown table {tbl!r} — only DERIVED tables support writes"
                     )
             # Require write scope for derived tables
             if "flyquery.derived:write" not in scopes:
-                raise ScopeGuardError(
-                    "missing flyquery.derived:write scope for DML on DERIVED table"
-                )
+                raise ScopeGuardError("missing flyquery.derived:write scope for DML on DERIVED table")
         else:
             # 4. SELECT: require read scope
             if not (scopes & {"flyquery.query:read", "flyquery.sql:execute", "*"}):
-                raise ScopeGuardError(
-                    "missing flyquery.query:read scope (or flyquery.sql:execute / *)"
-                )
+                raise ScopeGuardError("missing flyquery.query:read scope (or flyquery.sql:execute / *)")
 
         # 5. Dataset allowlist
         if dataset_allowlist is not None:

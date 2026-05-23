@@ -21,7 +21,6 @@ from typing import Any
 import sqlalchemy as sa
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from flyquery.core.services.ingestion.reader import ColumnSchema
 from flyquery.core.services.ingestion.stages.parse import ParsedTable
 
 # Rename auto-confirm threshold (passed from settings when available)
@@ -57,9 +56,7 @@ async def run_reconcile(
     snapshot_id = uuid.uuid4()
 
     # Snapshot hash = hash of (column_name, data_type) pairs for change detection
-    col_sig = sorted(
-        (c.name, c.data_type) for c in mat.columns
-    )
+    col_sig = sorted((c.name, c.data_type) for c in mat.columns)
     snapshot_hash = hashlib.sha256(json.dumps(col_sig).encode()).hexdigest()
 
     # --- Insert snapshot (PARTIAL) ---
@@ -98,14 +95,10 @@ async def run_reconcile(
         )
 
     # --- Find previous snapshot for diff ---
-    prev_snapshot = await _get_latest_ready_snapshot(
-        tenant_id, parsed.table_id, snapshot_id, session_factory
-    )
+    prev_snapshot = await _get_latest_ready_snapshot(tenant_id, parsed.table_id, snapshot_id, session_factory)
     prev_columns: dict[str, str] = {}  # name → data_type
     if prev_snapshot:
-        prev_columns = await _get_snapshot_columns(
-            prev_snapshot["id"], tenant_id, session_factory
-        )
+        prev_columns = await _get_snapshot_columns(prev_snapshot["id"], tenant_id, session_factory)
 
     new_columns: dict[str, str] = {c.name: c.data_type for c in mat.columns}
 
@@ -113,17 +106,15 @@ async def run_reconcile(
     added = [name for name in new_columns if name not in prev_columns]
     removed = [name for name in prev_columns if name not in new_columns]
     type_changed = [
-        name
-        for name in new_columns
-        if name in prev_columns and new_columns[name] != prev_columns[name]
+        name for name in new_columns if name in prev_columns and new_columns[name] != prev_columns[name]
     ]
 
     prev_snap_id = prev_snapshot["id"] if prev_snapshot else None
 
     # --- Rename detection (Stage 3 deep-dive) ---
     # Build position-indexed maps from ColumnSchema for rename detection
-    new_col_by_pos: dict[int, ColumnSchema] = {c.position: c for c in mat.columns}
-    new_col_by_name: dict[str, ColumnSchema] = {c.name: c for c in mat.columns}
+    {c.position: c for c in mat.columns}
+    {c.name: c for c in mat.columns}
 
     prev_snapshot_columns_detail: list[dict[str, Any]] = []
     if prev_snapshot:
@@ -181,15 +172,11 @@ async def run_reconcile(
     # --- Load annotation transplant candidates from previous snapshot ---
     human_annotations: dict[str, dict[str, Any]] = {}
     if prev_snapshot:
-        human_annotations = await _load_human_annotations(
-            prev_snap_id, tenant_id, session_factory
-        )
+        human_annotations = await _load_human_annotations(prev_snap_id, tenant_id, session_factory)
 
     # --- Insert schema_objects (TABLE + per-column COLUMN) ---
     table_obj_id = uuid.uuid4()
-    table_source_hash = hashlib.sha256(
-        f"{parsed.qualified_name}:TABLE".encode()
-    ).hexdigest()
+    table_source_hash = hashlib.sha256(f"{parsed.qualified_name}:TABLE".encode()).hexdigest()
     async with session_factory() as s, s.begin():
         await s.execute(
             sa.text(
@@ -216,9 +203,7 @@ async def run_reconcile(
 
         for col in mat.columns:
             col_qualified = f"{parsed.qualified_name}.{col.name}"
-            col_hash = hashlib.sha256(
-                f"{col_qualified}:{col.data_type}".encode()
-            ).hexdigest()
+            col_hash = hashlib.sha256(f"{col_qualified}:{col.data_type}".encode()).hexdigest()
             col_obj_id = uuid.uuid4()
 
             # Transplant human annotations if this column existed before.
@@ -341,10 +326,7 @@ async def _get_snapshot_columns(
         )
         rows = result.mappings().all()
         # qualified_name is like "dataset.table.col_name"; extract last part
-        return {
-            row["qualified_name"].rsplit(".", 1)[-1]: row["data_type"] or ""
-            for row in rows
-        }
+        return {row["qualified_name"].rsplit(".", 1)[-1]: row["data_type"] or "" for row in rows}
 
 
 async def _load_human_annotations(
@@ -550,7 +532,7 @@ async def _write_schema_changes(
             )
 
         # Candidate renames (ambiguous — require human review)
-        for old_name, candidates in (candidate_renames or []):
+        for old_name, candidates in candidate_renames or []:
             await s.execute(
                 sa.text(
                     """
@@ -582,6 +564,7 @@ async def _write_schema_changes(
 # ---------------------------------------------------------------------------
 # Rename detection helpers (Stage 3 deep-dive)
 # ---------------------------------------------------------------------------
+
 
 async def _get_snapshot_columns_detail(
     snapshot_id: uuid.UUID,
@@ -701,27 +684,29 @@ async def _invoke_rename_agent(
 
     try:
         # Build old column context
-        old_detail = next(
-            (c for c in prev_detail if c.get("col_name") == old_name), {}
-        )
+        old_detail = next((c for c in prev_detail if c.get("col_name") == old_name), {})
         candidates_ctx = []
         for cname in candidate_names[:10]:
-            candidates_ctx.append({
-                "name": cname,
-                "data_type": new_columns.get(cname, "UNKNOWN"),
-                "description": None,
-                "samples": [],
-            })
+            candidates_ctx.append(
+                {
+                    "name": cname,
+                    "data_type": new_columns.get(cname, "UNKNOWN"),
+                    "description": None,
+                    "samples": [],
+                }
+            )
 
-        prompt = json.dumps({
-            "removed_column": {
-                "name": old_name,
-                "data_type": old_detail.get("data_type"),
-                "description": old_detail.get("description"),
-                "samples": (old_detail.get("sample_values_json") or [])[:5],
-            },
-            "candidate_new_columns": candidates_ctx,
-        })
+        prompt = json.dumps(
+            {
+                "removed_column": {
+                    "name": old_name,
+                    "data_type": old_detail.get("data_type"),
+                    "description": old_detail.get("description"),
+                    "samples": (old_detail.get("sample_values_json") or [])[:5],
+                },
+                "candidate_new_columns": candidates_ctx,
+            }
+        )
 
         agent = build_rename_detection_agent(settings)
         result = await agent.run(prompt)

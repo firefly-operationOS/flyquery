@@ -32,6 +32,236 @@ from flyquery.core.services.execution.duckdb_executor import ExecutionError, Exe
 from flyquery.core.services.execution.scope_guard import ScopeGuard, ScopeGuardError
 
 
+# ----------------------------------------------------------------------
+# Prompt rendering helpers
+# ----------------------------------------------------------------------
+# Each pipeline agent (Grounding / Generation / Critic / Explainer) is
+# a ``FireflyAgent`` -- pydantic-ai's ``Agent.run`` expects a single
+# string ``user_prompt``. We render the structured bundle (schema KB
+# retrieval hits, examples, glossary, relations, semantic metrics, the
+# prior turn's drill-down SQL, etc.) into a markdown-shaped prompt the
+# model can reason over.
+
+
+def _render_grounding_prompt(
+    *,
+    question: str,
+    bundle: dict,
+    starting_point_sql: str | None,
+) -> str:
+    """Pack the retrieved schema KB into a Claude-readable grounding prompt."""
+
+    out: list[str] = []
+    out.append("# User question")
+    out.append(question.strip())
+    out.append("")
+
+    if starting_point_sql:
+        out.append("# Prior turn (drill-down starting point)")
+        out.append("```sql")
+        out.append(starting_point_sql.strip())
+        out.append("```")
+        out.append("")
+
+    schema_hits = bundle.get("schema_objects", []) or []
+    if schema_hits:
+        out.append(f"# Retrieved schema objects (top {len(schema_hits)})")
+        out.append(
+            "Each entry is a table or column from the workspace knowledge base. "
+            "Use ONLY these tables/columns in the grounded context — never invent "
+            "names. Column names that look like dates (e.g. `2024-12-31`) are "
+            "legitimate column names in dashboard-style XLSX uploads."
+        )
+        for h in schema_hits[:30]:
+            md = getattr(h, "metadata", None) or {}
+            qn = md.get("qualified_name") or md.get("table_qualified_name") or "?"
+            text = getattr(h, "text", "") or ""
+            text = text.replace("\n", " ").strip()
+            if len(text) > 240:
+                text = text[:237] + "…"
+            out.append(f"- `{qn}` :: {text}")
+        out.append("")
+
+    examples = bundle.get("examples", []) or []
+    if examples:
+        out.append(f"# Approved Q→SQL examples ({len(examples)})")
+        for h in examples[:5]:
+            md = getattr(h, "metadata", None) or {}
+            q = md.get("question", "")
+            sql = md.get("sql", "")
+            out.append(f"- Q: {q}\n  SQL: `{sql}`")
+        out.append("")
+
+    metrics = bundle.get("metrics", []) or []
+    if metrics:
+        out.append(f"# Published semantic metrics ({len(metrics)})")
+        for h in metrics[:5]:
+            md = getattr(h, "metadata", None) or {}
+            out.append(f"- `{md.get('name')}` -- {md.get('description', '')}")
+        out.append("")
+
+    glossary = bundle.get("glossary", []) or []
+    if glossary:
+        out.append(f"# Glossary terms ({len(glossary)})")
+        for h in glossary[:10]:
+            md = getattr(h, "metadata", None) or {}
+            out.append(f"- **{md.get('term')}**: {md.get('definition', '')}")
+        out.append("")
+
+    relations = bundle.get("relations", []) or []
+    if relations:
+        out.append(f"# Approved relations / join hints ({len(relations)})")
+        for h in relations[:10]:
+            md = getattr(h, "metadata", None) or {}
+            out.append(
+                f"- {md.get('from_table')}.{md.get('from_column')} "
+                f"→ {md.get('to_table')}.{md.get('to_column')} "
+                f"(confidence={md.get('confidence')})"
+            )
+        out.append("")
+
+    out.append("# Task")
+    out.append(
+        "Produce the GroundedContext for this question. Pick the MINIMAL set of "
+        "tables, columns, and joins. If a published metric covers the question, "
+        "set path=SEMANTIC_LAYER. Otherwise path=SYNTHESIS. Set confidence ∈ [0,1] "
+        "and only populate `missing_info` when confidence is below 0.55."
+    )
+    return "\n".join(out)
+
+
+def _render_generation_prompt(
+    question: str,
+    grounded: Any,
+    starting_point_sql: str | None,
+) -> str:
+    """Pack the grounded context into a SQL-generation prompt."""
+
+    out: list[str] = []
+    out.append("# User question")
+    out.append(question.strip())
+    out.append("")
+
+    if starting_point_sql:
+        out.append("# Prior turn SQL (build a delta on top of this when possible)")
+        out.append("```sql")
+        out.append(starting_point_sql.strip())
+        out.append("```")
+        out.append("")
+
+    g_path = getattr(grounded, "path", None)
+    g_tables = getattr(grounded, "tables", []) or []
+    g_columns = getattr(grounded, "columns", []) or []
+    g_joins = getattr(grounded, "joins", []) or []
+
+    out.append(f"# Grounded context (path = {g_path})")
+    if g_tables:
+        out.append("## Tables in scope")
+        for t in g_tables:
+            out.append(f"- `{getattr(t, 'table_qualified_name', t)}`")
+        out.append("")
+    if g_columns:
+        out.append("## Columns in scope")
+        for c in g_columns:
+            out.append(f"- `{getattr(c, 'column_qualified_name', c)}`")
+        out.append("")
+    if g_joins:
+        out.append("## Approved joins")
+        for j in g_joins:
+            out.append(
+                f"- `{getattr(j, 'from_table', '')}.{getattr(j, 'from_column', '')}` "
+                f"= `{getattr(j, 'to_table', '')}.{getattr(j, 'to_column', '')}` "
+                f"({getattr(j, 'relationship', 'inner')} join)"
+            )
+        out.append("")
+
+    out.append("# Task")
+    out.append(
+        "Generate up to N candidate DuckDB SQL queries that answer the question, "
+        "ordered by confidence (highest first). Each candidate must:\n"
+        "- Use only the tables and columns listed above. "
+        "Reference each table by its **unqualified name** (the last segment of the "
+        "qualified name shown above), e.g. write `FROM IVI_MALAGA_SL__Activos` "
+        "rather than `FROM orbis_companies.IVI_MALAGA_SL__Activos`.\n"
+        "- Quote any column name that isn't a plain identifier (e.g. date-shaped "
+        "names like `2024-12-31` must be `\"2024-12-31\"`).\n"
+        "- Be a SINGLE statement (no multi-statement; no DDL).\n"
+        "- Be a SELECT (DuckDB-flavored)."
+    )
+    return "\n".join(out)
+
+
+def _render_critic_prompt(
+    *,
+    question: str,
+    failing_sql: str,
+    error_message: str,
+    grounded: Any,
+) -> str:
+    out: list[str] = []
+    out.append("# User question")
+    out.append(question.strip())
+    out.append("")
+    out.append("# Failing SQL")
+    out.append("```sql")
+    out.append(failing_sql.strip())
+    out.append("```")
+    out.append("")
+    out.append("# DuckDB execution error")
+    out.append(error_message.strip())
+    out.append("")
+    g_tables = getattr(grounded, "tables", []) or []
+    g_columns = getattr(grounded, "columns", []) or []
+    if g_tables or g_columns:
+        out.append("# Grounded scope (do not invent tables/columns outside this set)")
+        for t in g_tables:
+            out.append(f"- table: `{getattr(t, 'table_qualified_name', t)}`")
+        for c in g_columns:
+            out.append(f"- column: `{getattr(c, 'column_qualified_name', c)}`")
+        out.append("")
+    out.append("# Task")
+    out.append(
+        "Return a corrected SQL that resolves the execution error. Output a "
+        "RefinedSql with a brief reasoning + a confidence in [0,1]. Stay inside "
+        "the grounded scope. Use unqualified table names (last segment only) and "
+        "quote any non-identifier column names like `\"2024-12-31\"`."
+    )
+    return "\n".join(out)
+
+
+def _render_explainer_prompt(
+    *,
+    question: str,
+    executed_sql: str,
+    row_count: int,
+    preview_rows: list[dict],
+) -> str:
+    out: list[str] = []
+    out.append("# User question")
+    out.append(question.strip())
+    out.append("")
+    out.append("# Executed SQL")
+    out.append("```sql")
+    out.append(executed_sql.strip())
+    out.append("```")
+    out.append("")
+    out.append(f"# Result")
+    out.append(f"row_count: {row_count}")
+    if preview_rows:
+        out.append("rows (first {}):".format(min(len(preview_rows), 50)))
+        for row in preview_rows[:50]:
+            out.append(f"- {row}")
+    out.append("")
+    out.append("# Task")
+    out.append(
+        "Produce a ResultExplanation with a 1-3 sentence NL summary that directly "
+        "answers the question using the rows above, and a chart_hint picked from "
+        "{line, bar, table, pie, none}. Never invent numbers -- cite only what is "
+        "in the preview."
+    )
+    return "\n".join(out)
+
+
 @dataclass
 class AnswerResult:
     """Full result from QueryService.answer()."""
@@ -175,21 +405,23 @@ class QueryService:
         bundle["prior_table_qnames"] = prior_table_qnames
 
         # ------------------------------------------------------------------
-        # 3. Grounding
+        # 3. Grounding — pydantic-ai's Agent.run expects a STRING prompt,
+        # so we render the retrieval bundle into a markdown-ish doc that
+        # Claude can reason over.
         # ------------------------------------------------------------------
-        grounded = await self._grounding_agent.run(
-            {
-                "question": question,
-                "bundle": bundle,
-                "starting_point_sql": starting_point_sql,
-            }
+        grounding_prompt = _render_grounding_prompt(
+            question=question,
+            bundle=bundle,
+            starting_point_sql=starting_point_sql,
         )
+        grounded_run = await self._grounding_agent.run(grounding_prompt)
+        # pydantic-ai's AgentRunResult wraps the structured response on .output
+        grounded = getattr(grounded_run, "output", grounded_run)
 
         # ------------------------------------------------------------------
         # 4. SQL generation (semantic-layer fast path OR synthesis)
         # ------------------------------------------------------------------
         chosen_sql: str
-        chosen_reasoning: str | None = None
         candidates_json: list = []
 
         if grounded.path == "SEMANTIC_LAYER" and grounded.metrics:
@@ -197,22 +429,22 @@ class QueryService:
             compiled = await self._compiled_metric_sql(grounded.metrics[0].metric_name, dataset_id)
             if compiled:
                 chosen_sql = compiled
-                candidates_json = [{"sql": compiled, "reasoning": "semantic-layer compiled", "confidence": 1.0}]
+                candidates_json = [
+                    {"sql": compiled, "reasoning": "semantic-layer compiled", "confidence": 1.0}
+                ]
             else:
                 # Fall through to synthesis if no compiled SQL found
-                gen_out = await self._generation_agent.run(
-                    {"grounded": grounded, "question": question, "starting_point_sql": starting_point_sql}
-                )
+                gen_prompt = _render_generation_prompt(question, grounded, starting_point_sql)
+                gen_run = await self._generation_agent.run(gen_prompt)
+                gen_out = getattr(gen_run, "output", gen_run)
                 candidates_json = [c.model_dump() for c in gen_out.candidates]
                 chosen_sql = gen_out.candidates[0].sql
-                chosen_reasoning = gen_out.candidates[0].reasoning
         else:
-            gen_out = await self._generation_agent.run(
-                {"grounded": grounded, "question": question, "starting_point_sql": starting_point_sql}
-            )
+            gen_prompt = _render_generation_prompt(question, grounded, starting_point_sql)
+            gen_run = await self._generation_agent.run(gen_prompt)
+            gen_out = getattr(gen_run, "output", gen_run)
             candidates_json = [c.model_dump() for c in gen_out.candidates]
             chosen_sql = gen_out.candidates[0].sql
-            chosen_reasoning = gen_out.candidates[0].reasoning
 
         # ------------------------------------------------------------------
         # 5. AST classify + scope guard
@@ -275,14 +507,14 @@ class QueryService:
         retries = 0
 
         while isinstance(result, ExecutionError) and retries < self._settings.max_refine_retries:
-            refined = await self._critic_agent.run(
-                {
-                    "sql": chosen_sql,
-                    "error": result.message,
-                    "grounded": grounded,
-                    "question": question,
-                }
+            critic_prompt = _render_critic_prompt(
+                question=question,
+                failing_sql=chosen_sql,
+                error_message=result.message,
+                grounded=grounded,
             )
+            refined_run = await self._critic_agent.run(critic_prompt)
+            refined = getattr(refined_run, "output", refined_run)
             chosen_sql = refined.sql
             ast = self._ast_classifier.classify(chosen_sql)
             table_kinds = await self._table_kinds_by_name(list(ast.table_refs), dataset_id)
@@ -316,14 +548,14 @@ class QueryService:
         # ------------------------------------------------------------------
         explanation_obj = None
         if isinstance(result, ExecutionResult):
-            explanation_obj = await self._explainer_agent.run(
-                {
-                    "question": question,
-                    "sql": chosen_sql,
-                    "row_count": result.row_count,
-                    "preview_rows": result.rows[:50],
-                }
+            explainer_prompt = _render_explainer_prompt(
+                question=question,
+                executed_sql=chosen_sql,
+                row_count=result.row_count,
+                preview_rows=result.rows[:50],
             )
+            explanation_run = await self._explainer_agent.run(explainer_prompt)
+            explanation_obj = getattr(explanation_run, "output", explanation_run)
 
         # ------------------------------------------------------------------
         # 9. Clarification frame (emitted alongside answer when confidence is low)
@@ -378,11 +610,7 @@ class QueryService:
         # ------------------------------------------------------------------
         # 12. Auto-learn (only on first-shot OK + no PII + no clarification)
         # ------------------------------------------------------------------
-        if (
-            execution_status == "OK"
-            and isinstance(result, ExecutionResult)
-            and not clarification_emitted
-        ):
+        if execution_status == "OK" and isinstance(result, ExecutionResult) and not clarification_emitted:
             await self._auto_learner.maybe_propose(
                 tenant_id=tenant_id,
                 workspace_id=workspace_id,
@@ -485,10 +713,7 @@ class QueryService:
         """Build a ClarificationFrame if grounding confidence is low."""
         from flyquery.interfaces.query import ClarificationFrame
 
-        if (
-            grounded.confidence < self._settings.grounding_min_confidence
-            and grounded.missing_info
-        ):
+        if grounded.confidence < self._settings.grounding_min_confidence and grounded.missing_info:
             return ClarificationFrame(
                 questions=grounded.missing_info,
                 reasons=[],

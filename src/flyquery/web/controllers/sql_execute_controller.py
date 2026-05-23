@@ -30,7 +30,6 @@ from flyquery.core.services.execution.ast_classifier import AstClassifier
 from flyquery.core.services.execution.duckdb_executor import (
     DmlMutationResult,
     DuckDBExecutor,
-    ExecutionError,
     ExecutionResult,
 )
 from flyquery.core.services.execution.scope_guard import ScopeGuard, ScopeGuardError
@@ -59,7 +58,7 @@ class DirectSqlForbidden(FireflyHTTPException):
 
 def _sse_frame(event: str, payload: Any) -> bytes:
     """Format one SSE frame."""
-    return f"event: {event}\ndata: {json.dumps(payload, default=str)}\n\n".encode("utf-8")
+    return f"event: {event}\ndata: {json.dumps(payload, default=str)}\n\n".encode()
 
 
 def _now_ms() -> int:
@@ -350,12 +349,15 @@ class SqlExecuteController:
         except ScopeGuardError as exc:
             scope_error = str(exc)
 
-        yield _sse_frame("ast_classified", {
-            "classification": ast.classification,
-            "single_statement": ast.single_statement,
-            "table_refs": list(ast.table_refs),
-            "scope_error": scope_error,
-        })
+        yield _sse_frame(
+            "ast_classified",
+            {
+                "classification": ast.classification,
+                "single_statement": ast.single_statement,
+                "table_refs": list(ast.table_refs),
+                "scope_error": scope_error,
+            },
+        )
 
         if scope_error:
             elapsed = _now_ms() - start_ms
@@ -378,15 +380,18 @@ class SqlExecuteController:
                 pii_findings_json=None,
                 error_json={"scope_error": scope_error},
             )
-            yield _sse_frame("final", SqlExecuteResponse(
-                query_id=query_id,
-                sql=request.sql,
-                ast_classification=ast.classification,
-                execution_status="REJECTED_BY_FIREWALL",
-                preview=None,
-                row_count=None,
-                elapsed_ms=elapsed,
-            ).model_dump(mode="json"))
+            yield _sse_frame(
+                "final",
+                SqlExecuteResponse(
+                    query_id=query_id,
+                    sql=request.sql,
+                    ast_classification=ast.classification,
+                    execution_status="REJECTED_BY_FIREWALL",
+                    preview=None,
+                    row_count=None,
+                    elapsed_ms=elapsed,
+                ).model_dump(mode="json"),
+            )
             return
 
         async with self._session_factory() as db_session:
@@ -397,11 +402,14 @@ class SqlExecuteController:
         elapsed = _now_ms() - start_ms
 
         if isinstance(exec_result, ExecutionResult):
-            yield _sse_frame("executed", {
-                "row_count": exec_result.row_count,
-                "elapsed_ms": elapsed,
-                "truncated": exec_result.truncated,
-            })
+            yield _sse_frame(
+                "executed",
+                {
+                    "row_count": exec_result.row_count,
+                    "elapsed_ms": elapsed,
+                    "truncated": exec_result.truncated,
+                },
+            )
             execution_status = "OK"
             error_json = None
         else:
@@ -443,16 +451,19 @@ class SqlExecuteController:
                 dataset_id=request.dataset_id,
             )
 
-        yield _sse_frame("final", SqlExecuteResponse(
-            query_id=query_id,
-            sql=request.sql,
-            ast_classification=ast.classification,
-            execution_status=execution_status,  # type: ignore[arg-type]
-            preview=exec_result.rows[:10] if isinstance(exec_result, ExecutionResult) else None,
-            row_count=exec_result.row_count if isinstance(exec_result, ExecutionResult) else None,
-            truncated=exec_result.truncated if isinstance(exec_result, ExecutionResult) else False,
-            elapsed_ms=elapsed,
-        ).model_dump(mode="json"))
+        yield _sse_frame(
+            "final",
+            SqlExecuteResponse(
+                query_id=query_id,
+                sql=request.sql,
+                ast_classification=ast.classification,
+                execution_status=execution_status,  # type: ignore[arg-type]
+                preview=exec_result.rows[:10] if isinstance(exec_result, ExecutionResult) else None,
+                row_count=exec_result.row_count if isinstance(exec_result, ExecutionResult) else None,
+                truncated=exec_result.truncated if isinstance(exec_result, ExecutionResult) else False,
+                elapsed_ms=elapsed,
+            ).model_dump(mode="json"),
+        )
 
     async def _assert_direct_sql_enabled(self, workspace_id: uuid.UUID) -> None:
         """Raise DirectSqlForbidden when the workspace flag is off.
@@ -462,9 +473,7 @@ class SqlExecuteController:
         """
         workspace = await self._workspace_service.get(workspace_id)
         if workspace is None or not workspace.get("allow_direct_sql", False):
-            raise DirectSqlForbidden(
-                f"workspace {workspace_id!r} does not have allow_direct_sql=true"
-            )
+            raise DirectSqlForbidden(f"workspace {workspace_id!r} does not have allow_direct_sql=true")
 
 
 # ---------------------------------------------------------------------------
@@ -532,6 +541,7 @@ async def _apply_dml_mutation(
     :param session_factory: async_sessionmaker for DB access
     """
     import hashlib
+
     import sqlalchemy as sa
 
     async with session_factory() as s:
@@ -552,9 +562,7 @@ async def _apply_dml_mutation(
         table_row = row.mappings().one_or_none()
 
     if table_row is None:
-        raise RuntimeError(
-            f"DERIVED table {mutation.table_name!r} not found after DML mutation"
-        )
+        raise RuntimeError(f"DERIVED table {mutation.table_name!r} not found after DML mutation")
 
     table_id: uuid.UUID = table_row["table_id"]
     current_key: str | None = table_row["parquet_object_key"]
@@ -617,6 +625,7 @@ def _next_version(current_key: str | None) -> int:
     if not current_key:
         return 2
     import re
+
     match = re.search(r"/v(\d+)\.parquet$", current_key)
     if match:
         return int(match.group(1)) + 1
@@ -644,8 +653,6 @@ def _parquet_prefix(
     """
     if current_key:
         import os
+
         return os.path.dirname(current_key)
-    return (
-        f"flyquery/{tenant_id}/{workspace_id}/{dataset_id}"
-        f"/derived/{table_id}"
-    )
+    return f"flyquery/{tenant_id}/{workspace_id}/{dataset_id}/derived/{table_id}"

@@ -94,10 +94,9 @@ async def test_reupload_adds_column(started_app) -> None:  # noqa: ANN001
         # Changes: one ADDED
         r = await c.get(f"/api/v1/tables/{table_id}/changes", headers=h)
         changes = r.json()["items"]
-        assert any(
-            ch["change"] == "ADDED" and ch["column_name"] == "status"
-            for ch in changes
-        ), f"expected ADDED:status in {changes}"
+        assert any(ch["change"] == "ADDED" and ch["column_name"] == "status" for ch in changes), (
+            f"expected ADDED:status in {changes}"
+        )
 
 
 @pytest.mark.integration
@@ -138,10 +137,9 @@ async def test_reupload_removes_column(started_app) -> None:  # noqa: ANN001
 
         r = await c.get(f"/api/v1/tables/{table_id}/changes", headers=h)
         changes = r.json()["items"]
-        assert any(
-            ch["change"] == "REMOVED" and ch["column_name"] == "email"
-            for ch in changes
-        ), f"expected REMOVED:email in {changes}"
+        assert any(ch["change"] == "REMOVED" and ch["column_name"] == "email" for ch in changes), (
+            f"expected REMOVED:email in {changes}"
+        )
 
 
 @pytest.mark.integration
@@ -149,7 +147,7 @@ async def test_reupload_removes_column(started_app) -> None:  # noqa: ANN001
 async def test_removed_column_marked_inactive(started_app) -> None:  # noqa: ANN001
     """Removed column's schema_objects row must have is_active=false after re-upload."""
     import sqlalchemy as sa
-    from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+    from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 
     from flyquery.main import app
 
@@ -182,7 +180,7 @@ async def test_removed_column_marked_inactive(started_app) -> None:  # noqa: ANN
             headers=h,
         )
         assert r.status_code == 201, r.text
-        snap1_id = r.json()["snapshot_id"]
+        r.json()["snapshot_id"]
 
         # The PREVIOUS snapshot's `email` row should be is_active=false.
         # We need the first snapshot id — GET /tables/{id}/snapshots
@@ -193,6 +191,7 @@ async def test_removed_column_marked_inactive(started_app) -> None:  # noqa: ANN
 
         # Check directly via DB (admin URL bypasses RLS so we can query freely).
         import os
+
         admin_url = os.environ["FLYQUERY_DATABASE_URL_ADMIN"]
         # Admin URL is sync (+psycopg); convert to async (+asyncpg)
         async_admin_url = admin_url.replace("+psycopg", "+asyncpg").replace("+psycopg2", "+asyncpg")
@@ -257,8 +256,7 @@ async def test_type_changed_recorded(started_app) -> None:  # noqa: ANN001
         r = await c.get(f"/api/v1/tables/{table_id}/changes", headers=h)
         changes = r.json()["items"]
         type_changes = [
-            ch for ch in changes
-            if ch["change"] == "TYPE_CHANGED" and ch["column_name"] == "total"
+            ch for ch in changes if ch["change"] == "TYPE_CHANGED" and ch["column_name"] == "total"
         ]
         assert type_changes, f"expected TYPE_CHANGED:total in {changes}"
         tc = type_changes[0]

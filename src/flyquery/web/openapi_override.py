@@ -92,8 +92,7 @@ TAG_DESCRIPTIONS: dict[str, str] = {
         "candidates with human approve/reject workflow."
     ),
     "semantic": (
-        "Semantic layer -- MetricFlow-compatible metrics and dimensions "
-        "derived from the ingested schema KB."
+        "Semantic layer -- MetricFlow-compatible metrics and dimensions derived from the ingested schema KB."
     ),
     "glossary": "Business glossary terms linked to schema columns and datasets.",
     "examples": "Few-shot Text-to-SQL examples stored in the workspace vector index.",

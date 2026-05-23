@@ -46,10 +46,7 @@ class MetricFlowCompiler:
 
         # SELECT clause: group_by columns first, then the aggregation
         agg_alias = f"{agg}({expr}) AS {name}"
-        if group_by_cols:
-            select_parts = group_by_cols + [agg_alias]
-        else:
-            select_parts = [agg_alias]
+        select_parts = group_by_cols + [agg_alias] if group_by_cols else [agg_alias]
         select_clause = ", ".join(select_parts)
 
         # Base table: derived from the first component of the expr

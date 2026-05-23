@@ -179,8 +179,7 @@ class ConversationsController:
         rows = await self._conversation_service.list(ctx.tenant_id, workspace_id)
         return {
             "items": [
-                ConversationRead.model_validate({**r, "turns": []}).model_dump(mode="json")
-                for r in rows
+                ConversationRead.model_validate({**r, "turns": []}).model_dump(mode="json") for r in rows
             ]
         }
 

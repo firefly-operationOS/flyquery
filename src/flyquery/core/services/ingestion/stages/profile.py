@@ -27,14 +27,34 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 logger = logging.getLogger(__name__)
 
 # Data-type compatibility groups
-_NUMERIC_TYPES = frozenset({
-    "integer", "int", "int4", "int8", "bigint", "smallint", "tinyint",
-    "float", "double", "real", "decimal", "numeric", "hugeint", "ubigint",
-})
-_TEMPORAL_TYPES = frozenset({
-    "date", "timestamp", "timestamp with time zone", "timestamptz",
-    "time", "interval",
-})
+_NUMERIC_TYPES = frozenset(
+    {
+        "integer",
+        "int",
+        "int4",
+        "int8",
+        "bigint",
+        "smallint",
+        "tinyint",
+        "float",
+        "double",
+        "real",
+        "decimal",
+        "numeric",
+        "hugeint",
+        "ubigint",
+    }
+)
+_TEMPORAL_TYPES = frozenset(
+    {
+        "date",
+        "timestamp",
+        "timestamp with time zone",
+        "timestamptz",
+        "time",
+        "interval",
+    }
+)
 
 
 def _is_numeric(data_type: str) -> bool:
@@ -91,6 +111,7 @@ async def run_profile(
 # DuckDB profiling (runs in thread)
 # ---------------------------------------------------------------------------
 
+
 def _profile_column_sync(
     parquet_key: str,
     col_name: str,
@@ -100,6 +121,7 @@ def _profile_column_sync(
     """Run a single DuckDB query to compute profile metrics for one column."""
     try:
         import duckdb
+
         conn = duckdb.connect()
         try:
             safe_col = '"' + col_name.replace('"', '""') + '"'
@@ -148,9 +170,7 @@ def _profile_column_sync(
                     f"LIMIT 5",
                     [parquet_key],
                 ).fetchall()
-                profile["top_values"] = [
-                    {"value": str(r[0]), "count": r[1]} for r in top_rows
-                ]
+                profile["top_values"] = [{"value": str(r[0]), "count": r[1]} for r in top_rows]
 
             return profile
 
@@ -158,15 +178,14 @@ def _profile_column_sync(
             conn.close()
 
     except Exception as exc:
-        logger.warning(
-            "stage=profile column_profile failed col=%s: %s", col_name, exc
-        )
+        logger.warning("stage=profile column_profile failed col=%s: %s", col_name, exc)
         return None
 
 
 # ---------------------------------------------------------------------------
 # DB helpers
 # ---------------------------------------------------------------------------
+
 
 async def _load_columns(
     tenant_id: str,

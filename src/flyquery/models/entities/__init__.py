@@ -11,15 +11,36 @@ class Base(DeclarativeBase):
 
 
 # Force eager import so alembic env.py's target_metadata sees every table.
-from flyquery.models.entities.workspace import Workspace  # noqa: F401,E402
 from flyquery.models.entities.dataset import Dataset  # noqa: F401,E402
-from flyquery.models.entities.file import File  # noqa: F401,E402
-from flyquery.models.entities.table import Table  # noqa: F401,E402
-from flyquery.models.entities.schema import SchemaSnapshot, SchemaChange, SchemaObject, Relation  # noqa: F401,E402
-from flyquery.models.entities.semantic import SemanticMetric, SemanticDimension, SemanticVersion, GlossaryTerm  # noqa: F401,E402
 from flyquery.models.entities.examples import Example  # noqa: F401,E402
-from flyquery.models.entities.queries import Query, QueryResult, Conversation, ConversationTurn  # noqa: F401,E402
-from flyquery.models.entities.ops import AgentToken, AuditEvent, CostEvent, IngestJob, IngestEvent  # noqa: F401,E402
+from flyquery.models.entities.file import File  # noqa: F401,E402
+from flyquery.models.entities.ops import (  # noqa: F401,E402
+    AgentToken,
+    AuditEvent,
+    CostEvent,
+    IngestEvent,
+    IngestJob,
+)
+from flyquery.models.entities.queries import (  # noqa: F401,E402
+    Conversation,
+    ConversationTurn,
+    Query,
+    QueryResult,
+)
+from flyquery.models.entities.schema import (  # noqa: F401,E402
+    Relation,
+    SchemaChange,
+    SchemaObject,
+    SchemaSnapshot,
+)
+from flyquery.models.entities.semantic import (  # noqa: F401,E402
+    GlossaryTerm,
+    SemanticDimension,
+    SemanticMetric,
+    SemanticVersion,
+)
+from flyquery.models.entities.table import Table  # noqa: F401,E402
+from flyquery.models.entities.workspace import Workspace  # noqa: F401,E402
 
 __all__ = [
     "Base",

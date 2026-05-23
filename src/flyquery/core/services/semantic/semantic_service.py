@@ -10,7 +10,7 @@ from pyfly.container import service as service_bean
 
 from flyquery.core.services.semantic.metricflow_compiler import MetricFlowCompiler
 from flyquery.core.services.semantic.semantic_repository import SemanticRepository
-from flyquery.core.services.semantic.yaml_schema import MetricYamlError, validate_metric_yaml
+from flyquery.core.services.semantic.yaml_schema import validate_metric_yaml
 from flyquery.interfaces.semantic import SemanticMetricCreate, SemanticMetricUpdate
 
 
@@ -111,7 +111,7 @@ class SemanticService:
         metric = await self._repo.get_metric(metric_id)
         if metric is None:
             raise KeyError(f"metric {metric_id} not found")
-        validated = validate_metric_yaml(metric["definition_yaml"])
+        validate_metric_yaml(metric["definition_yaml"])
         import yaml as _yaml
 
         compiled_sql = MetricFlowCompiler.compile(_yaml.safe_load(metric["definition_yaml"]))

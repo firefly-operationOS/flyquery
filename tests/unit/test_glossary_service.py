@@ -28,11 +28,7 @@ class FakeGlossaryRepo:
         limit: int = 100,
         offset: int = 0,
     ) -> list[dict]:
-        result = [
-            r
-            for r in self.rows
-            if r["tenant_id"] == tenant_id and r["workspace_id"] == workspace_id
-        ]
+        result = [r for r in self.rows if r["tenant_id"] == tenant_id and r["workspace_id"] == workspace_id]
         return result[offset : offset + limit]
 
     async def get(self, term_id: uuid.UUID) -> dict | None:

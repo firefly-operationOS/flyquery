@@ -9,27 +9,19 @@ quality=PROPOSED) is inserted after a successful first-shot run.
 from __future__ import annotations
 
 import uuid
-from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-import pytest_asyncio
 
 
 @pytest.mark.integration
 @pytest.mark.asyncio
 async def test_auto_learning_inserts_proposed_example(started_app: None) -> None:  # noqa: ARG001
     """Mock QueryService internals to simulate a first-shot OK; assert example landed."""
-    from flyquery.core.agents.grounding_agent import GroundedContext, GroundedTable
-    from flyquery.core.agents.generation_agent import GeneratedCandidate, GeneratedCandidates
-    from flyquery.core.agents.explainer_agent import ResultExplanation
-    from flyquery.core.services.execution.ast_classifier import AstClassification, AstClassifier
-    from flyquery.core.services.execution.duckdb_executor import ExecutionResult
-    from flyquery.core.services.execution.scope_guard import ScopeGuard
+    from httpx import ASGITransport, AsyncClient
+
     from flyquery.core.services.examples.auto_learner import AutoLearner
     from flyquery.core.services.examples.examples_service import ExamplesService
-    from flyquery.core.services.query.query_service import QueryService
     from flyquery.main import app
-    from httpx import ASGITransport, AsyncClient
 
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://t") as c:
         # Create workspace and dataset
@@ -52,8 +44,9 @@ async def test_auto_learning_inserts_proposed_example(started_app: None) -> None
 
     # Use ExamplesService directly to verify the insert path.
     # Build a minimal mock that records create() calls.
-    from flyquery.core.services.examples.examples_repository import ExamplesRepository
     from sqlalchemy.ext.asyncio import async_sessionmaker
+
+    from flyquery.core.services.examples.examples_repository import ExamplesRepository
     from flyquery.main import _pyfly
 
     # Fetch real beans from the DI container.
@@ -82,9 +75,7 @@ async def test_auto_learning_inserts_proposed_example(started_app: None) -> None
     )
 
     # Verify a PROPOSED / AGENT_LEARNED example was inserted.
-    rows = await examples_repo.list(
-        tenant_id, workspace_uuid, quality="PROPOSED", dataset_id=dataset_uuid
-    )
+    rows = await examples_repo.list(tenant_id, workspace_uuid, quality="PROPOSED", dataset_id=dataset_uuid)
     assert len(rows) >= 1, "Expected at least one PROPOSED example after auto-learning"
     row = rows[0]
     assert row["source"] == "AGENT_LEARNED"

@@ -1,15 +1,19 @@
 # Copyright 2026 Firefly Software Solutions Inc
 # tests/unit/test_workspace_service.py
 import pytest
+
 from flyquery.core.services.workspaces.workspace_service import WorkspaceService
 from flyquery.interfaces.workspaces import WorkspaceCreate
 
 
 class FakeRepo:
-    def __init__(self): self.rows = []
+    def __init__(self):
+        self.rows = []
+
     async def create(self, **fields):
         self.rows.append(fields)
         return {**fields, "id": "ws-1"}
+
     async def list_by_tenant(self, tenant_id):
         return [r for r in self.rows if r["tenant_id"] == tenant_id]
 

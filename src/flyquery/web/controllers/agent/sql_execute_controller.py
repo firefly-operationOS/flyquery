@@ -25,14 +25,14 @@ from flyquery.core.services.query.query_repository import QueryRepository
 from flyquery.core.services.storage.object_store import ObjectStore
 from flyquery.core.services.workspaces.workspace_service import WorkspaceService
 from flyquery.interfaces.sql_execute import SqlExecuteRequest, SqlExecuteResponse
+from flyquery.web.controllers.sql_execute_controller import (
+    SqlExecuteController as _UserSqlExecuteController,
+)
 from flyquery.web.conventions import (
     HEADER_AGENT_TOKEN,
     FireflyHTTPException,
     InvalidRequest,
     tenant_context_from_request,
-)
-from flyquery.web.controllers.sql_execute_controller import (
-    SqlExecuteController as _UserSqlExecuteController,
 )
 
 _SCOPE_SQL_EXECUTE = "flyquery.sql:execute"

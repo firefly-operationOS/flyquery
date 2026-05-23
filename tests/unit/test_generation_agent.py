@@ -41,8 +41,14 @@ def test_generated_candidates_ordered_by_confidence() -> None:
     """Multiple candidates can be created and inspected."""
     result = GeneratedCandidates(
         candidates=[
-            GeneratedCandidate(sql="SELECT region, SUM(total) FROM orders GROUP BY region", reasoning="best", confidence=0.95),
-            GeneratedCandidate(sql="SELECT region, COUNT(*) FROM orders GROUP BY region", reasoning="fallback", confidence=0.70),
+            GeneratedCandidate(
+                sql="SELECT region, SUM(total) FROM orders GROUP BY region", reasoning="best", confidence=0.95
+            ),
+            GeneratedCandidate(
+                sql="SELECT region, COUNT(*) FROM orders GROUP BY region",
+                reasoning="fallback",
+                confidence=0.70,
+            ),
         ]
     )
     assert result.candidates[0].confidence > result.candidates[1].confidence
@@ -88,9 +94,7 @@ async def test_generation_agent_returns_structured_output() -> None:
         async def run(self, *args, **kwargs):
             return canned
 
-    with unittest.mock.patch(
-        "flyquery.core.agents.generation_agent.build_agent", return_value=_FakeAgent()
-    ):
+    with unittest.mock.patch("flyquery.core.agents.generation_agent.build_agent", return_value=_FakeAgent()):
         from flyquery.config import FlyquerySettings
         from flyquery.core.agents.generation_agent import build_generation_agent
 

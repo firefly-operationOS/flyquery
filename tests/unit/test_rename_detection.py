@@ -9,11 +9,10 @@ import pytest
 class TestRenameDetectionAgent:
     def test_agent_models_importable(self):
         from flyquery.core.agents.rename_detection_agent import (
-            RenameProposal,
-            RenameProposals,
             AUTO_CONFIRM_THRESHOLD,
-            build_rename_detection_agent,
+            RenameProposal,
         )
+
         assert AUTO_CONFIRM_THRESHOLD == 0.8
         proposal = RenameProposal(
             removed_column="old_col",
@@ -25,11 +24,15 @@ class TestRenameDetectionAgent:
 
     def test_rename_proposals_list(self):
         from flyquery.core.agents.rename_detection_agent import (
-            RenameProposal, RenameProposals,
+            RenameProposal,
+            RenameProposals,
         )
-        proposals = RenameProposals(items=[
-            RenameProposal(removed_column="a", new_column="b", confidence=0.95, rationale="x"),
-        ])
+
+        proposals = RenameProposals(
+            items=[
+                RenameProposal(removed_column="a", new_column="b", confidence=0.95, rationale="x"),
+            ]
+        )
         assert len(proposals.items) == 1
         assert proposals.items[0].confidence >= 0.8
 
@@ -40,6 +43,7 @@ class TestDetectRenamesLogic:
     @pytest.mark.asyncio
     async def test_unambiguous_rename_auto_confirmed(self):
         from flyquery.core.services.ingestion.stages.reconcile import _detect_renames
+
         # One removed col, one added col, same type → auto-confirmed
         confirmed, candidates = await _detect_renames(
             removed_names=["old_email"],
@@ -56,6 +60,7 @@ class TestDetectRenamesLogic:
     @pytest.mark.asyncio
     async def test_ambiguous_becomes_candidate(self):
         from flyquery.core.services.ingestion.stages.reconcile import _detect_renames
+
         # Two removed cols → two added cols, same type → ambiguous → candidates
         confirmed, candidates = await _detect_renames(
             removed_names=["col_a", "col_b"],
@@ -71,6 +76,7 @@ class TestDetectRenamesLogic:
     @pytest.mark.asyncio
     async def test_type_mismatch_no_rename(self):
         from flyquery.core.services.ingestion.stages.reconcile import _detect_renames
+
         # Type mismatch → no rename detected
         confirmed, candidates = await _detect_renames(
             removed_names=["old_col"],
@@ -88,6 +94,7 @@ class TestDetectRenamesLogic:
     @pytest.mark.asyncio
     async def test_empty_lists_no_op(self):
         from flyquery.core.services.ingestion.stages.reconcile import _detect_renames
+
         confirmed, candidates = await _detect_renames(
             removed_names=[],
             added_names=[],
@@ -103,4 +110,5 @@ class TestDetectRenamesLogic:
 class TestReconcileModuleImportable:
     def test_reconcile_importable(self):
         from flyquery.core.services.ingestion.stages.reconcile import run_reconcile
+
         assert callable(run_reconcile)

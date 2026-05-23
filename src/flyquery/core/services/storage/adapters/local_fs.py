@@ -72,6 +72,7 @@ class LocalFsObjectStore:
                     if not chunk:
                         break
                     yield chunk
+
         return _stream()
 
     async def head(self, key: str) -> ObjectMeta:
@@ -106,6 +107,7 @@ class LocalFsObjectStore:
                         etag=None,
                         last_modified=datetime.utcfromtimestamp(stat.st_mtime),
                     )
+
         return _gen()
 
     async def presign_get(self, key: str, ttl_s: int) -> str:

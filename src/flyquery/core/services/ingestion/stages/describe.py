@@ -26,8 +26,8 @@ logger = logging.getLogger(__name__)
 
 # Approximate cost per 1M tokens for haiku (in cents, conservative estimate)
 # Haiku 4.5: ~$0.80/M input + $4/M output; round to $5/M ≈ 0.0005 cents/token
-_CENTS_PER_INPUT_TOKEN = 0.00008    # $0.80 / 1M
-_CENTS_PER_OUTPUT_TOKEN = 0.0004    # $4 / 1M
+_CENTS_PER_INPUT_TOKEN = 0.00008  # $0.80 / 1M
+_CENTS_PER_OUTPUT_TOKEN = 0.0004  # $4 / 1M
 
 _NO_AGENT_WARNING_ISSUED = False
 
@@ -47,6 +47,7 @@ async def run_describe(
 
     try:
         from flyquery.core.agents.describe_agent import build_describe_agent
+
         agent = build_describe_agent(settings)
     except (ImportError, RuntimeError) as exc:
         global _NO_AGENT_WARNING_ISSUED
@@ -67,8 +68,7 @@ async def run_describe(
         if spent_cents >= budget_cents:
             deferred += len(batch)
             logger.info(
-                "stage=describe budget exhausted spent_cents=%.4f budget=%d "
-                "deferred=%d",
+                "stage=describe budget exhausted spent_cents=%.4f budget=%d deferred=%d",
                 spent_cents,
                 budget_cents,
                 deferred,
@@ -81,9 +81,7 @@ async def run_describe(
         try:
             result = await agent.run(json.dumps(prompt_data))
         except Exception as exc:  # noqa: BLE001
-            logger.warning(
-                "stage=describe agent.run failed (graceful skip batch): %s", exc
-            )
+            logger.warning("stage=describe agent.run failed (graceful skip batch): %s", exc)
             deferred += len(batch)
             continue
 
@@ -93,19 +91,14 @@ async def run_describe(
             if usage is not None:
                 input_tokens = getattr(usage, "input_tokens", 0) or 0
                 output_tokens = getattr(usage, "output_tokens", 0) or 0
-                batch_cost = (
-                    input_tokens * _CENTS_PER_INPUT_TOKEN
-                    + output_tokens * _CENTS_PER_OUTPUT_TOKEN
-                )
+                batch_cost = input_tokens * _CENTS_PER_INPUT_TOKEN + output_tokens * _CENTS_PER_OUTPUT_TOKEN
                 spent_cents += batch_cost
         except Exception:  # noqa: BLE001
             pass  # cost tracking failure must never break the pipeline
 
         # Persist descriptions
         described_objs = result.output.columns
-        qualified_to_output: dict[str, Any] = {
-            d.qualified_name: d for d in described_objs
-        }
+        qualified_to_output: dict[str, Any] = {d.qualified_name: d for d in described_objs}
 
         for col in batch:
             described_col = qualified_to_output.get(col["qualified_name"])
@@ -140,6 +133,7 @@ async def run_describe(
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _build_prompt(
     columns: list[dict[str, Any]],
     session_factory: Any,
@@ -148,12 +142,14 @@ def _build_prompt(
     out = []
     for col in columns:
         table_context = col.get("sibling_names") or []
-        out.append({
-            "qualified_name": col["qualified_name"],
-            "data_type": col["data_type"] or "UNKNOWN",
-            "samples": (col.get("sample_values_json") or [])[:5],
-            "table_context": table_context[:20],
-        })
+        out.append(
+            {
+                "qualified_name": col["qualified_name"],
+                "data_type": col["data_type"] or "UNKNOWN",
+                "samples": (col.get("sample_values_json") or [])[:5],
+                "table_context": table_context[:20],
+            }
+        )
     return out
 
 
@@ -208,10 +204,7 @@ async def _load_undescribed_columns(
                     ),
                     {"pid": parent_id, "tenant": tenant_id},
                 )
-                names = [
-                    r["qualified_name"].rsplit(".", 1)[-1]
-                    for r in sibling_result.mappings().all()
-                ]
+                names = [r["qualified_name"].rsplit(".", 1)[-1] for r in sibling_result.mappings().all()]
                 sibling_map[parent_id] = names
 
     for row in rows:

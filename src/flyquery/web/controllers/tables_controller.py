@@ -59,9 +59,7 @@ class TablesController:
                 {"ds_id": dataset_id, "tenant": ctx.tenant_id},
             )
             rows = [dict(r) for r in result.mappings().all()]
-        return {
-            "items": [_table_row_to_read(r).model_dump(mode="json") for r in rows]
-        }
+        return {"items": [_table_row_to_read(r).model_dump(mode="json") for r in rows]}
 
     # ------------------------------------------------------------------ #
     # Get single table                                                    #

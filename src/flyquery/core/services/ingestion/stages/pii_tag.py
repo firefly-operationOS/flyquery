@@ -14,7 +14,6 @@ Emits pii_tagged event summary.
 
 from __future__ import annotations
 
-import json
 import logging
 import uuid
 from typing import Any
@@ -87,6 +86,7 @@ async def run_pii_tag(
 # ---------------------------------------------------------------------------
 # DB helpers
 # ---------------------------------------------------------------------------
+
 
 async def _load_columns(
     tenant_id: str,

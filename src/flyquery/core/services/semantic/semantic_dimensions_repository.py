@@ -164,9 +164,7 @@ class SemanticDimensionsRepository:
             )
             return updated
 
-    async def publish_dimension(
-        self, dimension_id: uuid.UUID, compiled_sql: str
-    ) -> dict[str, Any]:
+    async def publish_dimension(self, dimension_id: uuid.UUID, compiled_sql: str) -> dict[str, Any]:
         """Set status=PUBLISHED and persist the compiled SQL template."""
         async with self._factory() as s, s.begin():
             result = await s.execute(

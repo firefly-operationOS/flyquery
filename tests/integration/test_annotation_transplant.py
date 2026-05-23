@@ -69,8 +69,7 @@ async def test_reupload_preserves_human_annotations(started_app) -> None:  # noq
 
         # Step 4: Re-upload orders.csv with an extra column 'status'
         csv_v2 = (
-            b"order_id,customer_id,total,status\n"
-            b"1,42,9.95,shipped\n2,42,12.50,pending\n3,7,7.00,processing\n"
+            b"order_id,customer_id,total,status\n1,42,9.95,shipped\n2,42,12.50,pending\n3,7,7.00,processing\n"
         )
         r = await c.put(
             f"/api/v1/datasets/{ds_id}/tables/{table_id}:upload",
@@ -91,9 +90,7 @@ async def test_reupload_preserves_human_annotations(started_app) -> None:  # noq
         assert new_total["description"] == "customer purchase total", (
             f"description lost after re-upload: {new_total}"
         )
-        assert new_total["description_source"] == "HUMAN", (
-            f"description_source wrong: {new_total}"
-        )
+        assert new_total["description_source"] == "HUMAN", f"description_source wrong: {new_total}"
 
         # Also verify that the new column 'status' was added (sanity)
         new_status = next(
@@ -105,7 +102,6 @@ async def test_reupload_preserves_human_annotations(started_app) -> None:  # noq
         # And verify the ADDED change was recorded
         r = await c.get(f"/api/v1/tables/{table_id}/changes", headers=h)
         changes = r.json()["items"]
-        assert any(
-            ch["change"] == "ADDED" and ch["column_name"] == "status"
-            for ch in changes
-        ), f"expected ADDED:status in {changes}"
+        assert any(ch["change"] == "ADDED" and ch["column_name"] == "status" for ch in changes), (
+            f"expected ADDED:status in {changes}"
+        )

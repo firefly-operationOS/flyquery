@@ -32,15 +32,35 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 # Type compatibility
 # ---------------------------------------------------------------------------
-_NUMERIC_GROUP = frozenset({
-    "integer", "int", "int4", "int8", "bigint", "smallint", "tinyint",
-    "float", "double", "real", "decimal", "numeric", "hugeint", "ubigint",
-})
+_NUMERIC_GROUP = frozenset(
+    {
+        "integer",
+        "int",
+        "int4",
+        "int8",
+        "bigint",
+        "smallint",
+        "tinyint",
+        "float",
+        "double",
+        "real",
+        "decimal",
+        "numeric",
+        "hugeint",
+        "ubigint",
+    }
+)
 _TEXT_GROUP = frozenset({"varchar", "text", "char", "bpchar", "string"})
-_TEMPORAL_GROUP = frozenset({
-    "date", "timestamp", "timestamp with time zone", "timestamptz",
-    "time", "interval",
-})
+_TEMPORAL_GROUP = frozenset(
+    {
+        "date",
+        "timestamp",
+        "timestamp with time zone",
+        "timestamptz",
+        "time",
+        "interval",
+    }
+)
 
 
 def _type_group(dt: str) -> str:
@@ -81,6 +101,7 @@ def _name_specificity(name: str) -> float:
 # Main entry point
 # ---------------------------------------------------------------------------
 
+
 async def run_relations(
     *,
     tenant_id: str,
@@ -112,9 +133,7 @@ async def run_relations(
                 settings=settings,
             )
         except Exception as exc:  # noqa: BLE001
-            logger.warning(
-                "stage=relations agent_proposed failed (graceful skip): %s", exc
-            )
+            logger.warning("stage=relations agent_proposed failed (graceful skip): %s", exc)
 
     logger.info(
         "stage=relations dataset_id=%s heuristic=%d agent=%d",
@@ -132,6 +151,7 @@ async def run_relations(
 # ---------------------------------------------------------------------------
 # 6a: heuristic
 # ---------------------------------------------------------------------------
+
 
 async def _run_heuristic(
     *,
@@ -160,9 +180,7 @@ async def _run_heuristic(
         for tbl_b in tables[i + 1 :]:
             cols_b = table_columns[tbl_b["id"]]
             # name lookup: lowercase → column info
-            b_by_name: dict[str, dict[str, Any]] = {
-                c["col_name"].lower(): c for c in cols_b
-            }
+            b_by_name: dict[str, dict[str, Any]] = {c["col_name"].lower(): c for c in cols_b}
 
             for col_a in cols_a:
                 name_lower = col_a["col_name"].lower()
@@ -246,6 +264,7 @@ def _is_pk_like(col: dict[str, Any], tbl: dict[str, Any]) -> bool:
 # 6b: agent-proposed
 # ---------------------------------------------------------------------------
 
+
 async def _run_agent_proposed(
     *,
     tenant_id: str,
@@ -263,9 +282,7 @@ async def _run_agent_proposed(
     # Build schema context for the prompt
     schema_lines: list[str] = []
     for tbl in tables:
-        cols = await _load_table_columns(
-            tenant_id, tbl["id"], tbl["current_snapshot_id"], session_factory
-        )
+        cols = await _load_table_columns(tenant_id, tbl["id"], tbl["current_snapshot_id"], session_factory)
         col_summaries = []
         for c in cols[:30]:  # cap per table to keep prompt size manageable
             samples = json.dumps((c.get("sample_values_json") or [])[:3])
@@ -274,9 +291,7 @@ async def _run_agent_proposed(
                 f"(distinct≈{c.get('distinct_estimate', '?')}, samples={samples})"
             )
         tbl_desc = tbl.get("description") or ""
-        schema_lines.append(
-            f"- {tbl['name']}: {tbl_desc}\n" + "\n".join(col_summaries)
-        )
+        schema_lines.append(f"- {tbl['name']}: {tbl_desc}\n" + "\n".join(col_summaries))
 
     prompt = (
         f"Dataset: {dataset_id}\n\n"
@@ -328,6 +343,7 @@ async def _run_agent_proposed(
 # ---------------------------------------------------------------------------
 # DB helpers
 # ---------------------------------------------------------------------------
+
 
 async def _load_dataset_tables(
     tenant_id: str,

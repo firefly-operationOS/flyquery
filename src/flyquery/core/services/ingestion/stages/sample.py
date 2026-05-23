@@ -63,9 +63,7 @@ async def run_sample(
             continue
 
         # Read raw values from Parquet
-        raw_values = await asyncio.to_thread(
-            _read_parquet_column, parquet_key, col_name, n
-        )
+        raw_values = await asyncio.to_thread(_read_parquet_column, parquet_key, col_name, n)
 
         if not raw_values:
             continue
@@ -106,18 +104,19 @@ async def run_sample(
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _read_parquet_column(parquet_key: str, col_name: str, n: int) -> list[Any]:
     """Read up to n non-null values from a Parquet file for a given column."""
     try:
         import duckdb
+
         conn = duckdb.connect()
         try:
             # Use parameterised query to avoid SQL injection via col_name
             # (DuckDB doesn't support ? in column identifiers, so we escape manually)
             safe_col = _quote_ident(col_name)
             rows = conn.execute(
-                f"SELECT {safe_col} FROM read_parquet(?) "
-                f"WHERE {safe_col} IS NOT NULL LIMIT {n}",
+                f"SELECT {safe_col} FROM read_parquet(?) WHERE {safe_col} IS NOT NULL LIMIT {n}",
                 [parquet_key],
             ).fetchall()
             return [r[0] for r in rows]

@@ -9,7 +9,6 @@ from pathlib import Path
 
 from flyquery.core.services.ingestion.reader import (
     ColumnSchema,
-    FileReader,
     MaterialiseResult,
     ProposedTable,
     TableExtractionRules,
@@ -21,12 +20,8 @@ logger = logging.getLogger(__name__)
 class CsvReader:
     formats = ("csv", "tsv")
 
-    async def enumerate_tables(
-        self, source_path: str, rules: TableExtractionRules
-    ) -> list[ProposedTable]:
-        n_columns, n_rows_estimate = await asyncio.to_thread(
-            self._head_columns_and_estimate, source_path
-        )
+    async def enumerate_tables(self, source_path: str, rules: TableExtractionRules) -> list[ProposedTable]:
+        n_columns, n_rows_estimate = await asyncio.to_thread(self._head_columns_and_estimate, source_path)
         name = Path(source_path).stem  # sanitised in caller
         return [
             ProposedTable(
@@ -100,9 +95,7 @@ class CsvReader:
                 f"COPY (SELECT * FROM read_csv_auto('{src}', {opts})) "
                 f"TO '{tgt}' (FORMAT PARQUET, COMPRESSION 'snappy')"
             )
-            rows = conn.execute(
-                "SELECT count(*) FROM read_parquet(?)", [target_parquet_key]
-            ).fetchone()[0]
+            rows = conn.execute("SELECT count(*) FROM read_parquet(?)", [target_parquet_key]).fetchone()[0]
             schema = conn.execute(
                 "SELECT * FROM (DESCRIBE SELECT * FROM read_parquet(?))", [target_parquet_key]
             ).fetchall()

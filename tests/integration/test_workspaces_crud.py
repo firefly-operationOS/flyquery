@@ -8,6 +8,7 @@ from httpx import ASGITransport, AsyncClient
 @pytest.mark.asyncio
 async def test_create_then_list_workspace() -> None:
     from flyquery.main import app
+
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://t") as c:
         r = await c.post(
             "/api/v1/workspaces",
@@ -31,6 +32,7 @@ async def test_create_then_list_workspace() -> None:
 @pytest.mark.asyncio
 async def test_purge_workspace_marks_for_tombstone() -> None:
     from flyquery.main import app
+
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://t") as c:
         r = await c.post(
             "/api/v1/workspaces",
@@ -42,7 +44,7 @@ async def test_purge_workspace_marks_for_tombstone() -> None:
             f"/api/v1/workspaces/{ws_id}:purge",
             headers={"X-Tenant-Id": "tenant-a", "X-Workspace-Id": ws_id},
         )
-        assert r.status_code == 202   # accepted; purge is async
+        assert r.status_code == 202  # accepted; purge is async
         # 30-day tombstone — status flips, bytes not yet gone
 
 
@@ -51,9 +53,8 @@ async def test_purge_workspace_marks_for_tombstone() -> None:
 async def test_purge_walks_object_store_prefix() -> None:
     """Write a probe blob under the workspace prefix via the app's ObjectStore bean,
     call :purge, and assert the blob is gone."""
-    import os
-    from flyquery.main import app, _pyfly
     from flyquery.core.services.storage.object_store import ObjectStore
+    from flyquery.main import _pyfly, app
 
     # Resolve the same ObjectStore the app is using (already wired into DI).
     store: ObjectStore = _pyfly.context.get_bean(ObjectStore)

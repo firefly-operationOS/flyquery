@@ -69,21 +69,21 @@ async def test_critic_agent_returns_structured_output() -> None:
         async def run(self, *args, **kwargs):
             return canned
 
-    with unittest.mock.patch(
-        "flyquery.core.agents.critic_agent.build_agent", return_value=_FakeAgent()
-    ):
+    with unittest.mock.patch("flyquery.core.agents.critic_agent.build_agent", return_value=_FakeAgent()):
         from flyquery.config import FlyquerySettings
         from flyquery.core.agents.critic_agent import build_critic_agent
 
         settings = FlyquerySettings()
         agent = build_critic_agent(settings)
 
-    result = await agent.run({
-        "sql": "SELECT region, SUM(total) FROM orders",
-        "error": "column 'region' must appear in GROUP BY",
-        "grounded": {},
-        "question": "revenue by region",
-    })
+    result = await agent.run(
+        {
+            "sql": "SELECT region, SUM(total) FROM orders",
+            "error": "column 'region' must appear in GROUP BY",
+            "grounded": {},
+            "question": "revenue by region",
+        }
+    )
     assert isinstance(result, RefinedSql)
     assert result.confidence == 0.85
     assert "GROUP BY" in result.sql

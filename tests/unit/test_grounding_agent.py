@@ -111,9 +111,7 @@ async def test_grounding_agent_returns_structured_output() -> None:
         async def run(self, *args, **kwargs):
             return canned
 
-    with unittest.mock.patch(
-        "flyquery.core.agents.grounding_agent.build_agent", return_value=_FakeAgent()
-    ):
+    with unittest.mock.patch("flyquery.core.agents.grounding_agent.build_agent", return_value=_FakeAgent()):
         from flyquery.config import FlyquerySettings
         from flyquery.core.agents.grounding_agent import build_grounding_agent
 

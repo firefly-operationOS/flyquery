@@ -22,7 +22,6 @@ the SSE stream closes.
 
 from __future__ import annotations
 
-import asyncio
 import io
 import uuid
 
@@ -182,7 +181,7 @@ async def test_ingest_job_sse_stream_terminates():
     The IngestWorker is not running in this test — we simulate job completion
     by injecting events directly.
     """
-    from flyquery.core.services.ingestion.events import emit_final, emit_queued
+    from flyquery.core.services.ingestion.events import emit_final
     from flyquery.main import _pyfly, app
 
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://t") as c:
@@ -203,7 +202,7 @@ async def test_ingest_job_sse_stream_terminates():
             headers=h,
         )
         ds_id = r.json()["id"]
-        ds_uuid = uuid.UUID(ds_id)
+        uuid.UUID(ds_id)
 
         # Upload CSV for a valid table reference
         body = b"x,y\n1,2\n3,4\n"
@@ -226,9 +225,7 @@ async def test_ingest_job_sse_stream_terminates():
         # Resolve session_factory from the DI container
         from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-        session_factory: async_sessionmaker[AsyncSession] = _pyfly.context.get_bean(
-            async_sessionmaker
-        )
+        session_factory: async_sessionmaker[AsyncSession] = _pyfly.context.get_bean(async_sessionmaker)
 
         # Inject a final event so the SSE stream closes immediately
         await emit_final(
@@ -242,9 +239,7 @@ async def test_ingest_job_sse_stream_terminates():
         # Stream SSE — should terminate on 'final'
         seen_stages: list[str] = []
         try:
-            async with c.stream(
-                "GET", f"/api/v1/ingest-jobs/{job_id}/stream", headers=h
-            ) as resp:
+            async with c.stream("GET", f"/api/v1/ingest-jobs/{job_id}/stream", headers=h) as resp:
                 assert resp.status_code == 200
                 assert "text/event-stream" in resp.headers.get("content-type", "")
                 async for line in resp.aiter_lines():

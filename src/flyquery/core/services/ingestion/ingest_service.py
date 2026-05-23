@@ -9,7 +9,6 @@ from __future__ import annotations
 import logging
 import uuid
 from dataclasses import dataclass
-from typing import Any
 
 from pyfly.container import service as service_bean
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker

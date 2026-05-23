@@ -8,7 +8,7 @@ POST /api/v1/schema-changes/{change_id}:confirm
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import sqlalchemy as sa
 from pyfly.container import rest_controller
@@ -43,7 +43,7 @@ class SchemaChangesController:
         """
         ctx = tenant_context_from_request(http_request)
         approved_by = ctx.actor or ctx.tenant_id
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
 
         async with self._factory() as s, s.begin():
             # --- Load the change row ---

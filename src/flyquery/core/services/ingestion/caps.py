@@ -3,7 +3,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Protocol
+from typing import Protocol
 
 
 class _CapsSettings(Protocol):
@@ -21,7 +21,7 @@ class FileTooLargeError(Exception):
     def __init__(self, size_bytes: int, limit_bytes: int) -> None:
         super().__init__(
             f"File size {size_bytes:,} bytes exceeds the {limit_bytes:,}-byte "
-            f"({limit_bytes // (1024 ** 2)} MB) per-file upload limit."
+            f"({limit_bytes // (1024**2)} MB) per-file upload limit."
         )
         self.size_bytes = size_bytes
         self.limit_bytes = limit_bytes
@@ -36,7 +36,7 @@ class WorkspaceQuotaExceededError(Exception):
         super().__init__(
             f"Workspace would reach {(current_bytes + addition_bytes):,} bytes "
             f"which exceeds the {quota_bytes:,}-byte "
-            f"({quota_bytes // (1024 ** 3)} GB) workspace quota."
+            f"({quota_bytes // (1024**3)} GB) workspace quota."
         )
         self.current_bytes = current_bytes
         self.addition_bytes = addition_bytes
@@ -62,6 +62,4 @@ def enforce_upload_cap(
         raise FileTooLargeError(size_bytes, max_file_bytes)
 
     if int(workspace_storage_used_bytes) + size_bytes > max_workspace_bytes:
-        raise WorkspaceQuotaExceededError(
-            int(workspace_storage_used_bytes), size_bytes, max_workspace_bytes
-        )
+        raise WorkspaceQuotaExceededError(int(workspace_storage_used_bytes), size_bytes, max_workspace_bytes)

@@ -70,21 +70,21 @@ async def test_explainer_agent_returns_structured_output() -> None:
         async def run(self, *args, **kwargs):
             return canned
 
-    with unittest.mock.patch(
-        "flyquery.core.agents.explainer_agent.build_agent", return_value=_FakeAgent()
-    ):
+    with unittest.mock.patch("flyquery.core.agents.explainer_agent.build_agent", return_value=_FakeAgent()):
         from flyquery.config import FlyquerySettings
         from flyquery.core.agents.explainer_agent import build_explainer_agent
 
         settings = FlyquerySettings()
         agent = build_explainer_agent(settings)
 
-    result = await agent.run({
-        "question": "total revenue by region",
-        "sql": "SELECT region, SUM(total) FROM orders GROUP BY region",
-        "row_count": 5,
-        "preview": [{"region": "Northeast", "total": 5182}],
-    })
+    result = await agent.run(
+        {
+            "question": "total revenue by region",
+            "sql": "SELECT region, SUM(total) FROM orders GROUP BY region",
+            "row_count": 5,
+            "preview": [{"region": "Northeast", "total": 5182}],
+        }
+    )
     assert isinstance(result, ResultExplanation)
     assert result.chart_hint == "bar"
     assert "Northeast" in result.summary

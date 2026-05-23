@@ -17,12 +17,8 @@ from flyquery.models.entities import Base
 class Example(Base):
     __tablename__ = "flyquery_examples"
     __table_args__ = (
-        CheckConstraint(
-            "source IN ('USER_CURATED','AGENT_LEARNED')", name="ck_examples_source"
-        ),
-        CheckConstraint(
-            "quality IN ('PROPOSED','APPROVED','REJECTED')", name="ck_examples_quality"
-        ),
+        CheckConstraint("source IN ('USER_CURATED','AGENT_LEARNED')", name="ck_examples_source"),
+        CheckConstraint("quality IN ('PROPOSED','APPROVED','REJECTED')", name="ck_examples_quality"),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(

@@ -11,28 +11,26 @@ import os
 import uuid
 
 import pytest
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
-
 import sqlalchemy as sa
+from sqlalchemy.ext.asyncio import async_sessionmaker
 
 
 @pytest.mark.integration
 @pytest.mark.asyncio
 async def test_ingest_pipeline_csv(started_app) -> None:  # noqa: ANN001
     """Upload a CSV via IngestService and verify DB state."""
-    from flyquery.main import _pyfly
-
     # --- Grab DI beans from the running container ---
     from flyquery.core.services.ingestion.ingest_service import IngestService
+    from flyquery.main import _pyfly
 
     svc = _pyfly.context.get_bean(IngestService)
     assert svc is not None
 
     # We need a real tenant + workspace + dataset
-    from flyquery.core.services.workspaces.workspace_service import WorkspaceService
     from flyquery.core.services.datasets.dataset_service import DatasetService
-    from flyquery.interfaces.workspaces import WorkspaceCreate
+    from flyquery.core.services.workspaces.workspace_service import WorkspaceService
     from flyquery.interfaces.datasets import DatasetCreate
+    from flyquery.interfaces.workspaces import WorkspaceCreate
 
     ws_svc = _pyfly.context.get_bean(WorkspaceService)
     ds_svc = _pyfly.context.get_bean(DatasetService)
@@ -43,9 +41,7 @@ async def test_ingest_pipeline_csv(started_app) -> None:  # noqa: ANN001
     )
     ws_id = ws["id"]
 
-    ds = await ds_svc.create(
-        tenant_id, ws_id, DatasetCreate(name="pipeline-test")
-    )
+    ds = await ds_svc.create(tenant_id, ws_id, DatasetCreate(name="pipeline-test"))
     ds_id = ds["id"]
 
     csv_bytes = b"id,name,score\n1,Alice,9.5\n2,Bob,8.2\n3,Carol,7.8\n"
@@ -67,16 +63,12 @@ async def test_ingest_pipeline_csv(started_app) -> None:  # noqa: ANN001
     assert tbl.name == "scores"
 
     # Verify DB: snapshot is READY
-    from flyquery.config import FlyquerySettings
-    from sqlalchemy.ext.asyncio import async_sessionmaker
 
     session_factory = _pyfly.context.get_bean(async_sessionmaker)
     async with session_factory() as s:
         # Snapshot
         r = await s.execute(
-            sa.text(
-                "SELECT status FROM flyquery_schema_snapshots WHERE id = :sid"
-            ),
+            sa.text("SELECT status FROM flyquery_schema_snapshots WHERE id = :sid"),
             {"sid": uuid.UUID(tbl.snapshot_id)},
         )
         snap = r.mappings().one()
@@ -84,9 +76,7 @@ async def test_ingest_pipeline_csv(started_app) -> None:  # noqa: ANN001
 
         # Table has current_snapshot_id set
         r = await s.execute(
-            sa.text(
-                "SELECT current_snapshot_id FROM flyquery_tables WHERE id = :tid"
-            ),
+            sa.text("SELECT current_snapshot_id FROM flyquery_tables WHERE id = :tid"),
             {"tid": uuid.UUID(tbl.table_id)},
         )
         tbl_row = r.mappings().one()

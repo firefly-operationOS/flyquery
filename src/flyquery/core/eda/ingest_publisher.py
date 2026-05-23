@@ -11,7 +11,7 @@ from __future__ import annotations
 import logging
 import uuid
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 logger = logging.getLogger(__name__)
@@ -35,7 +35,7 @@ class SchemaUpdatedEvent:
     snapshot_id: str
     n_columns: int
     n_rows_actual: int | None
-    triggered_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    triggered_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
     def to_dict(self) -> dict[str, Any]:
         return {

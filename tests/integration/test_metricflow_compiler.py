@@ -9,7 +9,6 @@ import pytest
 import sqlalchemy as sa
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
-
 SIMPLE_METRIC_YAML = """
 name: revenue_by_region
 label: Revenue by Region
@@ -42,7 +41,7 @@ async def test_publish_sets_compiled_sql(started_app: None) -> None:  # noqa: AR
     seed_engine = create_async_engine(admin_url)
     engine = create_async_engine(db_url)
     seed_factory = async_sessionmaker(seed_engine, expire_on_commit=False)
-    factory = async_sessionmaker(engine, expire_on_commit=False)
+    async_sessionmaker(engine, expire_on_commit=False)
 
     tenant = "ten-sem"
     ws_id = uuid.uuid4()

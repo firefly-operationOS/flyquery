@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import json
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import sqlalchemy as sa
 from pyfly.container import rest_controller
@@ -67,7 +67,7 @@ class SchemaObjectsController:
         Sets pii_source='HUMAN' when pii_tag is provided.
         """
         ctx = tenant_context_from_request(http_request)
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
 
         async with self._factory() as s, s.begin():
             # Lock and load existing row
@@ -104,7 +104,8 @@ class SchemaObjectsController:
 
             if len(updates) > 1:  # more than just last_changed_at
                 set_clauses = ", ".join(
-                    f"{k} = :{k}" if k != "governance_json" and k != "synonyms_json"
+                    f"{k} = :{k}"
+                    if k != "governance_json" and k != "synonyms_json"
                     else f"{k} = CAST(:{k} AS jsonb)"
                     for k in updates
                 )

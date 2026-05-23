@@ -3,12 +3,11 @@
 
 from __future__ import annotations
 
-import pytest
-
 
 class TestDescribeAgentModels:
     def test_described_column_importable(self):
-        from flyquery.core.agents.describe_agent import DescribedColumn, DescribedObjects
+        from flyquery.core.agents.describe_agent import DescribedColumn
+
         col = DescribedColumn(
             qualified_name="ds.tbl.col",
             description="The total order amount.",
@@ -19,23 +18,28 @@ class TestDescribeAgentModels:
 
     def test_described_objects_importable(self):
         from flyquery.core.agents.describe_agent import DescribedColumn, DescribedObjects
-        objs = DescribedObjects(columns=[
-            DescribedColumn(
-                qualified_name="a.b.c",
-                description="Something.",
-                synonyms=["foo"],
-            )
-        ])
+
+        objs = DescribedObjects(
+            columns=[
+                DescribedColumn(
+                    qualified_name="a.b.c",
+                    description="Something.",
+                    synonyms=["foo"],
+                )
+            ]
+        )
         assert len(objs.columns) == 1
 
 
 class TestDescribeStageModuleImportable:
     def test_run_describe_importable(self):
         from flyquery.core.services.ingestion.stages.describe import run_describe
+
         assert callable(run_describe)
 
     def test_build_prompt_importable(self):
         from flyquery.core.services.ingestion.stages.describe import _build_prompt
+
         cols = [
             {
                 "qualified_name": "ds.tbl.col",
@@ -55,6 +59,7 @@ class TestDescribeStageModuleImportable:
 class TestCostTracking:
     def test_cost_per_token_positive(self):
         from flyquery.core.services.ingestion.stages import describe as d_mod
+
         assert d_mod._CENTS_PER_INPUT_TOKEN > 0
         assert d_mod._CENTS_PER_OUTPUT_TOKEN > 0
 

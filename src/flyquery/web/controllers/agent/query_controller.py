@@ -137,9 +137,7 @@ class AgentQueryController:
     def _build_service(self, db_session: AsyncSession) -> QueryService:
         """Build a per-request QueryService with the shared embedder/agents."""
         index = SearchIndex(db_session)
-        retriever = HybridRetriever(
-            index=index, embedder=self._embedder, rrf_k=self._settings.rrf_k
-        )
+        retriever = HybridRetriever(index=index, embedder=self._embedder, rrf_k=self._settings.rrf_k)
         reranker = build_reranker(self._settings)
         table_resolver = TableResolver(session=db_session, settings=self._settings)
         uploader = ResultUploader(
@@ -234,9 +232,7 @@ class AgentQueryController:
 
         async with self._session_factory() as db_session:
             index = SearchIndex(db_session)
-            retriever = HybridRetriever(
-                index=index, embedder=self._embedder, rrf_k=self._settings.rrf_k
-            )
+            retriever = HybridRetriever(index=index, embedder=self._embedder, rrf_k=self._settings.rrf_k)
             reranker = build_reranker(self._settings)
 
             bundle = await retriever.retrieve(
@@ -246,9 +242,7 @@ class AgentQueryController:
                 top_k_schema=self._settings.top_k_schema * 3,
             )
             schema_hits = bundle.get("schema_objects", [])
-            reranked = await reranker.rerank(
-                body.question, schema_hits, top_n=self._settings.top_k_schema
-            )
+            reranked = await reranker.rerank(body.question, schema_hits, top_n=self._settings.top_k_schema)
             bundle["schema_objects"] = reranked
 
             grounding_agent = build_grounding_agent(self._settings)
@@ -263,10 +257,7 @@ class AgentQueryController:
             candidate = gen_out.candidates[0]
 
         clarification: ClarificationFrame | None = None
-        if (
-            grounded.confidence < self._settings.grounding_min_confidence
-            and grounded.missing_info
-        ):
+        if grounded.confidence < self._settings.grounding_min_confidence and grounded.missing_info:
             clarification = ClarificationFrame(questions=grounded.missing_info, reasons=[])
 
         return ExplainResponse(
@@ -303,9 +294,7 @@ class AgentQueryController:
 
         async with self._session_factory() as db_session:
             index = SearchIndex(db_session)
-            retriever = HybridRetriever(
-                index=index, embedder=self._embedder, rrf_k=self._settings.rrf_k
-            )
+            retriever = HybridRetriever(index=index, embedder=self._embedder, rrf_k=self._settings.rrf_k)
             reranker = build_reranker(self._settings)
 
             bundle = await retriever.retrieve(
@@ -315,9 +304,7 @@ class AgentQueryController:
                 top_k_schema=self._settings.top_k_schema * 3,
             )
             schema_hits = bundle.get("schema_objects", [])
-            reranked = await reranker.rerank(
-                body.question, schema_hits, top_n=self._settings.top_k_schema
-            )
+            reranked = await reranker.rerank(body.question, schema_hits, top_n=self._settings.top_k_schema)
             bundle["schema_objects"] = reranked
 
             grounding_agent = build_grounding_agent(self._settings)
@@ -345,10 +332,7 @@ class AgentQueryController:
             scope_error = str(exc)
 
         clarification: ClarificationFrame | None = None
-        if (
-            grounded.confidence < self._settings.grounding_min_confidence
-            and grounded.missing_info
-        ):
+        if grounded.confidence < self._settings.grounding_min_confidence and grounded.missing_info:
             clarification = ClarificationFrame(questions=grounded.missing_info, reasons=[])
 
         return ValidateResponse(

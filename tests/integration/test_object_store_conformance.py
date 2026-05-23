@@ -8,6 +8,7 @@ import pytest
 
 def _local_factory(tmp: Path):
     from flyquery.core.services.storage.adapters.local_fs import LocalFsObjectStore
+
     return LocalFsObjectStore(base=str(tmp), presign_ttl_s=60)
 
 
@@ -17,6 +18,7 @@ def store(request, tmp_path, minio_container, fake_gcs_container, azurite_contai
         return _local_factory(tmp_path)
     if request.param == "s3":
         from flyquery.core.services.storage.adapters.s3 import S3ObjectStore
+
         cfg = minio_container.get_config()
         return S3ObjectStore(
             base="s3://flyquery-test",
@@ -30,6 +32,7 @@ def store(request, tmp_path, minio_container, fake_gcs_container, azurite_contai
             pytest.skip("fake-gcs-server container unavailable")
         pytest.importorskip("gcloud.aio.storage", reason="[gcs] extra not installed")
         from flyquery.core.services.storage.adapters.gcs import GcsObjectStore
+
         return GcsObjectStore(
             base="gs://flyquery-test",
             endpoint_url=fake_gcs_container.get_url(),
@@ -40,6 +43,7 @@ def store(request, tmp_path, minio_container, fake_gcs_container, azurite_contai
             pytest.skip("Azurite container unavailable")
         pytest.importorskip("azure.storage.blob", reason="[azure] extra not installed")
         from flyquery.core.services.storage.adapters.azure_blob import AzureBlobObjectStore
+
         return AzureBlobObjectStore(
             base="azure://flyquery-test",
             connection_string=azurite_container.get_connection_string(),
@@ -122,7 +126,9 @@ async def test_kms_round_trip_when_supported(store) -> None:
     if store.__class__.__name__ in ("S3ObjectStore", "GcsObjectStore", "AzureBlobObjectStore"):
         pytest.skip(f"{store.__class__.__name__} KMS requires real cloud provider setup")
     meta = await store.put(
-        f"unit/{uuid.uuid4()}/kms.bin", b"k", content_type="text/plain",
+        f"unit/{uuid.uuid4()}/kms.bin",
+        b"k",
+        content_type="text/plain",
         kms_key_uri="arn:aws:kms:us-east-1:000:key/abc",
     )
     assert meta.kms_key_uri == "arn:aws:kms:us-east-1:000:key/abc"

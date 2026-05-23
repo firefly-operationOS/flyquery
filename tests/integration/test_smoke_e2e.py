@@ -1,7 +1,7 @@
 # Copyright 2026 Firefly Software Solutions Inc
 """End-to-end smoke covering the Plan 1 surface:
-   health → version → mint token → create workspace → create dataset
-   → archive → re-create with same slug rejected.
+health → version → mint token → create workspace → create dataset
+→ archive → re-create with same slug rejected.
 """
 
 import pytest
@@ -12,6 +12,7 @@ from httpx import ASGITransport, AsyncClient
 @pytest.mark.asyncio
 async def test_plan1_end_to_end() -> None:
     from flyquery.main import app
+
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://t") as c:
         # /actuator/health
         r = await c.get("/actuator/health")

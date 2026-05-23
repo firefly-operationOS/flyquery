@@ -8,7 +8,6 @@ from pathlib import Path
 
 from flyquery.core.services.ingestion.reader import (
     ColumnSchema,
-    FileReader,
     MaterialiseResult,
     ProposedTable,
     TableExtractionRules,
@@ -18,9 +17,7 @@ from flyquery.core.services.ingestion.reader import (
 class AvroReader:
     formats = ("avro",)
 
-    async def enumerate_tables(
-        self, source_path: str, rules: TableExtractionRules
-    ) -> list[ProposedTable]:
+    async def enumerate_tables(self, source_path: str, rules: TableExtractionRules) -> list[ProposedTable]:
         return await asyncio.to_thread(self._enumerate_sync, source_path)
 
     async def materialise(

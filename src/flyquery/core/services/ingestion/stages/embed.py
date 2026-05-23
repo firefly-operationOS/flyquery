@@ -68,9 +68,7 @@ async def run_embed(
                 model_name = _EMBEDDING_MODEL
                 embeddings_written += 1
             except Exception as exc:  # noqa: BLE001
-                logger.warning(
-                    "embed failed for object %s: %s", row["id"], exc, exc_info=True
-                )
+                logger.warning("embed failed for object %s: %s", row["id"], exc, exc_info=True)
 
         # Update embedding + content_tsv
         await _update_object(

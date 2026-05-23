@@ -1,10 +1,12 @@
 # Copyright 2026 Firefly Software Solutions Inc
-import gzip
 import bz2
+import gzip
 import zipfile
-import pytest
 from pathlib import Path
-from flyquery.core.services.ingestion.compression import decompress_to_temp, _sync
+
+import pytest
+
+from flyquery.core.services.ingestion.compression import _sync, decompress_to_temp
 
 
 @pytest.mark.asyncio

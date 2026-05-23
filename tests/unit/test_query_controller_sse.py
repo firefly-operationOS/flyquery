@@ -8,15 +8,14 @@ or live Postgres are required. The SSE generator is exercised directly.
 from __future__ import annotations
 
 import uuid
-from collections.abc import AsyncIterator
+from datetime import UTC
 
 import pytest
 
-from flyquery.core.agents.grounding_agent import GroundedContext, GroundedTable, GroundedColumn
-from flyquery.core.agents.generation_agent import GeneratedCandidates, GeneratedCandidate
 from flyquery.core.agents.explainer_agent import ResultExplanation
-from flyquery.core.services.execution.duckdb_executor import ExecutionResult, ExecutionError
-
+from flyquery.core.agents.generation_agent import GeneratedCandidate, GeneratedCandidates
+from flyquery.core.agents.grounding_agent import GroundedColumn, GroundedContext, GroundedTable
+from flyquery.core.services.execution.duckdb_executor import ExecutionResult
 
 # ---------------------------------------------------------------------------
 # Helpers — SSE frame parser
@@ -34,9 +33,9 @@ def _parse_sse_frames(frames: list[bytes]) -> list[dict]:
         data_str = None
         for line in text.split("\n"):
             if line.startswith("event:"):
-                event = line[len("event:"):].strip()
+                event = line[len("event:") :].strip()
             elif line.startswith("data:"):
-                data_str = line[len("data:"):].strip()
+                data_str = line[len("data:") :].strip()
         if event:
             results.append({"event": event, "data": json.loads(data_str) if data_str else {}})
     return results
@@ -107,10 +106,17 @@ class _FakeQueryRepo:
 
 class _FakeObjectStore:
     async def put(self, key, body, content_type, kms_key_uri=None):
-        from datetime import datetime, timezone
+        from datetime import datetime
+
         from flyquery.core.services.storage.object_store import ObjectMeta
-        return ObjectMeta(key=key, size_bytes=len(body), content_type=content_type,
-                         etag=None, last_modified=datetime.now(timezone.utc))
+
+        return ObjectMeta(
+            key=key,
+            size_bytes=len(body),
+            content_type=content_type,
+            etag=None,
+            last_modified=datetime.now(UTC),
+        )
 
 
 class _FakeExamplesService:
@@ -161,9 +167,10 @@ def _make_candidates(sql: str = "SELECT 1 AS v") -> GeneratedCandidates:
 @pytest.mark.asyncio
 async def test_sse_happy_path_emits_all_events():
     """SSE generator emits schema_linked, sql_generated, executed, explained, final."""
-    from flyquery.web.controllers.query_controller import QueryController
+    from unittest.mock import MagicMock, patch
+
     from flyquery.interfaces.query import QueryRequest
-    from unittest.mock import patch, AsyncMock, MagicMock
+    from flyquery.web.controllers.query_controller import QueryController
 
     settings = _FakeSettings()
 
@@ -196,16 +203,27 @@ async def test_sse_happy_path_emits_all_events():
     ctrl._session_factory = _fake_session_factory
 
     # Patch the agent builders and other components
-    with patch("flyquery.web.controllers.query_controller.build_grounding_agent", return_value=_FakeAgent(grounded)), \
-         patch("flyquery.web.controllers.query_controller.build_generation_agent", return_value=_FakeAgent(candidates)), \
-         patch("flyquery.web.controllers.query_controller.build_critic_agent", return_value=_FakeAgent(None)), \
-         patch("flyquery.web.controllers.query_controller.build_explainer_agent", return_value=_FakeAgent(explanation)), \
-         patch("flyquery.web.controllers.query_controller.HybridRetriever", return_value=_FakeRetriever()), \
-         patch("flyquery.web.controllers.query_controller.TableResolver", return_value=_FakeTableResolver()), \
-         patch("flyquery.web.controllers.query_controller.SearchIndex", return_value=MagicMock()), \
-         patch("flyquery.web.controllers.query_controller.build_reranker", return_value=_FakeReranker()):
-
+    with (
+        patch(
+            "flyquery.web.controllers.query_controller.build_grounding_agent",
+            return_value=_FakeAgent(grounded),
+        ),
+        patch(
+            "flyquery.web.controllers.query_controller.build_generation_agent",
+            return_value=_FakeAgent(candidates),
+        ),
+        patch("flyquery.web.controllers.query_controller.build_critic_agent", return_value=_FakeAgent(None)),
+        patch(
+            "flyquery.web.controllers.query_controller.build_explainer_agent",
+            return_value=_FakeAgent(explanation),
+        ),
+        patch("flyquery.web.controllers.query_controller.HybridRetriever", return_value=_FakeRetriever()),
+        patch("flyquery.web.controllers.query_controller.TableResolver", return_value=_FakeTableResolver()),
+        patch("flyquery.web.controllers.query_controller.SearchIndex", return_value=MagicMock()),
+        patch("flyquery.web.controllers.query_controller.build_reranker", return_value=_FakeReranker()),
+    ):
         from flyquery.interfaces.query import QueryRequest
+
         request = QueryRequest(dataset_id=uuid.uuid4(), question="how many orders?")
 
         frames = []
@@ -233,9 +251,10 @@ async def test_sse_happy_path_emits_all_events():
 @pytest.mark.asyncio
 async def test_sse_emits_clarification_when_low_confidence():
     """SSE emits a clarification frame between schema_linked and sql_generated."""
-    from flyquery.web.controllers.query_controller import QueryController
-    from unittest.mock import patch, MagicMock
     from contextlib import asynccontextmanager
+    from unittest.mock import MagicMock, patch
+
+    from flyquery.web.controllers.query_controller import QueryController
 
     settings = _FakeSettings()
     ctrl = QueryController.__new__(QueryController)
@@ -246,9 +265,7 @@ async def test_sse_emits_clarification_when_low_confidence():
     ctrl._embedder = MagicMock()
     ctrl._ast_classifier = MagicMock()
     ctrl._scope_guard = MagicMock()
-    ctrl._executor = _FakeExecutor(
-        ExecutionResult(rows=[], columns=[], row_count=0, truncated=False)
-    )
+    ctrl._executor = _FakeExecutor(ExecutionResult(rows=[], columns=[], row_count=0, truncated=False))
 
     @asynccontextmanager
     async def _fake_factory():
@@ -266,16 +283,27 @@ async def test_sse_emits_clarification_when_low_confidence():
     candidates = _make_candidates()
     explanation = ResultExplanation(summary="0 results.", chart_hint="none")
 
-    with patch("flyquery.web.controllers.query_controller.build_grounding_agent", return_value=_FakeAgent(low_confidence_grounded)), \
-         patch("flyquery.web.controllers.query_controller.build_generation_agent", return_value=_FakeAgent(candidates)), \
-         patch("flyquery.web.controllers.query_controller.build_critic_agent", return_value=_FakeAgent(None)), \
-         patch("flyquery.web.controllers.query_controller.build_explainer_agent", return_value=_FakeAgent(explanation)), \
-         patch("flyquery.web.controllers.query_controller.HybridRetriever", return_value=_FakeRetriever()), \
-         patch("flyquery.web.controllers.query_controller.TableResolver", return_value=_FakeTableResolver()), \
-         patch("flyquery.web.controllers.query_controller.SearchIndex", return_value=MagicMock()), \
-         patch("flyquery.web.controllers.query_controller.build_reranker", return_value=_FakeReranker()):
-
+    with (
+        patch(
+            "flyquery.web.controllers.query_controller.build_grounding_agent",
+            return_value=_FakeAgent(low_confidence_grounded),
+        ),
+        patch(
+            "flyquery.web.controllers.query_controller.build_generation_agent",
+            return_value=_FakeAgent(candidates),
+        ),
+        patch("flyquery.web.controllers.query_controller.build_critic_agent", return_value=_FakeAgent(None)),
+        patch(
+            "flyquery.web.controllers.query_controller.build_explainer_agent",
+            return_value=_FakeAgent(explanation),
+        ),
+        patch("flyquery.web.controllers.query_controller.HybridRetriever", return_value=_FakeRetriever()),
+        patch("flyquery.web.controllers.query_controller.TableResolver", return_value=_FakeTableResolver()),
+        patch("flyquery.web.controllers.query_controller.SearchIndex", return_value=MagicMock()),
+        patch("flyquery.web.controllers.query_controller.build_reranker", return_value=_FakeReranker()),
+    ):
         from flyquery.interfaces.query import QueryRequest
+
         request = QueryRequest(dataset_id=uuid.uuid4(), question="show orders")
 
         frames = []
@@ -299,9 +327,10 @@ async def test_sse_emits_clarification_when_low_confidence():
 @pytest.mark.asyncio
 async def test_sse_no_clarification_when_high_confidence():
     """SSE does NOT emit clarification when confidence is above threshold."""
-    from flyquery.web.controllers.query_controller import QueryController
-    from unittest.mock import patch, MagicMock
     from contextlib import asynccontextmanager
+    from unittest.mock import MagicMock, patch
+
+    from flyquery.web.controllers.query_controller import QueryController
 
     settings = _FakeSettings()
     ctrl = QueryController.__new__(QueryController)
@@ -326,16 +355,27 @@ async def test_sse_no_clarification_when_high_confidence():
     candidates = _make_candidates()
     explanation = ResultExplanation(summary="1 result.", chart_hint="none")
 
-    with patch("flyquery.web.controllers.query_controller.build_grounding_agent", return_value=_FakeAgent(grounded)), \
-         patch("flyquery.web.controllers.query_controller.build_generation_agent", return_value=_FakeAgent(candidates)), \
-         patch("flyquery.web.controllers.query_controller.build_critic_agent", return_value=_FakeAgent(None)), \
-         patch("flyquery.web.controllers.query_controller.build_explainer_agent", return_value=_FakeAgent(explanation)), \
-         patch("flyquery.web.controllers.query_controller.HybridRetriever", return_value=_FakeRetriever()), \
-         patch("flyquery.web.controllers.query_controller.TableResolver", return_value=_FakeTableResolver()), \
-         patch("flyquery.web.controllers.query_controller.SearchIndex", return_value=MagicMock()), \
-         patch("flyquery.web.controllers.query_controller.build_reranker", return_value=_FakeReranker()):
-
+    with (
+        patch(
+            "flyquery.web.controllers.query_controller.build_grounding_agent",
+            return_value=_FakeAgent(grounded),
+        ),
+        patch(
+            "flyquery.web.controllers.query_controller.build_generation_agent",
+            return_value=_FakeAgent(candidates),
+        ),
+        patch("flyquery.web.controllers.query_controller.build_critic_agent", return_value=_FakeAgent(None)),
+        patch(
+            "flyquery.web.controllers.query_controller.build_explainer_agent",
+            return_value=_FakeAgent(explanation),
+        ),
+        patch("flyquery.web.controllers.query_controller.HybridRetriever", return_value=_FakeRetriever()),
+        patch("flyquery.web.controllers.query_controller.TableResolver", return_value=_FakeTableResolver()),
+        patch("flyquery.web.controllers.query_controller.SearchIndex", return_value=MagicMock()),
+        patch("flyquery.web.controllers.query_controller.build_reranker", return_value=_FakeReranker()),
+    ):
         from flyquery.interfaces.query import QueryRequest
+
         request = QueryRequest(dataset_id=uuid.uuid4(), question="total revenue")
 
         frames = []
@@ -355,9 +395,10 @@ async def test_sse_no_clarification_when_high_confidence():
 @pytest.mark.asyncio
 async def test_sse_final_frame_contains_answer_fields():
     """The ``final`` SSE frame contains all expected AnswerResponse fields."""
-    from flyquery.web.controllers.query_controller import QueryController
-    from unittest.mock import patch, MagicMock
     from contextlib import asynccontextmanager
+    from unittest.mock import MagicMock, patch
+
+    from flyquery.web.controllers.query_controller import QueryController
 
     settings = _FakeSettings()
     ctrl = QueryController.__new__(QueryController)
@@ -382,16 +423,27 @@ async def test_sse_final_frame_contains_answer_fields():
     candidates = _make_candidates("SELECT 42 AS val")
     explanation = ResultExplanation(summary="The value is 42.", chart_hint="none")
 
-    with patch("flyquery.web.controllers.query_controller.build_grounding_agent", return_value=_FakeAgent(grounded)), \
-         patch("flyquery.web.controllers.query_controller.build_generation_agent", return_value=_FakeAgent(candidates)), \
-         patch("flyquery.web.controllers.query_controller.build_critic_agent", return_value=_FakeAgent(None)), \
-         patch("flyquery.web.controllers.query_controller.build_explainer_agent", return_value=_FakeAgent(explanation)), \
-         patch("flyquery.web.controllers.query_controller.HybridRetriever", return_value=_FakeRetriever()), \
-         patch("flyquery.web.controllers.query_controller.TableResolver", return_value=_FakeTableResolver()), \
-         patch("flyquery.web.controllers.query_controller.SearchIndex", return_value=MagicMock()), \
-         patch("flyquery.web.controllers.query_controller.build_reranker", return_value=_FakeReranker()):
-
+    with (
+        patch(
+            "flyquery.web.controllers.query_controller.build_grounding_agent",
+            return_value=_FakeAgent(grounded),
+        ),
+        patch(
+            "flyquery.web.controllers.query_controller.build_generation_agent",
+            return_value=_FakeAgent(candidates),
+        ),
+        patch("flyquery.web.controllers.query_controller.build_critic_agent", return_value=_FakeAgent(None)),
+        patch(
+            "flyquery.web.controllers.query_controller.build_explainer_agent",
+            return_value=_FakeAgent(explanation),
+        ),
+        patch("flyquery.web.controllers.query_controller.HybridRetriever", return_value=_FakeRetriever()),
+        patch("flyquery.web.controllers.query_controller.TableResolver", return_value=_FakeTableResolver()),
+        patch("flyquery.web.controllers.query_controller.SearchIndex", return_value=MagicMock()),
+        patch("flyquery.web.controllers.query_controller.build_reranker", return_value=_FakeReranker()),
+    ):
         from flyquery.interfaces.query import QueryRequest
+
         request = QueryRequest(dataset_id=uuid.uuid4(), question="what is 42?")
 
         frames = []

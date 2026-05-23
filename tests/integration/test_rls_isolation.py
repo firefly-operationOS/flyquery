@@ -9,7 +9,6 @@ import uuid
 import pytest
 import sqlalchemy as sa
 
-
 MULTI_TENANT_TABLES = (
     "flyquery_datasets",
     "flyquery_files",
@@ -44,16 +43,12 @@ def _seed_workspace(admin_url: str, tenant: str, workspace_slug: str) -> tuple[u
     eng = sa.create_engine(admin_url)
     with eng.begin() as conn:
         ws_id = conn.execute(
-            sa.text(
-                "INSERT INTO flyquery_workspaces(tenant_id,slug,name) "
-                "VALUES(:t,:s,:n) RETURNING id"
-            ),
+            sa.text("INSERT INTO flyquery_workspaces(tenant_id,slug,name) VALUES(:t,:s,:n) RETURNING id"),
             {"t": tenant, "s": workspace_slug, "n": workspace_slug},
         ).scalar_one()
         ds_id = conn.execute(
             sa.text(
-                "INSERT INTO flyquery_datasets(tenant_id,workspace_id,name) "
-                "VALUES(:t,:w,:n) RETURNING id"
+                "INSERT INTO flyquery_datasets(tenant_id,workspace_id,name) VALUES(:t,:w,:n) RETURNING id"
             ),
             {"t": tenant, "w": ws_id, "n": "ds-1"},
         ).scalar_one()

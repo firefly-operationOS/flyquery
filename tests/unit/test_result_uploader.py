@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import uuid
+from datetime import UTC
 
 import pytest
 
@@ -17,14 +18,16 @@ class _FakeObjectStore:
 
     async def put(self, key, body, content_type, kms_key_uri=None):
         self.uploads.append({"key": key, "size": len(body), "content_type": content_type})
+        from datetime import datetime
+
         from flyquery.core.services.storage.object_store import ObjectMeta
-        from datetime import datetime, timezone
+
         return ObjectMeta(
             key=key,
             size_bytes=len(body),
             content_type=content_type,
             etag=None,
-            last_modified=datetime.now(timezone.utc),
+            last_modified=datetime.now(UTC),
         )
 
 
@@ -126,4 +129,5 @@ async def test_upload_preview_capped_by_max_bytes():
     preview = repo.upserted[0]["result_preview_json"]
     # Preview must fit within the byte cap
     import json
+
     assert len(json.dumps(preview).encode()) <= _TinySettings.result_preview_max_bytes

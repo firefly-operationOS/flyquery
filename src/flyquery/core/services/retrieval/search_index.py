@@ -35,9 +35,7 @@ class SearchIndex:
     def __init__(self, session: AsyncSession) -> None:
         self._session = session
 
-    async def bm25_schema_objects(
-        self, query: str, dataset_id: uuid.UUID, limit: int = 30
-    ) -> list[Hit]:
+    async def bm25_schema_objects(self, query: str, dataset_id: uuid.UUID, limit: int = 30) -> list[Hit]:
         """Full-text BM25 search over ``content_tsv`` on schema objects.
 
         :param query: natural-language query string
@@ -177,9 +175,7 @@ class SearchIndex:
             for r in rows.mappings()
         ]
 
-    async def published_metrics(
-        self, query: str, dataset_id: uuid.UUID, limit: int = 8
-    ) -> list[Hit]:
+    async def published_metrics(self, query: str, dataset_id: uuid.UUID, limit: int = 8) -> list[Hit]:
         """Return PUBLISHED semantic metrics via simple name/label match.
 
         :param query: NL question text (used for trigram / fulltext match)
@@ -214,9 +210,7 @@ class SearchIndex:
             for r in rows.mappings()
         ]
 
-    async def glossary_hits(
-        self, query: str, workspace_id: uuid.UUID, limit: int = 8
-    ) -> list[Hit]:
+    async def glossary_hits(self, query: str, workspace_id: uuid.UUID, limit: int = 8) -> list[Hit]:
         """Return glossary terms matching the query via trigram similarity.
 
         Falls back to returning all terms (up to limit) when pg_trgm is not
@@ -250,9 +244,7 @@ class SearchIndex:
             for r in rows.mappings()
         ]
 
-    async def approved_relations(
-        self, dataset_id: uuid.UUID, threshold: float = 0.85
-    ) -> list[Hit]:
+    async def approved_relations(self, dataset_id: uuid.UUID, threshold: float = 0.85) -> list[Hit]:
         """Return high-confidence, approved schema relations.
 
         :param dataset_id: dataset scope
@@ -281,10 +273,7 @@ class SearchIndex:
             Hit(
                 source_kind="relation",
                 id=r.id,
-                text=(
-                    f"{r.from_qname} {r.kind} {r.to_qname}"
-                    f" (confidence={r.confidence:.2f})"
-                ),
+                text=(f"{r.from_qname} {r.kind} {r.to_qname} (confidence={r.confidence:.2f})"),
                 score=float(r.confidence),
                 metadata={
                     "from_qualified_name": r.from_qname,

@@ -18,6 +18,7 @@ from httpx import ASGITransport, AsyncClient
 
 def _make_client():
     from flyquery.main import app
+
     return AsyncClient(transport=ASGITransport(app=app), base_url="http://t")
 
 

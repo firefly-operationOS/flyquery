@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import json
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 import sqlalchemy as sa
@@ -137,7 +137,7 @@ class QueryRepository:
         """
         from datetime import timedelta
 
-        expires_at = datetime.now(timezone.utc) + timedelta(hours=ttl_hours)
+        expires_at = datetime.now(UTC) + timedelta(hours=ttl_hours)
 
         async with self._factory() as s, s.begin():
             await s.execute(

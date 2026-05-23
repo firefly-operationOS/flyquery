@@ -21,7 +21,6 @@ import uuid
 
 from flyquery.core.services.execution.duckdb_executor import ExecutionResult
 
-
 _PREVIEW_ROW_LIMIT = 100  # max rows stored in the preview JSON field
 
 
@@ -66,10 +65,7 @@ class ResultUploader:
             result_byte_size = len(parquet_bytes)
 
             # Key layout: flyquery/{tenant}/{workspace}/{dataset}/results/{query_id}.parquet
-            key = (
-                f"flyquery/{tenant_id}/{workspace_id}/{dataset_id}"
-                f"/results/{query_id}.parquet"
-            )
+            key = f"flyquery/{tenant_id}/{workspace_id}/{dataset_id}/results/{query_id}.parquet"
             await self._store.put(key, parquet_bytes, content_type="application/x-parquet")
             result_object_key = key
 

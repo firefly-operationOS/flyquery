@@ -5,14 +5,14 @@ from __future__ import annotations
 
 import pytest
 
-from flyquery.core.services.pii.adapters.regex_scanner import RegexPiiScanner
 from flyquery.core.services.pii.adapters.disabled_scanner import DisabledPiiScanner
+from flyquery.core.services.pii.adapters.regex_scanner import RegexPiiScanner
 from flyquery.core.services.pii.factory import build_pii_scanner
-
 
 # ---------------------------------------------------------------------------
 # scan_single
 # ---------------------------------------------------------------------------
+
 
 class TestRegexScannerScanSingle:
     @pytest.mark.asyncio
@@ -66,6 +66,7 @@ class TestRegexScannerScanSingle:
 # scan_column
 # ---------------------------------------------------------------------------
 
+
 class TestRegexScannerScanColumn:
     @pytest.mark.asyncio
     async def test_email_column_name_hint(self):
@@ -107,6 +108,7 @@ class TestRegexScannerScanColumn:
 # Disabled scanner
 # ---------------------------------------------------------------------------
 
+
 class TestDisabledScanner:
     @pytest.mark.asyncio
     async def test_scan_single_always_none(self):
@@ -122,6 +124,7 @@ class TestDisabledScanner:
 # ---------------------------------------------------------------------------
 # Factory
 # ---------------------------------------------------------------------------
+
 
 class TestPiiScannerFactory:
     def test_regex_returns_regex_scanner(self):
