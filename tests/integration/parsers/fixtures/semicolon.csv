@@ -1,0 +1,5 @@
+product_id;product_name;unit_price;in_stock
+1;Widget A;9.95;true
+2;Gadget B;14.50;true
+3;Doohickey C;3.00;false
+4;Thingamajig D;22.00;true
