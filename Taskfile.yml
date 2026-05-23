@@ -1,0 +1,83 @@
+# Copyright 2026 Firefly Software Solutions Inc
+version: '3'
+
+env:
+  PYTHONPATH: src
+  FLYQUERY_DATABASE_URL: 'postgresql+asyncpg://flyquery:flyquery@localhost:5552/flyquery'
+  FLYQUERY_DATABASE_URL_ADMIN: 'postgresql+psycopg://flyquery_admin:flyquery_admin@localhost:5552/flyquery'
+  FLYQUERY_REDIS_URL: 'redis://localhost:6552/0'
+
+tasks:
+  default:
+    cmds:
+      - task --list
+
+  dev:
+    desc: Start local Postgres + Redis + MinIO
+    cmds:
+      - docker compose up -d postgres redis minio
+
+  dev:down:
+    desc: Tear down local stack
+    cmds:
+      - docker compose down -v
+
+  install:
+    desc: Sync dependencies via uv
+    cmds:
+      - uv venv
+      - uv sync --extra dev --extra s3
+
+  migrate:
+    desc: Run alembic migrations (admin role)
+    cmds:
+      - uv run alembic upgrade head
+
+  migrate:new:
+    desc: 'Generate a new alembic migration; usage: task migrate:new -- "<message>"'
+    cmds:
+      - uv run alembic revision -m "{{.CLI_ARGS}}"
+
+  serve:
+    desc: Run the dev server with reload
+    cmds:
+      - uv run uvicorn flyquery.main:app --host 0.0.0.0 --port 8520 --reload
+
+  lint:
+    desc: ruff + pyright
+    cmds:
+      - uv run ruff check src tests
+      - uv run ruff format --check src tests
+      - uv run pyright
+
+  fmt:
+    desc: Apply ruff formatting
+    cmds:
+      - uv run ruff format src tests
+      - uv run ruff check --fix src tests
+
+  test:unit:
+    desc: Unit tests (no containers)
+    cmds:
+      - uv run pytest tests/unit -m 'not integration'
+
+  test:integration:
+    desc: Integration tests (testcontainers)
+    cmds:
+      - uv run pytest tests/integration -m integration
+
+  test:all:
+    desc: All tests
+    cmds:
+      - task: test:unit
+      - task: test:integration
+
+  lockstep:
+    desc: Verify lock-step files match pinned canon SHAs
+    cmds:
+      - uv run python scripts/check_lockstep.py
+
+  openapi:
+    desc: Refresh openapi.json snapshot (run after route changes)
+    cmds:
+      - uv run python -c "from flyquery.main import app; import json; print(json.dumps(app.openapi(), indent=2))" > openapi.json
