@@ -72,6 +72,7 @@ class QueryService:
     :param auto_learner: AutoLearner
     :param metric_compiler: MetricFlowCompiler (optional — used for SEMANTIC_LAYER path)
     :param semantic_repo: SemanticRepository (optional — fetches compiled SQL)
+    :param conversation_service: ConversationService (optional — Phase E drill-down)
     """
 
     def __init__(
@@ -92,6 +93,7 @@ class QueryService:
         auto_learner,
         metric_compiler=None,
         semantic_repo=None,
+        conversation_service=None,
     ) -> None:
         self._retriever = retriever
         self._reranker = reranker
@@ -109,6 +111,7 @@ class QueryService:
         self._auto_learner = auto_learner
         self._metric_compiler = metric_compiler
         self._semantic_repo = semantic_repo
+        self._conversation_service = conversation_service
 
     async def answer(
         self,
@@ -155,13 +158,30 @@ class QueryService:
         bundle["schema_objects"] = reranked
 
         # ------------------------------------------------------------------
+        # 2b. Load drill-down context from prior turn (Phase E)
+        # ------------------------------------------------------------------
+        starting_point_sql: str | None = None
+        prior_table_qnames: list[str] = []
+        prior_snapshot_pins: dict[str, str] = {}
+
+        if conversation_id is not None and self._conversation_service is not None:
+            prior_turn = await self._conversation_service.last_turn(conversation_id)
+            if prior_turn is not None:
+                starting_point_sql = prior_turn.get("executed_sql")
+                prior_table_qnames = prior_turn.get("table_qnames_json") or []
+                prior_snapshot_pins = prior_turn.get("snapshot_pins_json") or {}
+
+        bundle["starting_point_sql"] = starting_point_sql
+        bundle["prior_table_qnames"] = prior_table_qnames
+
+        # ------------------------------------------------------------------
         # 3. Grounding
         # ------------------------------------------------------------------
         grounded = await self._grounding_agent.run(
             {
                 "question": question,
                 "bundle": bundle,
-                "starting_point_sql": None,  # Phase E fills this from conversation history
+                "starting_point_sql": starting_point_sql,
             }
         )
 
@@ -181,14 +201,14 @@ class QueryService:
             else:
                 # Fall through to synthesis if no compiled SQL found
                 gen_out = await self._generation_agent.run(
-                    {"grounded": grounded, "question": question, "starting_point_sql": None}
+                    {"grounded": grounded, "question": question, "starting_point_sql": starting_point_sql}
                 )
                 candidates_json = [c.model_dump() for c in gen_out.candidates]
                 chosen_sql = gen_out.candidates[0].sql
                 chosen_reasoning = gen_out.candidates[0].reasoning
         else:
             gen_out = await self._generation_agent.run(
-                {"grounded": grounded, "question": question, "starting_point_sql": None}
+                {"grounded": grounded, "question": question, "starting_point_sql": starting_point_sql}
             )
             candidates_json = [c.model_dump() for c in gen_out.candidates]
             chosen_sql = gen_out.candidates[0].sql
@@ -356,9 +376,13 @@ class QueryService:
             )
 
         # ------------------------------------------------------------------
-        # 12. Auto-learn
+        # 12. Auto-learn (only on first-shot OK + no PII + no clarification)
         # ------------------------------------------------------------------
-        if execution_status == "OK" and isinstance(result, ExecutionResult):
+        if (
+            execution_status == "OK"
+            and isinstance(result, ExecutionResult)
+            and not clarification_emitted
+        ):
             await self._auto_learner.maybe_propose(
                 tenant_id=tenant_id,
                 workspace_id=workspace_id,
@@ -368,6 +392,26 @@ class QueryService:
                 retries=retries,
                 pii_findings=[],
                 query_id=query_id,
+            )
+
+        # ------------------------------------------------------------------
+        # 13. Persist conversation turn (Phase E drill-down)
+        # ------------------------------------------------------------------
+        if (
+            conversation_id is not None
+            and self._conversation_service is not None
+            and execution_status in ("OK", "REFINED_OK")
+        ):
+            await self._conversation_service.append_turn(
+                conversation_id=conversation_id,
+                tenant_id=tenant_id,
+                workspace_id=workspace_id,
+                question=question,
+                executed_sql=chosen_sql,
+                summary=explanation_obj.summary if explanation_obj else None,
+                table_qnames_json=list(ast.table_refs),
+                snapshot_pins_json=prior_snapshot_pins,
+                elapsed_ms=elapsed,
             )
 
         return AnswerResult(
