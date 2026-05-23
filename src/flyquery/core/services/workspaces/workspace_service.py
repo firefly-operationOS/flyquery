@@ -8,6 +8,7 @@ from typing import Any, Protocol
 
 from pyfly.container import service as service_bean
 
+from flyquery.core.services.storage.object_store import ObjectStore
 from flyquery.core.services.workspaces.workspace_repository import WorkspaceRepository
 from flyquery.interfaces.workspaces import WorkspaceCreate, WorkspaceUpdate
 
@@ -18,6 +19,7 @@ class _Repo(Protocol):
     async def get(self, workspace_id: uuid.UUID) -> dict[str, Any] | None: ...
     async def update(self, workspace_id: uuid.UUID, **fields: Any) -> dict[str, Any]: ...
     async def archive(self, workspace_id: uuid.UUID) -> None: ...
+    async def mark_purging(self, workspace_id: uuid.UUID) -> None: ...
 
 
 @service_bean
@@ -50,3 +52,12 @@ class WorkspaceService:
 
     async def archive(self, workspace_id: uuid.UUID) -> None:
         await self._repo.archive(workspace_id)
+
+    async def purge(self, workspace_id: uuid.UUID, object_store: ObjectStore, tenant_id: str) -> None:
+        # 1. Archive in DB (sets status=PURGING → tombstone for 30 days)
+        await self._repo.mark_purging(workspace_id)
+        # 2. Walk the workspace prefix and delete every key
+        prefix = f"flyquery/{tenant_id}/{workspace_id}/"
+        async for meta in await object_store.list(prefix):
+            await object_store.delete(meta.key)
+        # 3. Terminal audit event written elsewhere (Plan 2: audit service)

@@ -12,6 +12,8 @@ from flyquery.core.services.auth.agent_token_service import (
     _RateLimiter,
 )
 from flyquery.core.services.auth.redis_rate_limiter import RedisRateLimiter
+from flyquery.core.services.storage.object_store import ObjectStore
+from flyquery.core.services.storage.object_store_factory import build_object_store
 from flyquery.models.repositories.agent_token_repository import AgentTokenRepository
 from flyquery.web.conventions.idempotency import (
     IdempotencyStore,
@@ -57,6 +59,14 @@ class FlyqueryConfiguration:
         rate_limiter: RateLimiter,
     ) -> AgentTokenService:
         return AgentTokenService(agent_token_repository, rate_limiter=rate_limiter)
+
+    # ------------------------------------------------------------------
+    # ObjectStore (blob storage)
+    # ------------------------------------------------------------------
+
+    @bean
+    def object_store(self, settings: FlyquerySettings) -> ObjectStore:
+        return build_object_store(settings)
 
     # ------------------------------------------------------------------
     # Idempotency store (agent surface)

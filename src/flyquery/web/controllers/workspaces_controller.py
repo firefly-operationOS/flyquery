@@ -8,10 +8,7 @@ Path conventions:
 * ``GET    /api/v1/workspaces``                  -- list for tenant
 * ``GET    /api/v1/workspaces/{workspace_id}``   -- fetch single
 * ``PUT    /api/v1/workspaces/{workspace_id}``   -- sparse update
-* ``DELETE /api/v1/workspaces/{workspace_id}:purge`` -- archive stub (202)
-
-The ``:purge`` endpoint is a v0 stub -- it flips status to ARCHIVED.
-The real blob walk lands in Task 33 when ObjectStore is wired in.
+* ``DELETE /api/v1/workspaces/{workspace_id}:purge`` -- purge (202)
 """
 
 from __future__ import annotations
@@ -31,6 +28,7 @@ from pyfly.web import (
 )
 from starlette.requests import Request
 
+from flyquery.core.services.storage.object_store import ObjectStore
 from flyquery.core.services.workspaces.workspace_service import WorkspaceService
 from flyquery.interfaces.workspaces import (
     WorkspaceCreate,
@@ -48,8 +46,9 @@ from flyquery.web.conventions import (
 class WorkspacesController:
     """REST adapter for ``flyquery_workspaces`` CRUD."""
 
-    def __init__(self, service: WorkspaceService) -> None:
+    def __init__(self, service: WorkspaceService, object_store: ObjectStore) -> None:
         self._service = service
+        self._object_store = object_store
 
     @post_mapping("", status_code=201)
     async def create(
@@ -92,10 +91,15 @@ class WorkspacesController:
         return WorkspaceRead.model_validate(row)
 
     @delete_mapping("/{workspace_id}:purge", status_code=202)
-    async def purge(self, workspace_id: PathVar[uuid.UUID]) -> dict:
-        """Archive a workspace (v0 stub -- real blob walk in Task 33).
+    async def purge(
+        self,
+        http_request: Request,
+        workspace_id: PathVar[uuid.UUID],
+    ) -> dict:
+        """Purge a workspace: mark PURGING + walk + delete all blobs.
 
         Returns 202 Accepted with a tombstone placeholder.
         """
-        await self._service.archive(workspace_id)
+        ctx = tenant_context_from_request(http_request)
+        await self._service.purge(workspace_id, self._object_store, ctx.tenant_id)
         return {"status": "accepted", "tombstone_expires_at": "+30d"}

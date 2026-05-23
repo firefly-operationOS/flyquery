@@ -96,3 +96,12 @@ class WorkspaceRepository:
                 ),
                 {"id": workspace_id},
             )
+
+    async def mark_purging(self, workspace_id: uuid.UUID) -> None:
+        async with self._factory() as s, s.begin():
+            await s.execute(
+                sa.text(
+                    "UPDATE flyquery_workspaces SET status='PURGING', updated_at=now() WHERE id = :id"
+                ),
+                {"id": workspace_id},
+            )
