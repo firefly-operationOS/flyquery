@@ -40,6 +40,7 @@ from flyquery.core.services.query.query_service import QueryService
 from flyquery.core.services.query.result_uploader import ResultUploader
 from flyquery.core.services.retrieval.embedder import OpenAiEmbedder
 from flyquery.core.services.retrieval.hybrid_retriever import HybridRetriever
+from flyquery.core.services.retrieval.reranker import build_reranker
 from flyquery.core.services.retrieval.search_index import SearchIndex
 from flyquery.core.services.storage.object_store import ObjectStore
 from flyquery.interfaces.query import (
@@ -113,8 +114,7 @@ class QueryController:
         # Build a NoopReranker here; the actual reranker bean is injected via
         # configuration in production but for the controller we use the same
         # factory pattern as the configuration.py bean.
-        from flyquery.core.services.retrieval.reranker import build_reranker as _build_reranker
-        reranker = _build_reranker(self._settings)
+        reranker = build_reranker(self._settings)
 
         table_resolver = TableResolver(session=db_session, settings=self._settings)
         uploader = ResultUploader(
@@ -206,14 +206,14 @@ class QueryController:
         ctx = tenant_context_from_request(http_request)
         workspace_id = _parse_workspace_id(ctx.workspace_id)
 
-        from flyquery.core.services.retrieval.reranker import build_reranker as _build_reranker
+
 
         async with self._session_factory() as db_session:
             index = SearchIndex(db_session)
             retriever = HybridRetriever(
                 index=index, embedder=self._embedder, rrf_k=self._settings.rrf_k
             )
-            reranker = _build_reranker(self._settings)
+            reranker = build_reranker(self._settings)
 
             bundle = await retriever.retrieve(
                 body.question,
@@ -280,14 +280,14 @@ class QueryController:
         ctx = tenant_context_from_request(http_request)
         workspace_id = _parse_workspace_id(ctx.workspace_id)
 
-        from flyquery.core.services.retrieval.reranker import build_reranker as _build_reranker
+
 
         async with self._session_factory() as db_session:
             index = SearchIndex(db_session)
             retriever = HybridRetriever(
                 index=index, embedder=self._embedder, rrf_k=self._settings.rrf_k
             )
-            reranker = _build_reranker(self._settings)
+            reranker = build_reranker(self._settings)
 
             bundle = await retriever.retrieve(
                 body.question,
@@ -394,7 +394,6 @@ class QueryController:
     ) -> AsyncIterator[bytes]:
         """Async generator that yields SSE frames for each pipeline stage."""
         from flyquery.core.services.execution.duckdb_executor import ExecutionResult, ExecutionError
-        from flyquery.core.services.retrieval.reranker import build_reranker as _build_reranker
         import time
 
         start_ms = _now_ms()
@@ -404,7 +403,7 @@ class QueryController:
             retriever = HybridRetriever(
                 index=index, embedder=self._embedder, rrf_k=self._settings.rrf_k
             )
-            reranker = _build_reranker(self._settings)
+            reranker = build_reranker(self._settings)
 
             # Stage 1: retrieve + ground
             bundle = await retriever.retrieve(
