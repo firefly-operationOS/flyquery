@@ -5,6 +5,61 @@ follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and
 the project uses [CalVer](https://calver.org/) (YY.MM.PP) per the
 Firefly Framework convention (memory: `firefly_uses_calver`).
 
+## [26.5.4] - 2026-05-23
+
+### Added
+
+- `config.py`: 13 new env vars that docs already referenced but were missing
+  (`FLYQUERY_CONV_TTL_DAYS`, `FLYQUERY_CONV_HISTORY_TURNS`,
+  `FLYQUERY_CONV_SUMMARY_MAX_TOKENS`, `FLYQUERY_CONV_SUMMARY_INTERVAL`,
+  `FLYQUERY_AUTOLEARN_ENABLED`, `FLYQUERY_INGEST_HEARTBEAT_S`,
+  `FLYQUERY_INGEST_MAX_ATTEMPTS`, `FLYQUERY_KAFKA_BOOTSTRAP_SERVERS`,
+  `FLYQUERY_EMBEDDING_RATE_LIMIT_RPM`, `FLYQUERY_PII_REGEX_PATTERNS_PATH`,
+  `FLYQUERY_PRESIDIO_SPACY_MODEL`, `FLYQUERY_OTEL_ENDPOINT`,
+  `FLYQUERY_CONV_SUMMARY_INTERVAL`)
+- `sdks/java/LICENSE` + `sdks/python/LICENSE`: Apache 2.0 (SDKs are public)
+- `sdks/java/README.md`: updated for Java 25 + Spring Boot 3.5.9 + WebFlux coords
+
+### Changed
+
+- **Java SDK regenerated**: `library=webclient` (Spring WebFlux reactive client),
+  package `com.firefly.flyquery` (was `io.firefly.flyquery`),
+  groupId `com.firefly` (was `io.firefly`), Java 25, Spring Boot 3.5.9
+- `Taskfile.yml sdk:java` task updated accordingly
+- `.github/workflows/publish-sdk-java.yml`: java-version 21 → 25
+- `sdks/python/pyproject.toml`: license `Proprietary` → `Apache-2.0`
+- `sdks/java/pom.xml`: full rewrite with Spring Boot 3.5.9 parent, Java 25 compiler
+- `README.md`: "Why this service exists" rewritten; new "Why not part of flycanon?"
+  section; full 5-step copy-pasteable quickstart; "Status" section removed;
+  "What ships in v0" → "Capabilities" (present tense)
+- `openapi.json`: re-snapshotted at version 26.5.4
+
+### Fixed
+
+- `docs/conversations.md`: removed non-existent SSE turn + agent/conversations
+  endpoints; marked `GET /conversations/{id}/turns` as v1+; TTL default 30d→90d
+- `docs/billing.md`: marked `/api/v1/billing` as v1+ (not in current release);
+  replaced fake curl example with real DB query
+- `docs/stats.md`: marked `/api/v1/stats` as v1+ (not in current release)
+- `docs/async-ingest.md`: heartbeat + stale-job recovery marked v1+ (not yet
+  implemented in IngestWorker)
+- `docs/auto-learning.md`: fixed grammatical error in FLYQUERY_AUTOLEARN_ENABLED
+- `docs/operations-runbook.md`: clarified EMBEDDING_RATE_LIMIT_RPM is defined
+  but rate-limit enforcement is v1+
+- `src/flyquery/core/services/ingestion/stages/publish.py`: removed stale
+  "stub in Phase B" comment (EDA publish is fully implemented)
+- `src/flyquery/core/services/ingestion/workers.py`: removed stale
+  "(Phase D/E; NotImplementedError for now)" comments
+- `src/flyquery/core/services/query/query_service.py`: clarified session-borrowing
+  rationale in `_table_kinds_by_name`
+- Copyright headers added to all `__init__.py` and new test files
+
+### Attribution
+
+Released by ancongui.
+
+---
+
 ## [26.5.3] - 2026-05-23
 
 ### Added
