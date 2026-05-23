@@ -33,4 +33,8 @@ def test_alembic_upgrade_head_creates_all_tables() -> None:
         "flyquery_queries", "flyquery_query_results",
         "flyquery_conversations", "flyquery_conversation_turns",
     }
+    expected |= {
+        "flyquery_agent_tokens", "flyquery_audit_events", "flyquery_cost_events",
+        "flyquery_ingest_jobs", "flyquery_ingest_events",
+    }
     assert expected <= names

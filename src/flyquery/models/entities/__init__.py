@@ -19,6 +19,7 @@ from flyquery.models.entities.schema import SchemaSnapshot, SchemaChange, Schema
 from flyquery.models.entities.semantic import SemanticMetric, SemanticDimension, SemanticVersion, GlossaryTerm  # noqa: F401,E402
 from flyquery.models.entities.examples import Example  # noqa: F401,E402
 from flyquery.models.entities.queries import Query, QueryResult, Conversation, ConversationTurn  # noqa: F401,E402
+from flyquery.models.entities.ops import AgentToken, AuditEvent, CostEvent, IngestJob, IngestEvent  # noqa: F401,E402
 
 __all__ = [
     "Base",
@@ -39,4 +40,9 @@ __all__ = [
     "QueryResult",
     "Conversation",
     "ConversationTurn",
+    "AgentToken",
+    "AuditEvent",
+    "CostEvent",
+    "IngestJob",
+    "IngestEvent",
 ]
