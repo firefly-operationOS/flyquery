@@ -3,7 +3,7 @@
 
 from __future__ import annotations
 
-from pyfly.core.di import configuration
+from pyfly.container import configuration
 
 from flyquery.config import FlyquerySettings
 

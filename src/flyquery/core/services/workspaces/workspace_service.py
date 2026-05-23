@@ -6,6 +6,9 @@ from __future__ import annotations
 import uuid
 from typing import Any, Protocol
 
+from pyfly.container import service as service_bean
+
+from flyquery.core.services.workspaces.workspace_repository import WorkspaceRepository
 from flyquery.interfaces.workspaces import WorkspaceCreate, WorkspaceUpdate
 
 
@@ -17,9 +20,10 @@ class _Repo(Protocol):
     async def archive(self, workspace_id: uuid.UUID) -> None: ...
 
 
+@service_bean
 class WorkspaceService:
-    def __init__(self, repo: _Repo) -> None:
-        self._repo = repo
+    def __init__(self, repo: WorkspaceRepository) -> None:
+        self._repo: _Repo = repo
 
     async def create(self, tenant_id: str, body: WorkspaceCreate) -> dict[str, Any]:
         return await self._repo.create(
