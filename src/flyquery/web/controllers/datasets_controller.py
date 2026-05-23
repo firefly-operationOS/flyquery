@@ -21,7 +21,6 @@ the tenant), ``limit``, ``offset``. Response is an envelope:
 from __future__ import annotations
 
 import uuid
-from typing import Optional
 
 from pyfly.container import rest_controller
 from pyfly.web import (
@@ -72,10 +71,10 @@ class DatasetsController:
     async def list_datasets(
         self,
         http_request: Request,
-        q: QueryParam[Optional[str]] = None,
-        name: QueryParam[Optional[str]] = None,
-        status: QueryParam[Optional[str]] = None,
-        workspace_id: QueryParam[Optional[uuid.UUID]] = None,
+        q: QueryParam[str] = None,
+        name: QueryParam[str] = None,
+        status: QueryParam[str] = None,
+        workspace_id: QueryParam[uuid.UUID] = None,
         limit: QueryParam[int] = 100,
         offset: QueryParam[int] = 0,
     ) -> dict:

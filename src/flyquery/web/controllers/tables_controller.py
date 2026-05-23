@@ -18,7 +18,7 @@ The ``/tables`` list takes ``q`` (free-text on name + qualified_name),
 from __future__ import annotations
 
 import uuid
-from typing import Any, Optional
+from typing import Any
 
 import sqlalchemy as sa
 from pyfly.container import rest_controller
@@ -78,11 +78,11 @@ class TablesController:
     async def search_tables(
         self,
         http_request: Request,
-        q: QueryParam[Optional[str]] = None,
-        name: QueryParam[Optional[str]] = None,
-        dataset_id: QueryParam[Optional[uuid.UUID]] = None,
-        kind: QueryParam[Optional[str]] = None,
-        is_active: QueryParam[Optional[bool]] = None,
+        q: QueryParam[str] = None,
+        name: QueryParam[str] = None,
+        dataset_id: QueryParam[uuid.UUID] = None,
+        kind: QueryParam[str] = None,
+        is_active: QueryParam[bool] = None,
         limit: QueryParam[int] = 100,
         offset: QueryParam[int] = 0,
     ) -> dict:
@@ -193,7 +193,7 @@ class TablesController:
         self,
         http_request: Request,
         name: PathVar[str],
-        dataset_id: QueryParam[Optional[uuid.UUID]] = None,
+        dataset_id: QueryParam[uuid.UUID] = None,
     ) -> TableRead:
         """Resolve a table by ``name`` within the caller's workspace.
 

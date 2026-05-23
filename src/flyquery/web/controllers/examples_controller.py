@@ -13,7 +13,6 @@ Path conventions:
 from __future__ import annotations
 
 import uuid
-from typing import Optional
 
 from pyfly.container import rest_controller
 from pyfly.web import (
@@ -56,8 +55,8 @@ class ExamplesController:
     async def list_examples(
         self,
         http_request: Request,
-        quality: QueryParam[Optional[str]] = None,
-        dataset_id: QueryParam[Optional[uuid.UUID]] = None,
+        quality: QueryParam[str] = None,
+        dataset_id: QueryParam[uuid.UUID] = None,
     ) -> dict:
         """List examples for the caller's workspace, with optional filters."""
         ctx = tenant_context_from_request(http_request)
