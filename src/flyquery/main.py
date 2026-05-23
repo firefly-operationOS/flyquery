@@ -156,11 +156,13 @@ def _on_pyfly_validation(_request: _StarletteRequest, exc: Exception) -> _JSONRe
     # when available; surface them at ``error.context.errors`` so the
     # invalid_scope test + any DTO field validator round-trips its
     # ``type`` code through the envelope.
-    cause = getattr(exc, "__cause__", None) or getattr(exc, "cause", None)
+    cause: Any = getattr(exc, "__cause__", None) or getattr(exc, "cause", None)
     field_errors: list[dict[str, Any]] = []
-    if hasattr(cause, "errors") and callable(cause.errors):
+    if cause is not None and callable(getattr(cause, "errors", None)):
         try:
             for err in cause.errors():
+                if not isinstance(err, dict):
+                    continue
                 field_errors.append(
                     {
                         "type": err.get("type"),
