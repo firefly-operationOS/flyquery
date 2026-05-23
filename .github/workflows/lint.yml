@@ -1,0 +1,22 @@
+name: lint
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { submodules: false }
+      - name: Clone sibling firefly framework repos
+        run: |
+          mkdir -p ../../fireflyframework
+          git clone --depth 1 https://github.com/firefly-operationOS/fireflyframework-pyfly ../../fireflyframework/fireflyframework-pyfly
+          git clone --depth 1 https://github.com/firefly-operationOS/fireflyframework-agentic ../../fireflyframework/fireflyframework-agentic
+      - uses: astral-sh/setup-uv@v3
+      - run: uv sync --extra dev --extra s3
+      - run: uv run ruff check src tests
+      - run: uv run ruff format --check src tests
+      - run: uv run pyright

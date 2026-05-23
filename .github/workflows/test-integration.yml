@@ -1,0 +1,19 @@
+name: test-integration
+on: [pull_request, push]
+
+jobs:
+  integration:
+    runs-on: ubuntu-latest
+    services:
+      docker:
+        image: docker:dind
+    steps:
+      - uses: actions/checkout@v4
+      - name: Clone sibling firefly framework repos
+        run: |
+          mkdir -p ../../fireflyframework
+          git clone --depth 1 https://github.com/firefly-operationOS/fireflyframework-pyfly ../../fireflyframework/fireflyframework-pyfly
+          git clone --depth 1 https://github.com/firefly-operationOS/fireflyframework-agentic ../../fireflyframework/fireflyframework-agentic
+      - uses: astral-sh/setup-uv@v3
+      - run: uv sync --extra dev --extra s3
+      - run: uv run pytest tests/integration -m integration --timeout=300
