@@ -5,6 +5,63 @@ follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and
 the project uses [CalVer](https://calver.org/) (YY.MM.PP) per the
 Firefly Framework convention (memory: `firefly_uses_calver`).
 
+## [26.5.3] - 2026-05-23
+
+### Added
+
+- Logo asset (`docs/assets/logo.png`) — "tabular intelligence" mark
+- README.md polished to canon depth: logo, badges, architecture summary, nav
+  table, status matrix for Plans 1–4, local dev and test instructions
+- `docs/README.md` — navigation hub with reading paths by user intent and
+  full document catalogue
+- `docs/pipeline.md` — upload + 10-stage ingestion and query pipeline
+  end-to-end with ASCII diagrams and mode coupling (sync vs async via EDA)
+- `docs/async-ingest.md` — IngestWorker lifecycle, 5 job kinds, cooperative
+  cancel, retry, dead-letter, sequencing guarantees
+- `docs/eda-events.md` — `flyquery.ingest` (IngestRequested) and
+  `flyquery.schema` (SchemaUpdated) event schemas, durable Postgres outbox,
+  consumer guide
+- `docs/conversations.md` — multi-turn query memory, drill-down semantics,
+  NL→delta-SQL examples, snapshot pinning, API surface
+- `docs/prompts.md` — catalog of 7 agent prompts with verbatim instruction
+  text, input shape, and output schema (from source)
+- `docs/auto-learning.md` — PROPOSED → APPROVED example cycle, eligibility
+  criteria, operator approval flow, v1 roadmap
+- `docs/pii.md` — 3 scanners (regex/Presidio/disabled), 3 policies
+  (warn/redact/reject), ordering guarantee, late-tag flip, custom regex
+- `docs/operations-runbook.md` — cold start, daily checks, common errors,
+  GDPR purge, key rotation, backup/restore, scaling, incident template
+- `docs/troubleshooting.md` — symptom → root cause → fix for 13 common issues
+- `docs/deployment-topology.md` — single-node, multi-node, HA ASCII diagrams
+  and port reference
+- `docs/cicd.md` — 5 workflows, tag-triggered releases, branch protection,
+  concurrent worker considerations, required secrets
+- `docs/concurrency.md` — AsyncSession scoping, RLS GUC binding, EDA worker
+  concurrency, DuckDB per-request isolation, ObjectStore async patterns
+- `docs/consumers.md` — SDK patterns (Python + Java + curl), agent-token
+  model, idempotency, error handling, 5 integration recipes
+- `docs/integration-with-firefly-os.md` — three-pillar narrative,
+  flyradar↔flyquery and flycanon↔flyquery integration patterns
+- `docs/glossary.md` — full project terminology dictionary (resource
+  hierarchy, query pipeline, ingestion, technical terms)
+- `docs/scale-and-performance.md` — throughput numbers, bottlenecks, tuning
+  knobs, capacity planning
+- `docs/billing.md` — per-query + per-ingest LLM cost, `flyquery_cost_events`
+  schema, billing API, v0 observe-only + v1 enforcement roadmap
+- `docs/stats.md` — `GET /api/v1/stats` response schema, fields reference,
+  dashboard usage patterns
+- `docs/quality.md` — full testing strategy: unit, integration, conformance,
+  parser fixtures, pipeline tests, LLM-gated, lock-step drift gate
+
+### Changed
+
+- `docs/security.md` renamed to `docs/security-model.md` (canon convention)
+- Cross-references in `docs/firefly-intelligence-system.md` updated
+- `docs/deployment.md` cross-links to `docs/deployment-topology.md`
+- README version badge updated to 26.5.3
+
+---
+
 ## [26.5.2] - 2026-05-23
 
 ### Added
