@@ -78,26 +78,14 @@ tasks:
       - uv run python scripts/check_lockstep.py
 
   openapi:
-    desc: Refresh openapi.json snapshot (run after route changes)
+    desc: Refresh openapi.json snapshot (run after route changes) — alias for openapi-snapshot
     cmds:
-      - uv run python -c "
-          from flyquery.main import app, _pyfly;
-          from flyquery.web.openapi_override import install_openapi;
-          from flyquery import __version__;
-          install_openapi(app, _pyfly.context, title='flyquery', version=__version__, description='');
-          app.openapi_schema = None;
-          import json; print(json.dumps(app.openapi(), indent=2, sort_keys=True))" > openapi.json
+      - task: openapi-snapshot
 
   openapi-snapshot:
     desc: Snapshot the current OpenAPI spec to openapi.json
     cmds:
-      - uv run python -c "
-          from flyquery.main import app, _pyfly;
-          from flyquery.web.openapi_override import install_openapi;
-          from flyquery import __version__;
-          install_openapi(app, _pyfly.context, title='flyquery', version=__version__, description='');
-          app.openapi_schema = None;
-          import json; print(json.dumps(app.openapi(), indent=2, sort_keys=True))" > openapi.json
+      - uv run python scripts/openapi_snapshot.py > openapi.json
 
   sdk:python:
     desc: Regenerate the Python SDK from openapi.json
