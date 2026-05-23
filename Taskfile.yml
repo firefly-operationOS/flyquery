@@ -90,12 +90,16 @@ tasks:
   sdk:python:
     desc: Regenerate the Python SDK from openapi.json
     cmds:
+      # NOTE: pyproject.toml metadata (authors, description, urls) is
+      # preserved across regeneration by .openapi-generator-ignore.
+      # Only packageVersion + library are passed as additional-properties;
+      # multi-word values are hand-curated in pyproject.toml.
       - npx -y @openapitools/openapi-generator-cli generate
           -i openapi.json
           -g python
           -o sdks/python
           --package-name flyquery_sdk
-          --additional-properties=packageVersion=26.5.2,projectName=flyquery-sdk,library=asyncio
+          --additional-properties=packageVersion=26.5.4,projectName=flyquery-sdk,library=asyncio
           --skip-validate-spec
       - cd sdks/python && uv pip install --system --quiet . || true
 
@@ -112,5 +116,5 @@ tasks:
           --invoker-package com.firefly.flyquery
           --api-package com.firefly.flyquery.api
           --model-package com.firefly.flyquery.model
-          --additional-properties=artifactId=flyquery-sdk,groupId=com.firefly,artifactVersion=26.5.2,library=webclient,dateLibrary=java8,java8=true
+          --additional-properties=artifactId=flyquery-sdk,groupId=com.firefly,artifactVersion=26.5.4,library=webclient,dateLibrary=java8,java8=true
           --skip-validate-spec

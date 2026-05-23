@@ -1,14 +1,39 @@
 [project]
 name = "flyquery_sdk"
-version = "26.5.2"
-description = "flyquery"
+version = "26.5.4"
+description = "Async-first Python client for flyquery — Tabular Intelligence: Text-to-SQL service over user-uploaded structured files."
 authors = [
-  {name = "Firefly OperationOS",email = "team@openapitools.org"},
+  { name = "Firefly Software Solutions Inc", email = "team@firefly.io" },
 ]
 license = { text = "Apache-2.0" }
 readme = "README.md"
-keywords = ["OpenAPI", "OpenAPI-Generator", "flyquery"]
+keywords = [
+  "flyquery",
+  "tabular-intelligence",
+  "text-to-sql",
+  "nl2sql",
+  "openapi-client",
+  "asyncio",
+  "duckdb",
+  "firefly-operationos",
+]
 requires-python = ">=3.9"
+
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: Apache Software License",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Framework :: AsyncIO",
+  "Topic :: Software Development :: Libraries :: Python Modules",
+  "Typing :: Typed",
+]
 
 dependencies = [
   "python-dateutil (>=2.8.2)",
@@ -19,7 +44,11 @@ dependencies = [
 ]
 
 [project.urls]
-Repository = "https://github.com/GIT_USER_ID/GIT_REPO_ID"
+Homepage      = "https://github.com/firefly-operationOS/flyquery"
+Repository    = "https://github.com/firefly-operationOS/flyquery"
+Documentation = "https://github.com/firefly-operationOS/flyquery/blob/main/docs/README.md"
+Issues        = "https://github.com/firefly-operationOS/flyquery/issues"
+Changelog     = "https://github.com/firefly-operationOS/flyquery/blob/main/CHANGELOG.md"
 
 [tool.poetry]
 requires-poetry = ">=2.0"

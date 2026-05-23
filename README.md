@@ -4,12 +4,19 @@
 
 ### **Tabular Intelligence**
 
-The Text-to-SQL service for user-uploaded structured files.
-Multi-tenant ingestion of CSV/TSV/XLSX/XLS/ODS/JSON/JSONL/Parquet/Avro/ORC/Arrow/Feather
-+ compressed variants, materialised as Parquet on object storage and
-queried by DuckDB through a multi-agent pipeline (Grounding → Generation
-→ Critic → Explainer) with hybrid retrieval over a long-lived schema
-knowledge base — all behind a single HTTP service.
+**Conversational SQL over the files your business actually has.**
+
+Drop a CSV, XLSX, JSON or Parquet into a workspace. flyquery infers
+the schema, materialises the file as columnar Parquet on object
+storage and indexes it in a long-lived knowledge base of tables,
+columns, AI-proposed joins, business glossary and semantic-layer
+metrics — then answers natural-language questions through a
+multi-agent pipeline (Grounding → Generation → Critic → Explainer)
+that produces governed DuckDB SQL with row-level audit, tenant
+isolation and per-token scopes. One HTTP service, multi-tenant from
+the first call. Format coverage: CSV, TSV, XLSX, XLS, ODS, JSON,
+JSONL, Parquet, Avro, ORC, Arrow and Feather, plus their `.gz`,
+`.zip` and `.bz2` variants.
 
 [![Python 3.13](https://img.shields.io/badge/python-3.13-blue.svg)](https://www.python.org)
 [![Java 25](https://img.shields.io/badge/java%20sdk-25-orange)](sdks/java/README.md)

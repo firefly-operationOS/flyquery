@@ -7,7 +7,7 @@ info:
     name: Proprietary -- service
     url: https://github.com/firefly-operationOS/flyquery/blob/main/LICENSE
   title: flyquery
-  version: 26.5.2
+  version: 26.5.4
 servers:
 - description: This service
   url: /
