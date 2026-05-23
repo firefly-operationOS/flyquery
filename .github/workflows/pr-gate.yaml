@@ -80,7 +80,7 @@ jobs:
             -e 's|path = "\.\./\.\./fireflyframework/fireflyframework-agentic"|path = "./vendor/fireflyframework-agentic"|' \
             pyproject.toml
       - name: uv sync (dev + s3)
-        run: uv sync --extra dev --extra s3
+        run: uv sync --extra dev --extra s3 --extra file-readers
       - name: ruff check
         run: uv run ruff check src tests
       - name: ruff format --check
@@ -113,7 +113,7 @@ jobs:
             -e 's|path = "\.\./\.\./fireflyframework/fireflyframework-agentic"|path = "./vendor/fireflyframework-agentic"|' \
             pyproject.toml
       - name: uv sync (dev)
-        run: uv sync --extra dev
+        run: uv sync --extra dev --extra file-readers
       - name: pyright
         run: uv run pyright src/flyquery
 
@@ -143,7 +143,7 @@ jobs:
             -e 's|path = "\.\./\.\./fireflyframework/fireflyframework-agentic"|path = "./vendor/fireflyframework-agentic"|' \
             pyproject.toml
       - name: uv sync (dev)
-        run: uv sync --extra dev
+        run: uv sync --extra dev --extra file-readers
       - name: pytest tests/unit
         env:
           # Dummy LLM keys so pydantic-ai providers can instantiate
@@ -181,7 +181,7 @@ jobs:
             -e 's|path = "\.\./\.\./fireflyframework/fireflyframework-agentic"|path = "./vendor/fireflyframework-agentic"|' \
             pyproject.toml
       - name: uv sync (dev + s3 for MinIO conformance)
-        run: uv sync --extra dev --extra s3
+        run: uv sync --extra dev --extra s3 --extra file-readers
       - name: pytest tests/integration
         # Integration tests boot real Postgres + Redis + MinIO
         # containers via testcontainers. GitHub Actions Ubuntu runners

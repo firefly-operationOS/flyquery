@@ -81,13 +81,23 @@ async def _lifespan(app: Any):
     # headers on top of pyfly's spec. This is flyquery-specific and lives
     # in a sibling module (``openapi_headers``) so ``openapi_override.py``
     # stays byte-equivalent to the canon lockstep pin.
+    #
+    # The pyfly override caches its result in ``app.openapi_schema`` --
+    # if anything called ``app.openapi()`` before this wrap was installed
+    # (e.g. the actuator startup banner), the cached schema would be
+    # served WITHOUT the headers. Clear the cache so the next ``openapi()``
+    # call re-runs the underlying generator + our enrichment.
     _wrap_with_headers = app.openapi
 
     def _custom_openapi_with_headers():
+        if getattr(app, "openapi_schema", None) is not None:
+            return app.openapi_schema
         spec = _wrap_with_headers()
         enrich_openapi_with_headers(spec)
+        app.openapi_schema = spec
         return spec
 
+    app.openapi_schema = None  # invalidate any pre-wrap cached spec
     app.openapi = _custom_openapi_with_headers  # type: ignore[method-assign]
     yield
     await _pyfly.shutdown()
