@@ -1,0 +1,11 @@
+flyquery -- Operational Structured-Data Intelligence service
+Copyright 2026 Firefly Software Solutions Inc.
+
+This software is proprietary. All rights reserved.
+
+No license is granted, expressed or implied, to redistribute, modify,
+sublicense, or use the contents of this repository outside an active
+engagement with Firefly Software Solutions Inc.
+
+The SDKs published under ``sdks/python`` and ``sdks/java`` carry their
+own LICENSE files and are released under the Apache License 2.0.

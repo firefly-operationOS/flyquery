@@ -1,0 +1,41 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.pyright/
+*.egg-info/
+build/
+dist/
+
+# Env + secrets
+.env
+.env.*
+!.env.example
+!env_template
+
+# Editor + OS
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Local data
+local_data/
+*.duckdb
+*.duckdb.wal
+
+# Generated SDKs (rebuilt in Plan 4)
+sdks/python/dist/
+sdks/python/build/
+sdks/python/*.egg-info/
+sdks/java/target/
+
+# uv
+uv.lock
