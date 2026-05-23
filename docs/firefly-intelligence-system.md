@@ -250,7 +250,7 @@ request chain.
 - `docs/file-formats.md` — per-format reader matrix
 - `docs/semantic-layer.md` — MetricFlow YAML + compilation
 - `docs/payload-reference.md` — DTO catalog
-- `docs/security.md` — RLS, token model, AST firewall, PII
+- `docs/security-model.md` — RLS, token model, AST firewall, PII
 - `docs/deployment.md` — ops runbook
 
 ---
