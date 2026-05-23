@@ -139,4 +139,11 @@
         <jackson-annotations-version>2.21</jackson-annotations-version>
         <junit-version>5.14.3</junit-version>
     </properties>
+    <distributionManagement>
+        <repository>
+            <id>github</id>
+            <name>GitHub Packages -- firefly-operationOS/flyquery</name>
+            <url>https://maven.pkg.github.com/firefly-operationOS/flyquery</url>
+        </repository>
+    </distributionManagement>
 </project>
