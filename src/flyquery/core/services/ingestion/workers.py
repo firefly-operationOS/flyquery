@@ -8,9 +8,9 @@ the job kind:
     PARSE_AND_INGEST  — full stages 1-10 (upload-driven synchronous path;
                         the worker only handles it if re-queued by the API)
     REPARSE           — stages 1-3 + 9-10 on the existing file
-    SAMPLE_REFRESH    — stage 4 only (Phase D; NotImplementedError for now)
-    DESCRIBE_PASS     — stage 7 only (Phase E; NotImplementedError for now)
-    RELATION_PASS     — stage 6 only (Phase E; NotImplementedError for now)
+    SAMPLE_REFRESH    — stage 4 only
+    DESCRIBE_PASS     — stage 7 only
+    RELATION_PASS     — stage 6 only
 
 Cooperative cancel: the worker checks flyquery_ingest_jobs.status='CANCELLED'
 between stages and exits gracefully.

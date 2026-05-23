@@ -51,7 +51,7 @@ async def run_publish(
             {"sid": snapshot_id, "tid": table_id, "tenant": tenant_id},
         )
 
-    # --- EDA publish (stub in Phase B; real bus in Phase C) ---
+    # --- EDA publish ---
     event = SchemaUpdatedEvent(
         tenant_id=tenant_id,
         workspace_id=str(workspace_id),

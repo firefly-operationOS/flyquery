@@ -439,8 +439,9 @@ class QueryService:
     ) -> dict[str, str]:
         """Return {name: kind} for the given table names in the dataset.
 
-        Uses the session injected into the TableResolver so we don't need
-        a separate session factory on the QueryService.
+        Uses the session injected into the TableResolver. Both QueryService
+        and TableResolver receive the same request-scoped AsyncSession from
+        the controller; the session is guaranteed live for the full request.
         """
         if not table_names:
             return {}
