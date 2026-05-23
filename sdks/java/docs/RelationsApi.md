@@ -9,42 +9,45 @@ All URIs are relative to *http://localhost*
 | [**rejectRelation**](RelationsApi.md#rejectRelation) | **POST** /api/v1/relations/{relation_id}:reject | Reject a PROPOSED relation. |
 
 
-<a id="approveRelation"></a>
-# **approveRelation**
+
+## approveRelation
+
 > approveRelation(relationId)
 
 Approve a PROPOSED relation.
 
 ### Example
+
 ```java
 // Import classes:
-import io.firefly.flyquery.ApiClient;
-import io.firefly.flyquery.ApiException;
-import io.firefly.flyquery.Configuration;
-import io.firefly.flyquery.models.*;
-import io.firefly.flyquery.api.RelationsApi;
+import com.firefly.flyquery.ApiClient;
+import com.firefly.flyquery.ApiException;
+import com.firefly.flyquery.Configuration;
+import com.firefly.flyquery.models.*;
+import com.firefly.flyquery.api.RelationsApi;
 
 public class Example {
-  public static void main(String[] args) {
-    ApiClient defaultClient = Configuration.getDefaultApiClient();
-    defaultClient.setBasePath("http://localhost");
+    public static void main(String[] args) {
+        ApiClient defaultClient = Configuration.getDefaultApiClient();
+        defaultClient.setBasePath("http://localhost");
 
-    RelationsApi apiInstance = new RelationsApi(defaultClient);
-    String relationId = "relationId_example"; // String | 
-    try {
-      apiInstance.approveRelation(relationId);
-    } catch (ApiException e) {
-      System.err.println("Exception when calling RelationsApi#approveRelation");
-      System.err.println("Status code: " + e.getCode());
-      System.err.println("Reason: " + e.getResponseBody());
-      System.err.println("Response headers: " + e.getResponseHeaders());
-      e.printStackTrace();
+        RelationsApi apiInstance = new RelationsApi(defaultClient);
+        String relationId = "relationId_example"; // String | 
+        try {
+            apiInstance.approveRelation(relationId);
+        } catch (ApiException e) {
+            System.err.println("Exception when calling RelationsApi#approveRelation");
+            System.err.println("Status code: " + e.getCode());
+            System.err.println("Reason: " + e.getResponseBody());
+            System.err.println("Response headers: " + e.getResponseHeaders());
+            e.printStackTrace();
+        }
     }
-  }
 }
 ```
 
 ### Parameters
+
 
 | Name | Type | Description  | Notes |
 |------------- | ------------- | ------------- | -------------|
@@ -60,50 +63,54 @@ No authorization required
 
 ### HTTP request headers
 
- - **Content-Type**: Not defined
- - **Accept**: Not defined
+- **Content-Type**: Not defined
+- **Accept**: Not defined
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
 | **200** | Successful response |  -  |
 
-<a id="listRelations"></a>
-# **listRelations**
+
+## listRelations
+
 > listRelations(datasetId)
 
 List relations for a dataset (all statuses by default).
 
 ### Example
+
 ```java
 // Import classes:
-import io.firefly.flyquery.ApiClient;
-import io.firefly.flyquery.ApiException;
-import io.firefly.flyquery.Configuration;
-import io.firefly.flyquery.models.*;
-import io.firefly.flyquery.api.RelationsApi;
+import com.firefly.flyquery.ApiClient;
+import com.firefly.flyquery.ApiException;
+import com.firefly.flyquery.Configuration;
+import com.firefly.flyquery.models.*;
+import com.firefly.flyquery.api.RelationsApi;
 
 public class Example {
-  public static void main(String[] args) {
-    ApiClient defaultClient = Configuration.getDefaultApiClient();
-    defaultClient.setBasePath("http://localhost");
+    public static void main(String[] args) {
+        ApiClient defaultClient = Configuration.getDefaultApiClient();
+        defaultClient.setBasePath("http://localhost");
 
-    RelationsApi apiInstance = new RelationsApi(defaultClient);
-    String datasetId = "datasetId_example"; // String | 
-    try {
-      apiInstance.listRelations(datasetId);
-    } catch (ApiException e) {
-      System.err.println("Exception when calling RelationsApi#listRelations");
-      System.err.println("Status code: " + e.getCode());
-      System.err.println("Reason: " + e.getResponseBody());
-      System.err.println("Response headers: " + e.getResponseHeaders());
-      e.printStackTrace();
+        RelationsApi apiInstance = new RelationsApi(defaultClient);
+        String datasetId = "datasetId_example"; // String | 
+        try {
+            apiInstance.listRelations(datasetId);
+        } catch (ApiException e) {
+            System.err.println("Exception when calling RelationsApi#listRelations");
+            System.err.println("Status code: " + e.getCode());
+            System.err.println("Reason: " + e.getResponseBody());
+            System.err.println("Response headers: " + e.getResponseHeaders());
+            e.printStackTrace();
+        }
     }
-  }
 }
 ```
 
 ### Parameters
+
 
 | Name | Type | Description  | Notes |
 |------------- | ------------- | ------------- | -------------|
@@ -119,50 +126,54 @@ No authorization required
 
 ### HTTP request headers
 
- - **Content-Type**: Not defined
- - **Accept**: Not defined
+- **Content-Type**: Not defined
+- **Accept**: Not defined
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
 | **200** | Successful response |  -  |
 
-<a id="rejectRelation"></a>
-# **rejectRelation**
+
+## rejectRelation
+
 > rejectRelation(relationId)
 
 Reject a PROPOSED relation.
 
 ### Example
+
 ```java
 // Import classes:
-import io.firefly.flyquery.ApiClient;
-import io.firefly.flyquery.ApiException;
-import io.firefly.flyquery.Configuration;
-import io.firefly.flyquery.models.*;
-import io.firefly.flyquery.api.RelationsApi;
+import com.firefly.flyquery.ApiClient;
+import com.firefly.flyquery.ApiException;
+import com.firefly.flyquery.Configuration;
+import com.firefly.flyquery.models.*;
+import com.firefly.flyquery.api.RelationsApi;
 
 public class Example {
-  public static void main(String[] args) {
-    ApiClient defaultClient = Configuration.getDefaultApiClient();
-    defaultClient.setBasePath("http://localhost");
+    public static void main(String[] args) {
+        ApiClient defaultClient = Configuration.getDefaultApiClient();
+        defaultClient.setBasePath("http://localhost");
 
-    RelationsApi apiInstance = new RelationsApi(defaultClient);
-    String relationId = "relationId_example"; // String | 
-    try {
-      apiInstance.rejectRelation(relationId);
-    } catch (ApiException e) {
-      System.err.println("Exception when calling RelationsApi#rejectRelation");
-      System.err.println("Status code: " + e.getCode());
-      System.err.println("Reason: " + e.getResponseBody());
-      System.err.println("Response headers: " + e.getResponseHeaders());
-      e.printStackTrace();
+        RelationsApi apiInstance = new RelationsApi(defaultClient);
+        String relationId = "relationId_example"; // String | 
+        try {
+            apiInstance.rejectRelation(relationId);
+        } catch (ApiException e) {
+            System.err.println("Exception when calling RelationsApi#rejectRelation");
+            System.err.println("Status code: " + e.getCode());
+            System.err.println("Reason: " + e.getResponseBody());
+            System.err.println("Response headers: " + e.getResponseHeaders());
+            e.printStackTrace();
+        }
     }
-  }
 }
 ```
 
 ### Parameters
+
 
 | Name | Type | Description  | Notes |
 |------------- | ------------- | ------------- | -------------|
@@ -178,8 +189,9 @@ No authorization required
 
 ### HTTP request headers
 
- - **Content-Type**: Not defined
- - **Accept**: Not defined
+- **Content-Type**: Not defined
+- **Accept**: Not defined
+
 
 ### HTTP response details
 | Status code | Description | Response headers |

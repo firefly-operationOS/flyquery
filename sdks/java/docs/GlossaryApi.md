@@ -10,43 +10,46 @@ All URIs are relative to *http://localhost*
 | [**update**](GlossaryApi.md#update) | **PUT** /api/v1/glossary/{term_id} | Sparse-update a glossary term. |
 
 
-<a id="create"></a>
-# **create**
+
+## create
+
 > GlossaryTermRead create(glossaryTermCreate)
 
 Create a glossary term; (workspace_id, term) must be unique.
 
 ### Example
+
 ```java
 // Import classes:
-import io.firefly.flyquery.ApiClient;
-import io.firefly.flyquery.ApiException;
-import io.firefly.flyquery.Configuration;
-import io.firefly.flyquery.models.*;
-import io.firefly.flyquery.api.GlossaryApi;
+import com.firefly.flyquery.ApiClient;
+import com.firefly.flyquery.ApiException;
+import com.firefly.flyquery.Configuration;
+import com.firefly.flyquery.models.*;
+import com.firefly.flyquery.api.GlossaryApi;
 
 public class Example {
-  public static void main(String[] args) {
-    ApiClient defaultClient = Configuration.getDefaultApiClient();
-    defaultClient.setBasePath("http://localhost");
+    public static void main(String[] args) {
+        ApiClient defaultClient = Configuration.getDefaultApiClient();
+        defaultClient.setBasePath("http://localhost");
 
-    GlossaryApi apiInstance = new GlossaryApi(defaultClient);
-    GlossaryTermCreate glossaryTermCreate = new GlossaryTermCreate(); // GlossaryTermCreate | 
-    try {
-      GlossaryTermRead result = apiInstance.create(glossaryTermCreate);
-      System.out.println(result);
-    } catch (ApiException e) {
-      System.err.println("Exception when calling GlossaryApi#create");
-      System.err.println("Status code: " + e.getCode());
-      System.err.println("Reason: " + e.getResponseBody());
-      System.err.println("Response headers: " + e.getResponseHeaders());
-      e.printStackTrace();
+        GlossaryApi apiInstance = new GlossaryApi(defaultClient);
+        GlossaryTermCreate glossaryTermCreate = new GlossaryTermCreate(); // GlossaryTermCreate | 
+        try {
+            GlossaryTermRead result = apiInstance.create(glossaryTermCreate);
+            System.out.println(result);
+        } catch (ApiException e) {
+            System.err.println("Exception when calling GlossaryApi#create");
+            System.err.println("Status code: " + e.getCode());
+            System.err.println("Reason: " + e.getResponseBody());
+            System.err.println("Response headers: " + e.getResponseHeaders());
+            e.printStackTrace();
+        }
     }
-  }
 }
 ```
 
 ### Parameters
+
 
 | Name | Type | Description  | Notes |
 |------------- | ------------- | ------------- | -------------|
@@ -62,8 +65,9 @@ No authorization required
 
 ### HTTP request headers
 
- - **Content-Type**: application/json
- - **Accept**: application/json
+- **Content-Type**: application/json
+- **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -71,42 +75,45 @@ No authorization required
 | **201** | Successful response |  -  |
 | **422** | Validation Error |  -  |
 
-<a id="delete"></a>
-# **delete**
+
+## delete
+
 > delete(termId)
 
 Hard-delete a glossary term.
 
 ### Example
+
 ```java
 // Import classes:
-import io.firefly.flyquery.ApiClient;
-import io.firefly.flyquery.ApiException;
-import io.firefly.flyquery.Configuration;
-import io.firefly.flyquery.models.*;
-import io.firefly.flyquery.api.GlossaryApi;
+import com.firefly.flyquery.ApiClient;
+import com.firefly.flyquery.ApiException;
+import com.firefly.flyquery.Configuration;
+import com.firefly.flyquery.models.*;
+import com.firefly.flyquery.api.GlossaryApi;
 
 public class Example {
-  public static void main(String[] args) {
-    ApiClient defaultClient = Configuration.getDefaultApiClient();
-    defaultClient.setBasePath("http://localhost");
+    public static void main(String[] args) {
+        ApiClient defaultClient = Configuration.getDefaultApiClient();
+        defaultClient.setBasePath("http://localhost");
 
-    GlossaryApi apiInstance = new GlossaryApi(defaultClient);
-    String termId = "termId_example"; // String | 
-    try {
-      apiInstance.delete(termId);
-    } catch (ApiException e) {
-      System.err.println("Exception when calling GlossaryApi#delete");
-      System.err.println("Status code: " + e.getCode());
-      System.err.println("Reason: " + e.getResponseBody());
-      System.err.println("Response headers: " + e.getResponseHeaders());
-      e.printStackTrace();
+        GlossaryApi apiInstance = new GlossaryApi(defaultClient);
+        String termId = "termId_example"; // String | 
+        try {
+            apiInstance.delete(termId);
+        } catch (ApiException e) {
+            System.err.println("Exception when calling GlossaryApi#delete");
+            System.err.println("Status code: " + e.getCode());
+            System.err.println("Reason: " + e.getResponseBody());
+            System.err.println("Response headers: " + e.getResponseHeaders());
+            e.printStackTrace();
+        }
     }
-  }
 }
 ```
 
 ### Parameters
+
 
 | Name | Type | Description  | Notes |
 |------------- | ------------- | ------------- | -------------|
@@ -122,51 +129,55 @@ No authorization required
 
 ### HTTP request headers
 
- - **Content-Type**: Not defined
- - **Accept**: Not defined
+- **Content-Type**: Not defined
+- **Accept**: Not defined
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
 | **204** | No Content |  -  |
 
-<a id="listTerms"></a>
-# **listTerms**
+
+## listTerms
+
 > listTerms(limit, offset)
 
 Return paginated glossary terms for the caller&#39;s workspace.
 
 ### Example
+
 ```java
 // Import classes:
-import io.firefly.flyquery.ApiClient;
-import io.firefly.flyquery.ApiException;
-import io.firefly.flyquery.Configuration;
-import io.firefly.flyquery.models.*;
-import io.firefly.flyquery.api.GlossaryApi;
+import com.firefly.flyquery.ApiClient;
+import com.firefly.flyquery.ApiException;
+import com.firefly.flyquery.Configuration;
+import com.firefly.flyquery.models.*;
+import com.firefly.flyquery.api.GlossaryApi;
 
 public class Example {
-  public static void main(String[] args) {
-    ApiClient defaultClient = Configuration.getDefaultApiClient();
-    defaultClient.setBasePath("http://localhost");
+    public static void main(String[] args) {
+        ApiClient defaultClient = Configuration.getDefaultApiClient();
+        defaultClient.setBasePath("http://localhost");
 
-    GlossaryApi apiInstance = new GlossaryApi(defaultClient);
-    Integer limit = 100; // Integer | 
-    Integer offset = 0; // Integer | 
-    try {
-      apiInstance.listTerms(limit, offset);
-    } catch (ApiException e) {
-      System.err.println("Exception when calling GlossaryApi#listTerms");
-      System.err.println("Status code: " + e.getCode());
-      System.err.println("Reason: " + e.getResponseBody());
-      System.err.println("Response headers: " + e.getResponseHeaders());
-      e.printStackTrace();
+        GlossaryApi apiInstance = new GlossaryApi(defaultClient);
+        Integer limit = 100; // Integer | 
+        Integer offset = 0; // Integer | 
+        try {
+            apiInstance.listTerms(limit, offset);
+        } catch (ApiException e) {
+            System.err.println("Exception when calling GlossaryApi#listTerms");
+            System.err.println("Status code: " + e.getCode());
+            System.err.println("Reason: " + e.getResponseBody());
+            System.err.println("Response headers: " + e.getResponseHeaders());
+            e.printStackTrace();
+        }
     }
-  }
 }
 ```
 
 ### Parameters
+
 
 | Name | Type | Description  | Notes |
 |------------- | ------------- | ------------- | -------------|
@@ -183,52 +194,56 @@ No authorization required
 
 ### HTTP request headers
 
- - **Content-Type**: Not defined
- - **Accept**: Not defined
+- **Content-Type**: Not defined
+- **Accept**: Not defined
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
 | **200** | Successful response |  -  |
 
-<a id="update"></a>
-# **update**
+
+## update
+
 > GlossaryTermRead update(termId, glossaryTermUpdate)
 
 Sparse-update a glossary term.
 
 ### Example
+
 ```java
 // Import classes:
-import io.firefly.flyquery.ApiClient;
-import io.firefly.flyquery.ApiException;
-import io.firefly.flyquery.Configuration;
-import io.firefly.flyquery.models.*;
-import io.firefly.flyquery.api.GlossaryApi;
+import com.firefly.flyquery.ApiClient;
+import com.firefly.flyquery.ApiException;
+import com.firefly.flyquery.Configuration;
+import com.firefly.flyquery.models.*;
+import com.firefly.flyquery.api.GlossaryApi;
 
 public class Example {
-  public static void main(String[] args) {
-    ApiClient defaultClient = Configuration.getDefaultApiClient();
-    defaultClient.setBasePath("http://localhost");
+    public static void main(String[] args) {
+        ApiClient defaultClient = Configuration.getDefaultApiClient();
+        defaultClient.setBasePath("http://localhost");
 
-    GlossaryApi apiInstance = new GlossaryApi(defaultClient);
-    String termId = "termId_example"; // String | 
-    GlossaryTermUpdate glossaryTermUpdate = new GlossaryTermUpdate(); // GlossaryTermUpdate | 
-    try {
-      GlossaryTermRead result = apiInstance.update(termId, glossaryTermUpdate);
-      System.out.println(result);
-    } catch (ApiException e) {
-      System.err.println("Exception when calling GlossaryApi#update");
-      System.err.println("Status code: " + e.getCode());
-      System.err.println("Reason: " + e.getResponseBody());
-      System.err.println("Response headers: " + e.getResponseHeaders());
-      e.printStackTrace();
+        GlossaryApi apiInstance = new GlossaryApi(defaultClient);
+        String termId = "termId_example"; // String | 
+        GlossaryTermUpdate glossaryTermUpdate = new GlossaryTermUpdate(); // GlossaryTermUpdate | 
+        try {
+            GlossaryTermRead result = apiInstance.update(termId, glossaryTermUpdate);
+            System.out.println(result);
+        } catch (ApiException e) {
+            System.err.println("Exception when calling GlossaryApi#update");
+            System.err.println("Status code: " + e.getCode());
+            System.err.println("Reason: " + e.getResponseBody());
+            System.err.println("Response headers: " + e.getResponseHeaders());
+            e.printStackTrace();
+        }
     }
-  }
 }
 ```
 
 ### Parameters
+
 
 | Name | Type | Description  | Notes |
 |------------- | ------------- | ------------- | -------------|
@@ -245,8 +260,9 @@ No authorization required
 
 ### HTTP request headers
 
- - **Content-Type**: application/json
- - **Accept**: application/json
+- **Content-Type**: application/json
+- **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |

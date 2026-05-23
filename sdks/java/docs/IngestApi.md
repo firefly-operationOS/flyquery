@@ -12,43 +12,46 @@ All URIs are relative to *http://localhost*
 | [**streamJob**](IngestApi.md#streamJob) | **GET** /api/v1/ingest-jobs/{job_id}/stream | SSE stream for real-time job progress. |
 
 
-<a id="cancelJob"></a>
-# **cancelJob**
+
+## cancelJob
+
 > CancelResponse cancelJob(jobId)
 
 Cooperatively cancel a job (idempotent for terminal jobs).
 
 ### Example
+
 ```java
 // Import classes:
-import io.firefly.flyquery.ApiClient;
-import io.firefly.flyquery.ApiException;
-import io.firefly.flyquery.Configuration;
-import io.firefly.flyquery.models.*;
-import io.firefly.flyquery.api.IngestApi;
+import com.firefly.flyquery.ApiClient;
+import com.firefly.flyquery.ApiException;
+import com.firefly.flyquery.Configuration;
+import com.firefly.flyquery.models.*;
+import com.firefly.flyquery.api.IngestApi;
 
 public class Example {
-  public static void main(String[] args) {
-    ApiClient defaultClient = Configuration.getDefaultApiClient();
-    defaultClient.setBasePath("http://localhost");
+    public static void main(String[] args) {
+        ApiClient defaultClient = Configuration.getDefaultApiClient();
+        defaultClient.setBasePath("http://localhost");
 
-    IngestApi apiInstance = new IngestApi(defaultClient);
-    String jobId = "jobId_example"; // String | 
-    try {
-      CancelResponse result = apiInstance.cancelJob(jobId);
-      System.out.println(result);
-    } catch (ApiException e) {
-      System.err.println("Exception when calling IngestApi#cancelJob");
-      System.err.println("Status code: " + e.getCode());
-      System.err.println("Reason: " + e.getResponseBody());
-      System.err.println("Response headers: " + e.getResponseHeaders());
-      e.printStackTrace();
+        IngestApi apiInstance = new IngestApi(defaultClient);
+        String jobId = "jobId_example"; // String | 
+        try {
+            CancelResponse result = apiInstance.cancelJob(jobId);
+            System.out.println(result);
+        } catch (ApiException e) {
+            System.err.println("Exception when calling IngestApi#cancelJob");
+            System.err.println("Status code: " + e.getCode());
+            System.err.println("Reason: " + e.getResponseBody());
+            System.err.println("Response headers: " + e.getResponseHeaders());
+            e.printStackTrace();
+        }
     }
-  }
 }
 ```
 
 ### Parameters
+
 
 | Name | Type | Description  | Notes |
 |------------- | ------------- | ------------- | -------------|
@@ -64,50 +67,54 @@ No authorization required
 
 ### HTTP request headers
 
- - **Content-Type**: Not defined
- - **Accept**: application/json
+- **Content-Type**: Not defined
+- **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
 | **200** | Successful response |  -  |
 
-<a id="createJob"></a>
-# **createJob**
+
+## createJob
+
 > IngestJobRead createJob()
 
 Start a background ingestion job (REPARSE/SAMPLE_REFRESH/DESCRIBE_PASS/RELATION_PASS).
 
 ### Example
+
 ```java
 // Import classes:
-import io.firefly.flyquery.ApiClient;
-import io.firefly.flyquery.ApiException;
-import io.firefly.flyquery.Configuration;
-import io.firefly.flyquery.models.*;
-import io.firefly.flyquery.api.IngestApi;
+import com.firefly.flyquery.ApiClient;
+import com.firefly.flyquery.ApiException;
+import com.firefly.flyquery.Configuration;
+import com.firefly.flyquery.models.*;
+import com.firefly.flyquery.api.IngestApi;
 
 public class Example {
-  public static void main(String[] args) {
-    ApiClient defaultClient = Configuration.getDefaultApiClient();
-    defaultClient.setBasePath("http://localhost");
+    public static void main(String[] args) {
+        ApiClient defaultClient = Configuration.getDefaultApiClient();
+        defaultClient.setBasePath("http://localhost");
 
-    IngestApi apiInstance = new IngestApi(defaultClient);
-    try {
-      IngestJobRead result = apiInstance.createJob();
-      System.out.println(result);
-    } catch (ApiException e) {
-      System.err.println("Exception when calling IngestApi#createJob");
-      System.err.println("Status code: " + e.getCode());
-      System.err.println("Reason: " + e.getResponseBody());
-      System.err.println("Response headers: " + e.getResponseHeaders());
-      e.printStackTrace();
+        IngestApi apiInstance = new IngestApi(defaultClient);
+        try {
+            IngestJobRead result = apiInstance.createJob();
+            System.out.println(result);
+        } catch (ApiException e) {
+            System.err.println("Exception when calling IngestApi#createJob");
+            System.err.println("Status code: " + e.getCode());
+            System.err.println("Reason: " + e.getResponseBody());
+            System.err.println("Response headers: " + e.getResponseHeaders());
+            e.printStackTrace();
+        }
     }
-  }
 }
 ```
 
 ### Parameters
+
 This endpoint does not need any parameter.
 
 ### Return type
@@ -120,51 +127,55 @@ No authorization required
 
 ### HTTP request headers
 
- - **Content-Type**: Not defined
- - **Accept**: application/json
+- **Content-Type**: Not defined
+- **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
 | **201** | Successful response |  -  |
 
-<a id="getJob"></a>
-# **getJob**
+
+## getJob
+
 > IngestJobRead getJob(jobId)
 
 Get a single ingest job.
 
 ### Example
+
 ```java
 // Import classes:
-import io.firefly.flyquery.ApiClient;
-import io.firefly.flyquery.ApiException;
-import io.firefly.flyquery.Configuration;
-import io.firefly.flyquery.models.*;
-import io.firefly.flyquery.api.IngestApi;
+import com.firefly.flyquery.ApiClient;
+import com.firefly.flyquery.ApiException;
+import com.firefly.flyquery.Configuration;
+import com.firefly.flyquery.models.*;
+import com.firefly.flyquery.api.IngestApi;
 
 public class Example {
-  public static void main(String[] args) {
-    ApiClient defaultClient = Configuration.getDefaultApiClient();
-    defaultClient.setBasePath("http://localhost");
+    public static void main(String[] args) {
+        ApiClient defaultClient = Configuration.getDefaultApiClient();
+        defaultClient.setBasePath("http://localhost");
 
-    IngestApi apiInstance = new IngestApi(defaultClient);
-    String jobId = "jobId_example"; // String | 
-    try {
-      IngestJobRead result = apiInstance.getJob(jobId);
-      System.out.println(result);
-    } catch (ApiException e) {
-      System.err.println("Exception when calling IngestApi#getJob");
-      System.err.println("Status code: " + e.getCode());
-      System.err.println("Reason: " + e.getResponseBody());
-      System.err.println("Response headers: " + e.getResponseHeaders());
-      e.printStackTrace();
+        IngestApi apiInstance = new IngestApi(defaultClient);
+        String jobId = "jobId_example"; // String | 
+        try {
+            IngestJobRead result = apiInstance.getJob(jobId);
+            System.out.println(result);
+        } catch (ApiException e) {
+            System.err.println("Exception when calling IngestApi#getJob");
+            System.err.println("Status code: " + e.getCode());
+            System.err.println("Reason: " + e.getResponseBody());
+            System.err.println("Response headers: " + e.getResponseHeaders());
+            e.printStackTrace();
+        }
     }
-  }
 }
 ```
 
 ### Parameters
+
 
 | Name | Type | Description  | Notes |
 |------------- | ------------- | ------------- | -------------|
@@ -180,51 +191,55 @@ No authorization required
 
 ### HTTP request headers
 
- - **Content-Type**: Not defined
- - **Accept**: application/json
+- **Content-Type**: Not defined
+- **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
 | **200** | Successful response |  -  |
 
-<a id="listEvents"></a>
-# **listEvents**
+
+## listEvents
+
 > IngestEventListResponse listEvents(jobId)
 
 Paginated event ledger for a job.
 
 ### Example
+
 ```java
 // Import classes:
-import io.firefly.flyquery.ApiClient;
-import io.firefly.flyquery.ApiException;
-import io.firefly.flyquery.Configuration;
-import io.firefly.flyquery.models.*;
-import io.firefly.flyquery.api.IngestApi;
+import com.firefly.flyquery.ApiClient;
+import com.firefly.flyquery.ApiException;
+import com.firefly.flyquery.Configuration;
+import com.firefly.flyquery.models.*;
+import com.firefly.flyquery.api.IngestApi;
 
 public class Example {
-  public static void main(String[] args) {
-    ApiClient defaultClient = Configuration.getDefaultApiClient();
-    defaultClient.setBasePath("http://localhost");
+    public static void main(String[] args) {
+        ApiClient defaultClient = Configuration.getDefaultApiClient();
+        defaultClient.setBasePath("http://localhost");
 
-    IngestApi apiInstance = new IngestApi(defaultClient);
-    String jobId = "jobId_example"; // String | 
-    try {
-      IngestEventListResponse result = apiInstance.listEvents(jobId);
-      System.out.println(result);
-    } catch (ApiException e) {
-      System.err.println("Exception when calling IngestApi#listEvents");
-      System.err.println("Status code: " + e.getCode());
-      System.err.println("Reason: " + e.getResponseBody());
-      System.err.println("Response headers: " + e.getResponseHeaders());
-      e.printStackTrace();
+        IngestApi apiInstance = new IngestApi(defaultClient);
+        String jobId = "jobId_example"; // String | 
+        try {
+            IngestEventListResponse result = apiInstance.listEvents(jobId);
+            System.out.println(result);
+        } catch (ApiException e) {
+            System.err.println("Exception when calling IngestApi#listEvents");
+            System.err.println("Status code: " + e.getCode());
+            System.err.println("Reason: " + e.getResponseBody());
+            System.err.println("Response headers: " + e.getResponseHeaders());
+            e.printStackTrace();
+        }
     }
-  }
 }
 ```
 
 ### Parameters
+
 
 | Name | Type | Description  | Notes |
 |------------- | ------------- | ------------- | -------------|
@@ -240,50 +255,54 @@ No authorization required
 
 ### HTTP request headers
 
- - **Content-Type**: Not defined
- - **Accept**: application/json
+- **Content-Type**: Not defined
+- **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
 | **200** | Successful response |  -  |
 
-<a id="listJobs"></a>
-# **listJobs**
+
+## listJobs
+
 > IngestJobListResponse listJobs()
 
 List ingest jobs with optional filters.
 
 ### Example
+
 ```java
 // Import classes:
-import io.firefly.flyquery.ApiClient;
-import io.firefly.flyquery.ApiException;
-import io.firefly.flyquery.Configuration;
-import io.firefly.flyquery.models.*;
-import io.firefly.flyquery.api.IngestApi;
+import com.firefly.flyquery.ApiClient;
+import com.firefly.flyquery.ApiException;
+import com.firefly.flyquery.Configuration;
+import com.firefly.flyquery.models.*;
+import com.firefly.flyquery.api.IngestApi;
 
 public class Example {
-  public static void main(String[] args) {
-    ApiClient defaultClient = Configuration.getDefaultApiClient();
-    defaultClient.setBasePath("http://localhost");
+    public static void main(String[] args) {
+        ApiClient defaultClient = Configuration.getDefaultApiClient();
+        defaultClient.setBasePath("http://localhost");
 
-    IngestApi apiInstance = new IngestApi(defaultClient);
-    try {
-      IngestJobListResponse result = apiInstance.listJobs();
-      System.out.println(result);
-    } catch (ApiException e) {
-      System.err.println("Exception when calling IngestApi#listJobs");
-      System.err.println("Status code: " + e.getCode());
-      System.err.println("Reason: " + e.getResponseBody());
-      System.err.println("Response headers: " + e.getResponseHeaders());
-      e.printStackTrace();
+        IngestApi apiInstance = new IngestApi(defaultClient);
+        try {
+            IngestJobListResponse result = apiInstance.listJobs();
+            System.out.println(result);
+        } catch (ApiException e) {
+            System.err.println("Exception when calling IngestApi#listJobs");
+            System.err.println("Status code: " + e.getCode());
+            System.err.println("Reason: " + e.getResponseBody());
+            System.err.println("Response headers: " + e.getResponseHeaders());
+            e.printStackTrace();
+        }
     }
-  }
 }
 ```
 
 ### Parameters
+
 This endpoint does not need any parameter.
 
 ### Return type
@@ -296,16 +315,18 @@ No authorization required
 
 ### HTTP request headers
 
- - **Content-Type**: Not defined
- - **Accept**: application/json
+- **Content-Type**: Not defined
+- **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
 | **200** | Successful response |  -  |
 
-<a id="streamJob"></a>
-# **streamJob**
+
+## streamJob
+
 > streamJob(jobId)
 
 SSE stream for real-time job progress.
@@ -313,35 +334,37 @@ SSE stream for real-time job progress.
 Mirrors canon&#39;s ingest_jobs_controller SSE pattern: 1. Emit all existing events for the job (catch-up replay) 2. Poll for new events every 250ms 3. Close stream when a &#x60;&#x60;final&#x60;&#x60; or &#x60;&#x60;error&#x60;&#x60; event is emitted 4. Hard timeout at _SSE_MAX_SECONDS to avoid connection leak
 
 ### Example
+
 ```java
 // Import classes:
-import io.firefly.flyquery.ApiClient;
-import io.firefly.flyquery.ApiException;
-import io.firefly.flyquery.Configuration;
-import io.firefly.flyquery.models.*;
-import io.firefly.flyquery.api.IngestApi;
+import com.firefly.flyquery.ApiClient;
+import com.firefly.flyquery.ApiException;
+import com.firefly.flyquery.Configuration;
+import com.firefly.flyquery.models.*;
+import com.firefly.flyquery.api.IngestApi;
 
 public class Example {
-  public static void main(String[] args) {
-    ApiClient defaultClient = Configuration.getDefaultApiClient();
-    defaultClient.setBasePath("http://localhost");
+    public static void main(String[] args) {
+        ApiClient defaultClient = Configuration.getDefaultApiClient();
+        defaultClient.setBasePath("http://localhost");
 
-    IngestApi apiInstance = new IngestApi(defaultClient);
-    String jobId = "jobId_example"; // String | 
-    try {
-      apiInstance.streamJob(jobId);
-    } catch (ApiException e) {
-      System.err.println("Exception when calling IngestApi#streamJob");
-      System.err.println("Status code: " + e.getCode());
-      System.err.println("Reason: " + e.getResponseBody());
-      System.err.println("Response headers: " + e.getResponseHeaders());
-      e.printStackTrace();
+        IngestApi apiInstance = new IngestApi(defaultClient);
+        String jobId = "jobId_example"; // String | 
+        try {
+            apiInstance.streamJob(jobId);
+        } catch (ApiException e) {
+            System.err.println("Exception when calling IngestApi#streamJob");
+            System.err.println("Status code: " + e.getCode());
+            System.err.println("Reason: " + e.getResponseBody());
+            System.err.println("Response headers: " + e.getResponseHeaders());
+            e.printStackTrace();
+        }
     }
-  }
 }
 ```
 
 ### Parameters
+
 
 | Name | Type | Description  | Notes |
 |------------- | ------------- | ------------- | -------------|
@@ -357,8 +380,9 @@ No authorization required
 
 ### HTTP request headers
 
- - **Content-Type**: Not defined
- - **Accept**: Not defined
+- **Content-Type**: Not defined
+- **Accept**: Not defined
+
 
 ### HTTP response details
 | Status code | Description | Response headers |

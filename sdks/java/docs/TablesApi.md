@@ -12,8 +12,9 @@ All URIs are relative to *http://localhost*
 | [**listTables**](TablesApi.md#listTables) | **GET** /api/v1/datasets/{dataset_id}/tables |  |
 
 
-<a id="derive"></a>
-# **derive**
+
+## derive
+
 > DeriveTableResponse derive(deriveTableRequest)
 
 Materialise a SELECT result as a new DERIVED table.
@@ -21,36 +22,38 @@ Materialise a SELECT result as a new DERIVED table.
 :param http_request: Starlette request (tenant context headers) :param body: dataset_id + name + sql (must be a SELECT) :return: DeriveTableResponse with the new table_id :raises DeriveTableForbidden: when sql is not a SELECT :raises DeriveTableError: when DuckDB execution fails
 
 ### Example
+
 ```java
 // Import classes:
-import io.firefly.flyquery.ApiClient;
-import io.firefly.flyquery.ApiException;
-import io.firefly.flyquery.Configuration;
-import io.firefly.flyquery.models.*;
-import io.firefly.flyquery.api.TablesApi;
+import com.firefly.flyquery.ApiClient;
+import com.firefly.flyquery.ApiException;
+import com.firefly.flyquery.Configuration;
+import com.firefly.flyquery.models.*;
+import com.firefly.flyquery.api.TablesApi;
 
 public class Example {
-  public static void main(String[] args) {
-    ApiClient defaultClient = Configuration.getDefaultApiClient();
-    defaultClient.setBasePath("http://localhost");
+    public static void main(String[] args) {
+        ApiClient defaultClient = Configuration.getDefaultApiClient();
+        defaultClient.setBasePath("http://localhost");
 
-    TablesApi apiInstance = new TablesApi(defaultClient);
-    DeriveTableRequest deriveTableRequest = new DeriveTableRequest(); // DeriveTableRequest | 
-    try {
-      DeriveTableResponse result = apiInstance.derive(deriveTableRequest);
-      System.out.println(result);
-    } catch (ApiException e) {
-      System.err.println("Exception when calling TablesApi#derive");
-      System.err.println("Status code: " + e.getCode());
-      System.err.println("Reason: " + e.getResponseBody());
-      System.err.println("Response headers: " + e.getResponseHeaders());
-      e.printStackTrace();
+        TablesApi apiInstance = new TablesApi(defaultClient);
+        DeriveTableRequest deriveTableRequest = new DeriveTableRequest(); // DeriveTableRequest | 
+        try {
+            DeriveTableResponse result = apiInstance.derive(deriveTableRequest);
+            System.out.println(result);
+        } catch (ApiException e) {
+            System.err.println("Exception when calling TablesApi#derive");
+            System.err.println("Status code: " + e.getCode());
+            System.err.println("Reason: " + e.getResponseBody());
+            System.err.println("Response headers: " + e.getResponseHeaders());
+            e.printStackTrace();
+        }
     }
-  }
 }
 ```
 
 ### Parameters
+
 
 | Name | Type | Description  | Notes |
 |------------- | ------------- | ------------- | -------------|
@@ -66,8 +69,9 @@ No authorization required
 
 ### HTTP request headers
 
- - **Content-Type**: application/json
- - **Accept**: application/json
+- **Content-Type**: application/json
+- **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
@@ -75,43 +79,46 @@ No authorization required
 | **201** | Successful response |  -  |
 | **422** | Validation Error |  -  |
 
-<a id="getTable"></a>
-# **getTable**
+
+## getTable
+
 > TableRead getTable(tableId)
 
 
 
 ### Example
+
 ```java
 // Import classes:
-import io.firefly.flyquery.ApiClient;
-import io.firefly.flyquery.ApiException;
-import io.firefly.flyquery.Configuration;
-import io.firefly.flyquery.models.*;
-import io.firefly.flyquery.api.TablesApi;
+import com.firefly.flyquery.ApiClient;
+import com.firefly.flyquery.ApiException;
+import com.firefly.flyquery.Configuration;
+import com.firefly.flyquery.models.*;
+import com.firefly.flyquery.api.TablesApi;
 
 public class Example {
-  public static void main(String[] args) {
-    ApiClient defaultClient = Configuration.getDefaultApiClient();
-    defaultClient.setBasePath("http://localhost");
+    public static void main(String[] args) {
+        ApiClient defaultClient = Configuration.getDefaultApiClient();
+        defaultClient.setBasePath("http://localhost");
 
-    TablesApi apiInstance = new TablesApi(defaultClient);
-    String tableId = "tableId_example"; // String | 
-    try {
-      TableRead result = apiInstance.getTable(tableId);
-      System.out.println(result);
-    } catch (ApiException e) {
-      System.err.println("Exception when calling TablesApi#getTable");
-      System.err.println("Status code: " + e.getCode());
-      System.err.println("Reason: " + e.getResponseBody());
-      System.err.println("Response headers: " + e.getResponseHeaders());
-      e.printStackTrace();
+        TablesApi apiInstance = new TablesApi(defaultClient);
+        String tableId = "tableId_example"; // String | 
+        try {
+            TableRead result = apiInstance.getTable(tableId);
+            System.out.println(result);
+        } catch (ApiException e) {
+            System.err.println("Exception when calling TablesApi#getTable");
+            System.err.println("Status code: " + e.getCode());
+            System.err.println("Reason: " + e.getResponseBody());
+            System.err.println("Response headers: " + e.getResponseHeaders());
+            e.printStackTrace();
+        }
     }
-  }
 }
 ```
 
 ### Parameters
+
 
 | Name | Type | Description  | Notes |
 |------------- | ------------- | ------------- | -------------|
@@ -127,50 +134,54 @@ No authorization required
 
 ### HTTP request headers
 
- - **Content-Type**: Not defined
- - **Accept**: application/json
+- **Content-Type**: Not defined
+- **Accept**: application/json
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
 | **200** | Successful response |  -  |
 
-<a id="listChanges"></a>
-# **listChanges**
+
+## listChanges
+
 > listChanges(tableId)
 
 
 
 ### Example
+
 ```java
 // Import classes:
-import io.firefly.flyquery.ApiClient;
-import io.firefly.flyquery.ApiException;
-import io.firefly.flyquery.Configuration;
-import io.firefly.flyquery.models.*;
-import io.firefly.flyquery.api.TablesApi;
+import com.firefly.flyquery.ApiClient;
+import com.firefly.flyquery.ApiException;
+import com.firefly.flyquery.Configuration;
+import com.firefly.flyquery.models.*;
+import com.firefly.flyquery.api.TablesApi;
 
 public class Example {
-  public static void main(String[] args) {
-    ApiClient defaultClient = Configuration.getDefaultApiClient();
-    defaultClient.setBasePath("http://localhost");
+    public static void main(String[] args) {
+        ApiClient defaultClient = Configuration.getDefaultApiClient();
+        defaultClient.setBasePath("http://localhost");
 
-    TablesApi apiInstance = new TablesApi(defaultClient);
-    String tableId = "tableId_example"; // String | 
-    try {
-      apiInstance.listChanges(tableId);
-    } catch (ApiException e) {
-      System.err.println("Exception when calling TablesApi#listChanges");
-      System.err.println("Status code: " + e.getCode());
-      System.err.println("Reason: " + e.getResponseBody());
-      System.err.println("Response headers: " + e.getResponseHeaders());
-      e.printStackTrace();
+        TablesApi apiInstance = new TablesApi(defaultClient);
+        String tableId = "tableId_example"; // String | 
+        try {
+            apiInstance.listChanges(tableId);
+        } catch (ApiException e) {
+            System.err.println("Exception when calling TablesApi#listChanges");
+            System.err.println("Status code: " + e.getCode());
+            System.err.println("Reason: " + e.getResponseBody());
+            System.err.println("Response headers: " + e.getResponseHeaders());
+            e.printStackTrace();
+        }
     }
-  }
 }
 ```
 
 ### Parameters
+
 
 | Name | Type | Description  | Notes |
 |------------- | ------------- | ------------- | -------------|
@@ -186,50 +197,54 @@ No authorization required
 
 ### HTTP request headers
 
- - **Content-Type**: Not defined
- - **Accept**: Not defined
+- **Content-Type**: Not defined
+- **Accept**: Not defined
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
 | **200** | Successful response |  -  |
 
-<a id="listObjects"></a>
-# **listObjects**
+
+## listObjects
+
 > listObjects(tableId)
 
 List schema_objects for the table&#39;s current snapshot.
 
 ### Example
+
 ```java
 // Import classes:
-import io.firefly.flyquery.ApiClient;
-import io.firefly.flyquery.ApiException;
-import io.firefly.flyquery.Configuration;
-import io.firefly.flyquery.models.*;
-import io.firefly.flyquery.api.TablesApi;
+import com.firefly.flyquery.ApiClient;
+import com.firefly.flyquery.ApiException;
+import com.firefly.flyquery.Configuration;
+import com.firefly.flyquery.models.*;
+import com.firefly.flyquery.api.TablesApi;
 
 public class Example {
-  public static void main(String[] args) {
-    ApiClient defaultClient = Configuration.getDefaultApiClient();
-    defaultClient.setBasePath("http://localhost");
+    public static void main(String[] args) {
+        ApiClient defaultClient = Configuration.getDefaultApiClient();
+        defaultClient.setBasePath("http://localhost");
 
-    TablesApi apiInstance = new TablesApi(defaultClient);
-    String tableId = "tableId_example"; // String | 
-    try {
-      apiInstance.listObjects(tableId);
-    } catch (ApiException e) {
-      System.err.println("Exception when calling TablesApi#listObjects");
-      System.err.println("Status code: " + e.getCode());
-      System.err.println("Reason: " + e.getResponseBody());
-      System.err.println("Response headers: " + e.getResponseHeaders());
-      e.printStackTrace();
+        TablesApi apiInstance = new TablesApi(defaultClient);
+        String tableId = "tableId_example"; // String | 
+        try {
+            apiInstance.listObjects(tableId);
+        } catch (ApiException e) {
+            System.err.println("Exception when calling TablesApi#listObjects");
+            System.err.println("Status code: " + e.getCode());
+            System.err.println("Reason: " + e.getResponseBody());
+            System.err.println("Response headers: " + e.getResponseHeaders());
+            e.printStackTrace();
+        }
     }
-  }
 }
 ```
 
 ### Parameters
+
 
 | Name | Type | Description  | Notes |
 |------------- | ------------- | ------------- | -------------|
@@ -245,50 +260,54 @@ No authorization required
 
 ### HTTP request headers
 
- - **Content-Type**: Not defined
- - **Accept**: Not defined
+- **Content-Type**: Not defined
+- **Accept**: Not defined
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
 | **200** | Successful response |  -  |
 
-<a id="listSnapshots"></a>
-# **listSnapshots**
+
+## listSnapshots
+
 > listSnapshots(tableId)
 
 
 
 ### Example
+
 ```java
 // Import classes:
-import io.firefly.flyquery.ApiClient;
-import io.firefly.flyquery.ApiException;
-import io.firefly.flyquery.Configuration;
-import io.firefly.flyquery.models.*;
-import io.firefly.flyquery.api.TablesApi;
+import com.firefly.flyquery.ApiClient;
+import com.firefly.flyquery.ApiException;
+import com.firefly.flyquery.Configuration;
+import com.firefly.flyquery.models.*;
+import com.firefly.flyquery.api.TablesApi;
 
 public class Example {
-  public static void main(String[] args) {
-    ApiClient defaultClient = Configuration.getDefaultApiClient();
-    defaultClient.setBasePath("http://localhost");
+    public static void main(String[] args) {
+        ApiClient defaultClient = Configuration.getDefaultApiClient();
+        defaultClient.setBasePath("http://localhost");
 
-    TablesApi apiInstance = new TablesApi(defaultClient);
-    String tableId = "tableId_example"; // String | 
-    try {
-      apiInstance.listSnapshots(tableId);
-    } catch (ApiException e) {
-      System.err.println("Exception when calling TablesApi#listSnapshots");
-      System.err.println("Status code: " + e.getCode());
-      System.err.println("Reason: " + e.getResponseBody());
-      System.err.println("Response headers: " + e.getResponseHeaders());
-      e.printStackTrace();
+        TablesApi apiInstance = new TablesApi(defaultClient);
+        String tableId = "tableId_example"; // String | 
+        try {
+            apiInstance.listSnapshots(tableId);
+        } catch (ApiException e) {
+            System.err.println("Exception when calling TablesApi#listSnapshots");
+            System.err.println("Status code: " + e.getCode());
+            System.err.println("Reason: " + e.getResponseBody());
+            System.err.println("Response headers: " + e.getResponseHeaders());
+            e.printStackTrace();
+        }
     }
-  }
 }
 ```
 
 ### Parameters
+
 
 | Name | Type | Description  | Notes |
 |------------- | ------------- | ------------- | -------------|
@@ -304,50 +323,54 @@ No authorization required
 
 ### HTTP request headers
 
- - **Content-Type**: Not defined
- - **Accept**: Not defined
+- **Content-Type**: Not defined
+- **Accept**: Not defined
+
 
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
 | **200** | Successful response |  -  |
 
-<a id="listTables"></a>
-# **listTables**
+
+## listTables
+
 > listTables(datasetId)
 
 
 
 ### Example
+
 ```java
 // Import classes:
-import io.firefly.flyquery.ApiClient;
-import io.firefly.flyquery.ApiException;
-import io.firefly.flyquery.Configuration;
-import io.firefly.flyquery.models.*;
-import io.firefly.flyquery.api.TablesApi;
+import com.firefly.flyquery.ApiClient;
+import com.firefly.flyquery.ApiException;
+import com.firefly.flyquery.Configuration;
+import com.firefly.flyquery.models.*;
+import com.firefly.flyquery.api.TablesApi;
 
 public class Example {
-  public static void main(String[] args) {
-    ApiClient defaultClient = Configuration.getDefaultApiClient();
-    defaultClient.setBasePath("http://localhost");
+    public static void main(String[] args) {
+        ApiClient defaultClient = Configuration.getDefaultApiClient();
+        defaultClient.setBasePath("http://localhost");
 
-    TablesApi apiInstance = new TablesApi(defaultClient);
-    String datasetId = "datasetId_example"; // String | 
-    try {
-      apiInstance.listTables(datasetId);
-    } catch (ApiException e) {
-      System.err.println("Exception when calling TablesApi#listTables");
-      System.err.println("Status code: " + e.getCode());
-      System.err.println("Reason: " + e.getResponseBody());
-      System.err.println("Response headers: " + e.getResponseHeaders());
-      e.printStackTrace();
+        TablesApi apiInstance = new TablesApi(defaultClient);
+        String datasetId = "datasetId_example"; // String | 
+        try {
+            apiInstance.listTables(datasetId);
+        } catch (ApiException e) {
+            System.err.println("Exception when calling TablesApi#listTables");
+            System.err.println("Status code: " + e.getCode());
+            System.err.println("Reason: " + e.getResponseBody());
+            System.err.println("Response headers: " + e.getResponseHeaders());
+            e.printStackTrace();
+        }
     }
-  }
 }
 ```
 
 ### Parameters
+
 
 | Name | Type | Description  | Notes |
 |------------- | ------------- | ------------- | -------------|
@@ -363,8 +386,9 @@ No authorization required
 
 ### HTTP request headers
 
- - **Content-Type**: Not defined
- - **Accept**: Not defined
+- **Content-Type**: Not defined
+- **Accept**: Not defined
+
 
 ### HTTP response details
 | Status code | Description | Response headers |

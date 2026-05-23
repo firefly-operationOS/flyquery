@@ -112,18 +112,17 @@ tasks:
       - cd sdks/python && uv pip install --system --quiet . || true
 
   sdk:java:
-    desc: Regenerate the Java SDK from openapi.json
+    desc: Regenerate the Java SDK from openapi.json (Java 25 + Spring Boot 3.5.9 + WebFlux)
     cmds:
-      # Remove stale package tree from earlier generator runs that used
-      # org.openapitools.client as the invoker package.
-      - rm -rf sdks/java/src/main/java/org
+      # Remove stale package trees from earlier generator runs.
+      - rm -rf sdks/java/src/main/java/org sdks/java/src/main/java/io
       - npx -y @openapitools/openapi-generator-cli generate
           -i openapi.json
           -g java
           -o sdks/java
-          --package-name io.firefly.flyquery
-          --invoker-package io.firefly.flyquery
-          --api-package io.firefly.flyquery.api
-          --model-package io.firefly.flyquery.model
-          --additional-properties=artifactId=flyquery-sdk,groupId=io.firefly,artifactVersion=26.5.2,library=okhttp-gson
+          --package-name com.firefly.flyquery
+          --invoker-package com.firefly.flyquery
+          --api-package com.firefly.flyquery.api
+          --model-package com.firefly.flyquery.model
+          --additional-properties=artifactId=flyquery-sdk,groupId=com.firefly,artifactVersion=26.5.2,library=webclient,dateLibrary=java8,java8=true
           --skip-validate-spec
