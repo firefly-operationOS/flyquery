@@ -83,3 +83,25 @@ async def test_copy(store) -> None:
     await store.copy(src, dst)
     h = await store.head(dst)
     assert h.size_bytes == 7
+
+
+@pytest.mark.integration
+@pytest.mark.asyncio
+async def test_rejects_path_traversal(store) -> None:
+    with pytest.raises(ValueError):
+        await store.put("../escape/secret", b"x", content_type="text/plain")
+
+
+@pytest.mark.integration
+@pytest.mark.asyncio
+async def test_kms_round_trip_when_supported(store) -> None:
+    # LocalFs ignores kms_key_uri (no KMS in dev); just confirm it's
+    # accepted + reflected in ObjectMeta. S3 against MinIO would
+    # require KMS configuration — skip there.
+    if store.__class__.__name__ == "S3ObjectStore":
+        pytest.skip("MinIO KMS support varies by version")
+    meta = await store.put(
+        f"unit/{uuid.uuid4()}/kms.bin", b"k", content_type="text/plain",
+        kms_key_uri="arn:aws:kms:us-east-1:000:key/abc",
+    )
+    assert meta.kms_key_uri == "arn:aws:kms:us-east-1:000:key/abc"
