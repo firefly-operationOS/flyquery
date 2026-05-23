@@ -20,6 +20,7 @@ Response from POST /api/v1/query (sync).
 |**snapshotPins** | **Map&lt;String, String&gt;** |  |  [optional] |
 |**sql** | **String** |  |  |
 |**truncated** | **Boolean** |  |  [optional] |
+|**usage** | [**UsageSummary**](UsageSummary.md) |  |  [optional] |
 
 
 

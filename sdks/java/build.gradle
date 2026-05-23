@@ -2,7 +2,7 @@ apply plugin: 'idea'
 apply plugin: 'eclipse'
 
 group = 'com.firefly'
-version = '26.5.5'
+version = '26.5.6'
 
 buildscript {
     repositories {

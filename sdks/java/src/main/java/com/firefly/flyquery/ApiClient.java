@@ -81,7 +81,7 @@ import com.firefly.flyquery.auth.HttpBasicAuth;
 import com.firefly.flyquery.auth.HttpBearerAuth;
 import com.firefly.flyquery.auth.ApiKeyAuth;
 
-@javax.annotation.Generated(value = "org.openapitools.codegen.languages.JavaClientCodegen", date = "2026-05-23T22:03:38.852419+02:00[Europe/Madrid]", comments = "Generator version: 7.22.0")
+@javax.annotation.Generated(value = "org.openapitools.codegen.languages.JavaClientCodegen", date = "2026-05-24T00:36:39.059958+02:00[Europe/Madrid]", comments = "Generator version: 7.22.0")
 public class ApiClient extends JavaTimeFormatter {
     public enum CollectionFormat {
         CSV(","), TSV("\t"), SSV(" "), PIPES("|"), MULTI(null);
@@ -159,9 +159,6 @@ public class ApiClient extends JavaTimeFormatter {
     protected void init() {
         // Setup authentications (key: authentication name, value: authentication).
         authentications = new HashMap<String, Authentication>();
-        authentications.put("AgentToken", new ApiKeyAuth("header", "X-Agent-Token"));
-        authentications.put("TenantContext", new ApiKeyAuth("header", "X-Tenant-Id"));
-        authentications.put("WorkspaceContext", new ApiKeyAuth("header", "X-Workspace-Id"));
         // Prevent the authentications from being modified.
         authentications = Collections.unmodifiableMap(authentications);
     }

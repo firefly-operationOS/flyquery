@@ -70,52 +70,120 @@ explicitly:
 
 ## Quick start
 
+flyquery's headers (`X-Tenant-Id`, `X-Workspace-Id`,
+`X-Agent-Token`) are read out-of-band by the server -- the
+generated `ApiClient` lets you set them once as defaults so every
+request carries them automatically.
+
 ```java
 import com.firefly.flyquery.ApiClient;
 import com.firefly.flyquery.api.WorkspacesApi;
 import com.firefly.flyquery.api.DatasetsApi;
+import com.firefly.flyquery.api.FilesApi;
 import com.firefly.flyquery.api.QueryApi;
-import com.firefly.flyquery.model.WorkspaceCreate;
-import com.firefly.flyquery.model.DatasetCreate;
-import com.firefly.flyquery.model.QueryRequest;
+import com.firefly.flyquery.model.*;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import org.springframework.core.io.FileSystemResource;
+import org.springframework.http.client.MultipartBodyBuilder;
+import java.nio.file.Path;
+import java.util.List;
 
 public class Demo {
     public static void main(String[] args) {
         ApiClient client = new ApiClient();
         client.setBasePath("https://flyquery.example.com");
+        client.addDefaultHeader("X-Tenant-Id", "acme-corp");
+        client.addDefaultHeader("X-Workspace-Id", "finance");
 
         WorkspacesApi workspaces = new WorkspacesApi(client);
         DatasetsApi   datasets   = new DatasetsApi(client);
+        FilesApi      files      = new FilesApi(client);
         QueryApi      query      = new QueryApi(client);
 
-        // Reactive chain: create workspace → create dataset → ask a question
-        Mono<Void> pipeline = workspaces
-            .createWorkspace("demo", "alpha", new WorkspaceCreate()
-                .slug("alpha")
-                .name("Alpha"))
-            .flatMap(ws -> datasets
-                .createDataset("demo", ws.getId().toString(), new DatasetCreate()
-                    .name("Sales 2026"))
-                .flatMap(ds -> query.postQuery(
-                    "demo",
-                    ws.getId().toString(),
-                    new QueryRequest()
-                        .datasetId(ds.getId())
-                        .question("what is total revenue by region?")))
-                .doOnNext(answer -> {
-                    System.out.println("SQL:    " + answer.getSql());
-                    System.out.println("rows:   " + answer.getRowCount());
-                    System.out.println("chart:  " + answer.getChartHint());
-                }))
-            .then();
+        // 1) idempotent workspace + dataset
+        Mono<WorkspaceRead> wsMono = workspaces.readBySlug("finance")
+            .onErrorResume(err -> workspaces.create(
+                new WorkspaceCreate().slug("finance").name("Finance")));
 
-        // Block at the edge of the world; in a real Spring WebFlux app you'd
-        // chain this into the controller's Mono<ResponseEntity<…>>.
-        pipeline.block();
+        Mono<DatasetRead> dsMono = wsMono.flatMap(ws -> {
+            client.addDefaultHeader("X-Workspace-Id", ws.getId().toString());
+            return datasets.readByName("orders_2026")
+                .onErrorResume(err -> datasets.create(
+                    new DatasetCreate().name("orders_2026")
+                        .description("Order fact table + customer dimension.")));
+        });
+
+        // 2) batch query -- N questions in parallel on the server side
+        Mono<BatchQueryResponse> batch = dsMono.flatMap(ds -> query.batch(
+            new BatchQueryRequest()
+                .queries(List.of(
+                    new BatchQueryItem()
+                        .question("Top 5 customers by revenue?")
+                        .datasetId(ds.getId()),
+                    new BatchQueryItem()
+                        .question("Average order size by country?")
+                        .datasetId(ds.getId()),
+                    new BatchQueryItem()
+                        .question("Refund rate this quarter?")
+                        .datasetId(ds.getId())
+                ))));
+
+        batch.doOnNext(r -> {
+            System.out.printf("%d/%d succeeded%n", r.getSucceeded(), r.getTotalQueries());
+            r.getResults().forEach(item ->
+                System.out.printf("  #%d %s: %s%n",
+                    item.getIndex(), item.getStatus(), item.getSql()));
+        }).block();
     }
 }
 ```
+
+### Bulk file upload
+
+Bulk file ingest goes through ``POST /api/v1/datasets/{id}/files:bulk``.
+Build a Spring ``MultipartBodyBuilder`` with one ``files`` part
+per file -- the per-file outcomes come back in ``BulkFileUploadResponse.results``:
+
+```java
+import org.springframework.core.io.FileSystemResource;
+import org.springframework.http.client.MultipartBodyBuilder;
+import org.springframework.web.reactive.function.BodyInserters;
+import org.springframework.web.reactive.function.client.WebClient;
+
+WebClient web = WebClient.builder()
+    .baseUrl(client.getBasePath())
+    .defaultHeader("X-Tenant-Id", "acme-corp")
+    .defaultHeader("X-Workspace-Id", workspaceId)
+    .build();
+
+MultipartBodyBuilder mp = new MultipartBodyBuilder();
+mp.part("files", new FileSystemResource("examples/csv/customers.csv"));
+mp.part("files", new FileSystemResource("examples/csv/sales_orders.csv"));
+mp.part("files", new FileSystemResource("examples/parquet/transactions.parquet"));
+
+Mono<BulkFileUploadResponse> bulk = web.post()
+    .uri("/api/v1/datasets/{id}/files:bulk", datasetId)
+    .body(BodyInserters.fromMultipartData(mp.build()))
+    .retrieve()
+    .bodyToMono(BulkFileUploadResponse.class);
+
+bulk.doOnNext(r -> {
+    System.out.printf("%d/%d files uploaded%n", r.getSucceeded(), r.getTotalFiles());
+    r.getResults().forEach(item -> {
+        if ("OK".equals(item.getStatus())) {
+            System.out.printf("  ✓ %s -> %d tables%n",
+                item.getOriginalFilename(), item.getTables().size());
+        } else {
+            System.out.printf("  ✗ %s: %s%n", item.getOriginalFilename(), item.getError());
+        }
+    });
+}).block();
+```
+
+A runnable version of all three examples (single upload, bulk
+upload, batch query) lives at
+[`examples/Demo.java`](examples/Demo.java).
 
 ## Authentication
 

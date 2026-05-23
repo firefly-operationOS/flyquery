@@ -254,6 +254,44 @@ An XLSX with 3 sheets returns 3 entries in `tables`. Poll or stream the
 
 ---
 
+#### `POST /api/v1/datasets/{id}/files:bulk` — upload many files in one request
+
+Multi-file multipart variant of the single upload. Every `files` part
+is processed through the same per-file pipeline (receive → parse →
+reconcile → sample → profile → describe → embed → publish) and the
+per-file calls run **in parallel** through `asyncio.gather` —
+ingesting N files takes roughly the wall-clock of one.
+
+Per-file failures DO NOT abort the bulk. Each result carries
+`status="OK"` + `file_id` + `tables`, or `status="FAILED"` + `error`.
+
+**Request** `Content-Type: multipart/form-data`
+- N `files` parts (each a binary file); a singleton `file` part is
+  also accepted for client compatibility
+
+**Response** `201 Created`
+```json
+{
+  "results": [
+    {"index": 0, "original_filename": "customers.csv", "status": "OK",
+     "file_id": "...", "tables": [{"table_id":"...","name":"customers", ...}]},
+    {"index": 1, "original_filename": "broken.csv", "status": "FAILED",
+     "file_id": null, "tables": [], "error": "could not sniff dialect"}
+  ],
+  "total_files": 2,
+  "succeeded": 1,
+  "failed": 1
+}
+```
+
+SDK helpers:
+- Python: `FlyqueryClient.upload_bulk(dataset_id, paths)` and
+  `FlyqueryClient.upload_directory(dataset_id, dir)`.
+- Java: `WebClient` against `:bulk` with a `MultipartBodyBuilder`
+  — see [`sdks/java/examples/Demo.java`](../sdks/java/examples/Demo.java).
+
+---
+
 #### `GET /api/v1/datasets/{id}/files`
 
 List files for a dataset.
@@ -729,6 +767,51 @@ Generate SQL and an EXPLAIN plan without executing.
 
 Parse + classify generated SQL, run the AST firewall, return findings.
 Does not execute.
+
+---
+
+#### `POST /api/v1/query:batch` — N questions in one round-trip
+
+Run many NL questions through the full pipeline **in parallel** on
+the server side. Per-question failures (one bad grounding, one
+DuckDB error) DO NOT abort the batch -- the response carries
+`status="OK"` or `status="FAILED"` + `error` per item, plus
+aggregate counts.
+
+Use this for dashboards (one batch with N panel queries),
+comparison reports (same question against M datasets, by sending
+the same `question` with different `dataset_id`), or SDK callers
+that want to amortise auth + tenant context across many questions.
+
+**Request** `Content-Type: application/json`
+```json
+{
+  "queries": [
+    {"question": "Top 5 customers by revenue?", "dataset_id": "..."},
+    {"question": "Refund rate this quarter?",   "dataset_id": "..."},
+    {"question": "Total revenue?",              "dataset_id": "..."}
+  ]
+}
+```
+
+**Response** `200 OK`
+```json
+{
+  "results": [
+    {"index": 0, "status": "OK", "query_id": "...", "sql": "...",
+     "execution_status": "OK", "preview": [...], "row_count": 5,
+     "elapsed_ms": 4321, "chart_hint": "bar", "explanation": "..."},
+    {"index": 1, "status": "FAILED", "error": "no dataset with id ..."}
+  ],
+  "total_queries": 3,
+  "succeeded": 2,
+  "failed": 1
+}
+```
+
+SDK helpers:
+- Python: `FlyqueryClient.ask_batch(dataset_id, questions)`.
+- Java: `QueryApi.batch(new BatchQueryRequest().queries(...))`.
 
 **Request** `{"sql": "SELECT ..."}`
 

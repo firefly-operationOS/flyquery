@@ -11,7 +11,7 @@ All URIs are relative to *http://localhost*
 
 ## create
 
-> ExampleRead create(xAgentToken, exampleCreate, xCorrelationId, idempotencyKey)
+> ExampleRead create(exampleCreate)
 
 Create an example (agent-tier — source&#x3D;AGENT_LEARNED, quality&#x3D;PROPOSED).
 
@@ -24,7 +24,6 @@ Create an example (agent-tier — source&#x3D;AGENT_LEARNED, quality&#x3D;PROPOS
 import com.firefly.flyquery.ApiClient;
 import com.firefly.flyquery.ApiException;
 import com.firefly.flyquery.Configuration;
-import com.firefly.flyquery.auth.*;
 import com.firefly.flyquery.models.*;
 import com.firefly.flyquery.api.AgentExamplesApi;
 
@@ -32,20 +31,11 @@ public class Example {
     public static void main(String[] args) {
         ApiClient defaultClient = Configuration.getDefaultApiClient();
         defaultClient.setBasePath("http://localhost");
-        
-        // Configure API key authorization: AgentToken
-        ApiKeyAuth AgentToken = (ApiKeyAuth) defaultClient.getAuthentication("AgentToken");
-        AgentToken.setApiKey("YOUR API KEY");
-        // Uncomment the following line to set a prefix for the API key, e.g. "Token" (defaults to null)
-        //AgentToken.setApiKeyPrefix("Token");
 
         AgentExamplesApi apiInstance = new AgentExamplesApi(defaultClient);
-        String xAgentToken = "fqt_live_aBcDeF1234567890aBcDeF1234567890"; // String | Machine-to-machine bearer token. Replaces X-Tenant-Id and X-Workspace-Id on agent-tier endpoints -- the token's claims encode the tenant + workspace + scopes. Issue via ``POST /api/v1/agent-tokens``.
         ExampleCreate exampleCreate = new ExampleCreate(); // ExampleCreate | 
-        UUID xCorrelationId = UUID.fromString("550e8400-e29b-41d4-a716-446655440000"); // UUID | Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.
-        String idempotencyKey = "ingest-2026-05-23-abc123"; // String | Optional client-supplied idempotency key for mutating operations. The first request with a key persists its result; subsequent requests with the same key + same tenant return the cached response. Keys expire after 24h.
         try {
-            ExampleRead result = apiInstance.create(xAgentToken, exampleCreate, xCorrelationId, idempotencyKey);
+            ExampleRead result = apiInstance.create(exampleCreate);
             System.out.println(result);
         } catch (ApiException e) {
             System.err.println("Exception when calling AgentExamplesApi#create");
@@ -63,10 +53,7 @@ public class Example {
 
 | Name | Type | Description  | Notes |
 |------------- | ------------- | ------------- | -------------|
-| **xAgentToken** | **String**| Machine-to-machine bearer token. Replaces X-Tenant-Id and X-Workspace-Id on agent-tier endpoints -- the token&#39;s claims encode the tenant + workspace + scopes. Issue via &#x60;&#x60;POST /api/v1/agent-tokens&#x60;&#x60;. | |
 | **exampleCreate** | [**ExampleCreate**](ExampleCreate.md)|  | |
-| **xCorrelationId** | **UUID**| Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header. | [optional] |
-| **idempotencyKey** | **String**| Optional client-supplied idempotency key for mutating operations. The first request with a key persists its result; subsequent requests with the same key + same tenant return the cached response. Keys expire after 24h. | [optional] |
 
 ### Return type
 
@@ -74,7 +61,7 @@ public class Example {
 
 ### Authorization
 
-[AgentToken](../README.md#AgentToken)
+No authorization required
 
 ### HTTP request headers
 
@@ -91,7 +78,7 @@ public class Example {
 
 ## listExamples
 
-> listExamples(xAgentToken, quality, datasetId, xCorrelationId)
+> listExamples(quality, datasetId)
 
 List examples for the caller&#39;s workspace (agent-tier).
 
@@ -104,7 +91,6 @@ List examples for the caller&#39;s workspace (agent-tier).
 import com.firefly.flyquery.ApiClient;
 import com.firefly.flyquery.ApiException;
 import com.firefly.flyquery.Configuration;
-import com.firefly.flyquery.auth.*;
 import com.firefly.flyquery.models.*;
 import com.firefly.flyquery.api.AgentExamplesApi;
 
@@ -112,20 +98,12 @@ public class Example {
     public static void main(String[] args) {
         ApiClient defaultClient = Configuration.getDefaultApiClient();
         defaultClient.setBasePath("http://localhost");
-        
-        // Configure API key authorization: AgentToken
-        ApiKeyAuth AgentToken = (ApiKeyAuth) defaultClient.getAuthentication("AgentToken");
-        AgentToken.setApiKey("YOUR API KEY");
-        // Uncomment the following line to set a prefix for the API key, e.g. "Token" (defaults to null)
-        //AgentToken.setApiKeyPrefix("Token");
 
         AgentExamplesApi apiInstance = new AgentExamplesApi(defaultClient);
-        String xAgentToken = "fqt_live_aBcDeF1234567890aBcDeF1234567890"; // String | Machine-to-machine bearer token. Replaces X-Tenant-Id and X-Workspace-Id on agent-tier endpoints -- the token's claims encode the tenant + workspace + scopes. Issue via ``POST /api/v1/agent-tokens``.
         String quality = "null"; // String | 
         String datasetId = "datasetId_example"; // String | 
-        UUID xCorrelationId = UUID.fromString("550e8400-e29b-41d4-a716-446655440000"); // UUID | Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.
         try {
-            apiInstance.listExamples(xAgentToken, quality, datasetId, xCorrelationId);
+            apiInstance.listExamples(quality, datasetId);
         } catch (ApiException e) {
             System.err.println("Exception when calling AgentExamplesApi#listExamples");
             System.err.println("Status code: " + e.getCode());
@@ -142,10 +120,8 @@ public class Example {
 
 | Name | Type | Description  | Notes |
 |------------- | ------------- | ------------- | -------------|
-| **xAgentToken** | **String**| Machine-to-machine bearer token. Replaces X-Tenant-Id and X-Workspace-Id on agent-tier endpoints -- the token&#39;s claims encode the tenant + workspace + scopes. Issue via &#x60;&#x60;POST /api/v1/agent-tokens&#x60;&#x60;. | |
 | **quality** | **String**|  | [optional] [default to null] |
 | **datasetId** | **String**|  | [optional] |
-| **xCorrelationId** | **UUID**| Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header. | [optional] |
 
 ### Return type
 
@@ -153,7 +129,7 @@ null (empty response body)
 
 ### Authorization
 
-[AgentToken](../README.md#AgentToken)
+No authorization required
 
 ### HTTP request headers
 

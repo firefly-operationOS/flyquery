@@ -65,6 +65,51 @@ class UsageSummary(BaseModel):
     by_agent: list[AgentUsage] = Field(default_factory=list)
 
 
+class BatchQueryItem(BaseModel):
+    """One question in a batch -- matches ``AnswerRequest`` minus headers."""
+
+    question: str
+    dataset_id: uuid.UUID
+    conversation_id: uuid.UUID | None = None
+
+
+class BatchQueryRequest(BaseModel):
+    """Request body for ``POST /api/v1/query:batch``."""
+
+    queries: list[BatchQueryItem]
+
+
+class BatchQueryResultItem(BaseModel):
+    """One outcome in a batch query response.
+
+    Mirrors ``AnswerResponse`` for OK results; carries ``error`` +
+    ``status="FAILED"`` on failure so the batch never aborts on one
+    bad item.
+    """
+
+    index: int
+    status: str  # "OK" | "FAILED"
+    query_id: uuid.UUID | None = None
+    sql: str | None = None
+    execution_status: Literal["OK", "REFINED_OK", "FAILED", "REJECTED_BY_FIREWALL"] | None = None
+    preview: list[dict[str, Any]] | None = None
+    row_count: int | None = None
+    elapsed_ms: int | None = None
+    chart_hint: Literal["line", "bar", "table", "pie", "none"] | None = None
+    explanation: str | None = None
+    grounded_summary: dict | None = None
+    error: str | None = None
+
+
+class BatchQueryResponse(BaseModel):
+    """Response from ``POST /api/v1/query:batch``."""
+
+    results: list[BatchQueryResultItem]
+    total_queries: int
+    succeeded: int
+    failed: int
+
+
 class AnswerResponse(BaseModel):
     """Response from POST /api/v1/query (sync)."""
 

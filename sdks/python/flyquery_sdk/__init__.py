@@ -14,27 +14,31 @@
 """  # noqa: E501
 
 
-__version__ = "26.5.5"
+__version__ = "26.5.6"
 
 # Define package exports
 __all__ = [
     "AgentExamplesApi",
     "AgentQueryApi",
-    "AgentSqlApi",
+    "AgentSqlExecuteApi",
     "AgentTokensApi",
+    "AgentVersionApi",
     "ConversationsApi",
     "DatasetsApi",
     "ExamplesApi",
     "FilesApi",
     "GlossaryApi",
-    "IngestApi",
-    "MetaApi",
+    "IngestJobsApi",
     "QueryApi",
     "RelationsApi",
-    "SchemaApi",
-    "SemanticApi",
-    "SqlApi",
+    "SchemaChangesApi",
+    "SchemaObjectsApi",
+    "SemanticDimensionsApi",
+    "SemanticMetricsApi",
+    "SqlExecuteApi",
     "TablesApi",
+    "TablesDeriveApi",
+    "VersionApi",
     "WorkspacesApi",
     "ApiResponse",
     "ApiClient",
@@ -48,7 +52,14 @@ __all__ = [
     "AgentTokenCreated",
     "AgentTokenMintRequest",
     "AgentTokenSummaryDto",
+    "AgentUsage",
     "AnswerResponse",
+    "BatchQueryItem",
+    "BatchQueryRequest",
+    "BatchQueryResponse",
+    "BatchQueryResultItem",
+    "BulkFileResult",
+    "BulkFileUploadResponse",
     "CancelResponse",
     "ClarificationFrame",
     "ConversationCreate",
@@ -90,6 +101,7 @@ __all__ = [
     "TableRead",
     "TableSummary",
     "TurnRead",
+    "UsageSummary",
     "ValidateResponse",
     "ValidationError",
     "WorkspaceCreate",
@@ -100,21 +112,25 @@ __all__ = [
 # import apis into sdk package
 from flyquery_sdk.api.agent_examples_api import AgentExamplesApi as AgentExamplesApi
 from flyquery_sdk.api.agent_query_api import AgentQueryApi as AgentQueryApi
-from flyquery_sdk.api.agent_sql_api import AgentSqlApi as AgentSqlApi
+from flyquery_sdk.api.agent_sql_execute_api import AgentSqlExecuteApi as AgentSqlExecuteApi
 from flyquery_sdk.api.agent_tokens_api import AgentTokensApi as AgentTokensApi
+from flyquery_sdk.api.agent_version_api import AgentVersionApi as AgentVersionApi
 from flyquery_sdk.api.conversations_api import ConversationsApi as ConversationsApi
 from flyquery_sdk.api.datasets_api import DatasetsApi as DatasetsApi
 from flyquery_sdk.api.examples_api import ExamplesApi as ExamplesApi
 from flyquery_sdk.api.files_api import FilesApi as FilesApi
 from flyquery_sdk.api.glossary_api import GlossaryApi as GlossaryApi
-from flyquery_sdk.api.ingest_api import IngestApi as IngestApi
-from flyquery_sdk.api.meta_api import MetaApi as MetaApi
+from flyquery_sdk.api.ingest_jobs_api import IngestJobsApi as IngestJobsApi
 from flyquery_sdk.api.query_api import QueryApi as QueryApi
 from flyquery_sdk.api.relations_api import RelationsApi as RelationsApi
-from flyquery_sdk.api.schema_api import SchemaApi as SchemaApi
-from flyquery_sdk.api.semantic_api import SemanticApi as SemanticApi
-from flyquery_sdk.api.sql_api import SqlApi as SqlApi
+from flyquery_sdk.api.schema_changes_api import SchemaChangesApi as SchemaChangesApi
+from flyquery_sdk.api.schema_objects_api import SchemaObjectsApi as SchemaObjectsApi
+from flyquery_sdk.api.semantic_dimensions_api import SemanticDimensionsApi as SemanticDimensionsApi
+from flyquery_sdk.api.semantic_metrics_api import SemanticMetricsApi as SemanticMetricsApi
+from flyquery_sdk.api.sql_execute_api import SqlExecuteApi as SqlExecuteApi
 from flyquery_sdk.api.tables_api import TablesApi as TablesApi
+from flyquery_sdk.api.tables_derive_api import TablesDeriveApi as TablesDeriveApi
+from flyquery_sdk.api.version_api import VersionApi as VersionApi
 from flyquery_sdk.api.workspaces_api import WorkspacesApi as WorkspacesApi
 
 # import ApiClient
@@ -132,7 +148,14 @@ from flyquery_sdk.exceptions import ApiException as ApiException
 from flyquery_sdk.models.agent_token_created import AgentTokenCreated as AgentTokenCreated
 from flyquery_sdk.models.agent_token_mint_request import AgentTokenMintRequest as AgentTokenMintRequest
 from flyquery_sdk.models.agent_token_summary_dto import AgentTokenSummaryDto as AgentTokenSummaryDto
+from flyquery_sdk.models.agent_usage import AgentUsage as AgentUsage
 from flyquery_sdk.models.answer_response import AnswerResponse as AnswerResponse
+from flyquery_sdk.models.batch_query_item import BatchQueryItem as BatchQueryItem
+from flyquery_sdk.models.batch_query_request import BatchQueryRequest as BatchQueryRequest
+from flyquery_sdk.models.batch_query_response import BatchQueryResponse as BatchQueryResponse
+from flyquery_sdk.models.batch_query_result_item import BatchQueryResultItem as BatchQueryResultItem
+from flyquery_sdk.models.bulk_file_result import BulkFileResult as BulkFileResult
+from flyquery_sdk.models.bulk_file_upload_response import BulkFileUploadResponse as BulkFileUploadResponse
 from flyquery_sdk.models.cancel_response import CancelResponse as CancelResponse
 from flyquery_sdk.models.clarification_frame import ClarificationFrame as ClarificationFrame
 from flyquery_sdk.models.conversation_create import ConversationCreate as ConversationCreate
@@ -174,9 +197,15 @@ from flyquery_sdk.models.sql_execute_response import SqlExecuteResponse as SqlEx
 from flyquery_sdk.models.table_read import TableRead as TableRead
 from flyquery_sdk.models.table_summary import TableSummary as TableSummary
 from flyquery_sdk.models.turn_read import TurnRead as TurnRead
+from flyquery_sdk.models.usage_summary import UsageSummary as UsageSummary
 from flyquery_sdk.models.validate_response import ValidateResponse as ValidateResponse
 from flyquery_sdk.models.validation_error import ValidationError as ValidationError
 from flyquery_sdk.models.workspace_create import WorkspaceCreate as WorkspaceCreate
 from flyquery_sdk.models.workspace_read import WorkspaceRead as WorkspaceRead
 from flyquery_sdk.models.workspace_update import WorkspaceUpdate as WorkspaceUpdate
 
+
+# --- High-level ergonomic client (hand-written) ---------------------------
+# Not generated -- adds bulk + batch + dataset-helper sugar on top of the
+# generated API classes. See ``flyquery_sdk.client.FlyqueryClient``.
+from flyquery_sdk.client import FlyqueryClient as FlyqueryClient

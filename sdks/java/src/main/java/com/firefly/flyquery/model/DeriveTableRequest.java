@@ -32,7 +32,7 @@ import com.fasterxml.jackson.annotation.JsonTypeName;
   DeriveTableRequest.JSON_PROPERTY_NAME,
   DeriveTableRequest.JSON_PROPERTY_SQL
 })
-@javax.annotation.Generated(value = "org.openapitools.codegen.languages.JavaClientCodegen", date = "2026-05-23T22:03:38.852419+02:00[Europe/Madrid]", comments = "Generator version: 7.22.0")
+@javax.annotation.Generated(value = "org.openapitools.codegen.languages.JavaClientCodegen", date = "2026-05-24T00:36:39.059958+02:00[Europe/Madrid]", comments = "Generator version: 7.22.0")
 public class DeriveTableRequest {
   public static final String JSON_PROPERTY_DATASET_ID = "dataset_id";
   @javax.annotation.Nonnull

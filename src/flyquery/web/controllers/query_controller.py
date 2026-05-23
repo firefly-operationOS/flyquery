@@ -13,6 +13,7 @@ Path conventions:
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import uuid
@@ -46,6 +47,10 @@ from flyquery.core.services.retrieval.search_index import SearchIndex
 from flyquery.core.services.storage.object_store import ObjectStore
 from flyquery.interfaces.query import (
     AnswerResponse,
+    BatchQueryItem,
+    BatchQueryRequest,
+    BatchQueryResponse,
+    BatchQueryResultItem,
     ClarificationFrame,
     ExplainResponse,
     QueryRequest,
@@ -184,6 +189,74 @@ class QueryController:
             explanation=result.explanation,
             clarification=result.clarification,
             grounded_summary=result.grounded_summary,
+        )
+
+    # ------------------------------------------------------------------
+    # POST /api/v1/query:batch (parallel multi-question)
+    # ------------------------------------------------------------------
+
+    @post_mapping(":batch")
+    async def batch(
+        self,
+        http_request: Request,
+        body: Valid[Body[BatchQueryRequest]],
+    ) -> BatchQueryResponse:
+        """Run multiple NL questions in parallel through the full pipeline.
+
+        Each item runs the same pipeline as ``POST /api/v1/query``, fanned
+        out via ``asyncio.gather`` with a Semaphore-style concurrency cap
+        (mirrors the bulk-file endpoint). Per-question failures do NOT
+        abort the batch -- failed items carry ``status="FAILED"`` +
+        ``error`` and the response aggregates ``succeeded`` / ``failed``
+        counts.
+
+        Use this for dashboard refreshes (one batch with N panel queries),
+        comparison reports (same question against M datasets), or SDK
+        callers that want to amortise auth + tenant context across many
+        questions.
+        """
+        ctx = tenant_context_from_request(http_request)
+        workspace_id = _parse_workspace_id(ctx.workspace_id)
+
+        async def _ask(idx: int, item: BatchQueryItem) -> BatchQueryResultItem:
+            try:
+                async with self._session_factory() as db_session:
+                    svc = self._build_service(db_session)
+                    r = await svc.answer(
+                        tenant_id=ctx.tenant_id,
+                        workspace_id=workspace_id,
+                        dataset_id=item.dataset_id,
+                        question=item.question,
+                        scopes=_DEFAULT_USER_SCOPES,
+                        conversation_id=item.conversation_id,
+                    )
+                return BatchQueryResultItem(
+                    index=idx,
+                    status="OK",
+                    query_id=r.query_id,
+                    sql=r.sql,
+                    execution_status=r.execution_status,
+                    preview=r.preview,
+                    row_count=r.row_count,
+                    elapsed_ms=r.elapsed_ms,
+                    chart_hint=r.chart_hint,
+                    explanation=r.explanation,
+                    grounded_summary=r.grounded_summary,
+                )
+            except Exception as exc:  # noqa: BLE001
+                return BatchQueryResultItem(
+                    index=idx,
+                    status="FAILED",
+                    error=str(exc),
+                )
+
+        results = await asyncio.gather(*[_ask(i, item) for i, item in enumerate(body.queries)])
+        succeeded = sum(1 for r in results if r.status == "OK")
+        return BatchQueryResponse(
+            results=list(results),
+            total_queries=len(results),
+            succeeded=succeeded,
+            failed=len(results) - succeeded,
         )
 
     # ------------------------------------------------------------------

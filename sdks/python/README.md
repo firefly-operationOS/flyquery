@@ -57,50 +57,116 @@ pip install -e ./sdks/python
 
 ## Quick start
 
+The SDK ships a hand-written ``FlyqueryClient`` ergonomic wrapper on
+top of the generated API classes. It carries the tenant + workspace
+context once, exposes bulk + batch helpers the raw OpenAPI client
+can't model compactly, and returns the same Pydantic response
+models so you keep full type safety.
+
 ```python
 import asyncio
-from flyquery_sdk import ApiClient, Configuration
-from flyquery_sdk.api import WorkspacesApi, DatasetsApi, QueryApi
-from flyquery_sdk.models import WorkspaceCreate, DatasetCreate, QueryRequest
+from flyquery_sdk import FlyqueryClient
 
 
 async def main() -> None:
-    config = Configuration(host="https://flyquery.example.com")
+    async with FlyqueryClient(
+        base_url="https://flyquery.example.com",
+        tenant_id="acme-corp",
+        workspace_id="finance",
+    ) as fly:
 
-    async with ApiClient(config) as client:
-        workspaces = WorkspacesApi(client)
-        datasets   = DatasetsApi(client)
-        query      = QueryApi(client)
-
-        # 1) Create a workspace
-        ws = await workspaces.create_workspace(
-            WorkspaceCreate(slug="alpha", name="Alpha"),
-            x_tenant_id="demo",
-            x_workspace_id="alpha",
+        # 1) Idempotent workspace + dataset setup
+        ws = await fly.find_or_create_workspace("finance", name="Finance")
+        ds = await fly.find_or_create_dataset(
+            "orders_2026",
+            description="Order fact table + customer dimension.",
         )
 
-        # 2) Create a dataset inside it
-        ds = await datasets.create_dataset(
-            DatasetCreate(name="Sales 2026"),
-            x_tenant_id="demo",
-            x_workspace_id=ws.id,
-        )
+        # 2) Upload a single file
+        await fly.upload(ds.id, "examples/csv/sales_orders.csv")
 
-        # 3) Upload a CSV (see FilesApi.upload_file in your SDK)
-        # 4) Ask a question
-        answer = await query.post_query(
-            QueryRequest(
-                dataset_id=ds.id,
-                question="what is total revenue by region?",
-            ),
-            x_tenant_id="demo",
-            x_workspace_id=ws.id,
-        )
-        print(answer.sql)
-        print(answer.preview)
+        # 3) Or bulk-upload every supported file in a directory --
+        #    runs through the same per-file pipeline in PARALLEL on
+        #    the server side; per-file failures don't abort the bulk.
+        outcome = await fly.upload_directory(ds.id, "examples/")
+        print(f"uploaded {outcome.succeeded}/{outcome.total_files}")
+        for r in outcome.results:
+            print(f"  {r.original_filename}: {r.status} ({len(r.tables)} tables)")
+
+        # 4) Ask one question
+        ans = await fly.ask(ds.id, "What was last quarter's total revenue?")
+        print(ans.sql)
+        print(ans.preview)
+        print(ans.explanation)
+
+        # 5) Or ask many in parallel -- one batched HTTP round-trip,
+        #    the server fans them out through asyncio.gather. Each
+        #    result carries the same shape as ``ans`` above plus a
+        #    ``status`` field that distinguishes OK from FAILED.
+        batch = await fly.ask_batch(ds.id, [
+            "Top 5 customers by revenue?",
+            "Average order size by country?",
+            "Refund rate this quarter?",
+        ])
+        for r in batch.results:
+            print(f"#{r.index} {r.status}: {(r.sql or '')[:80]}")
 
 
 asyncio.run(main())
+```
+
+### Bulk file upload
+
+`upload_bulk` and `upload_directory` both call the bulk endpoint
+``POST /api/v1/datasets/{id}/files:bulk``. The server processes each
+file through the same reconcile → sample → profile → describe →
+embed → publish pipeline in parallel and returns one
+``BulkFileResult`` per file:
+
+```python
+result = await fly.upload_bulk(ds.id, [
+    "examples/csv/customers.csv",
+    "examples/csv/sales_orders.csv",
+    "examples/json/products.json",
+    "examples/parquet/transactions.parquet",
+])
+for r in result.results:
+    if r.status == "OK":
+        print(f"✓ {r.original_filename} -> file_id={r.file_id} ({len(r.tables)} tables)")
+    else:
+        print(f"✗ {r.original_filename}: {r.error}")
+print(f"summary: {result.succeeded}/{result.total_files} succeeded")
+```
+
+### Batch NL queries
+
+Mirror the bulk-file pattern for queries: send N questions, get
+N answers back in roughly the time of one question. Each result
+carries the same ``sql``, ``preview``, ``explanation``,
+``execution_status``, and ``grounded_summary`` fields as the
+single-query response.
+
+### Sync helpers (notebooks + CLIs)
+
+Every async method has a ``_sync`` mirror for notebook / CLI
+contexts that can't bring up an event loop:
+
+```python
+fly = FlyqueryClient(base_url="...", tenant_id="...", workspace_id="...")
+res = fly.upload_bulk_sync(dataset_id, paths)
+ans = fly.ask_sync(dataset_id, "How many distinct customers?")
+```
+
+### Direct access to the generated API
+
+For knobs ``FlyqueryClient`` doesn't expose (pagination beyond
+``limit/offset``, custom timeouts on a per-call basis, agent-tier
+endpoints), reach through to the generated API classes:
+
+```python
+async with FlyqueryClient(...) as fly:
+    listing = await fly.workspaces.list_workspaces(q="acme", limit=20)
+    raw = fly.api_client  # underlying ApiClient if you need it
 ```
 
 ## Authentication

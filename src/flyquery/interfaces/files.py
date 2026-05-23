@@ -59,6 +59,32 @@ class FileUploadResponse(BaseModel):
     tables: list[TableSummary]
 
 
+class BulkFileResult(BaseModel):
+    """Per-file outcome from POST /datasets/{id}/files:bulk."""
+
+    index: int
+    original_filename: str
+    status: str  # "OK" | "FAILED"
+    file_id: str | None = None
+    tables: list[TableSummary] = []
+    error: str | None = None
+
+
+class BulkFileUploadResponse(BaseModel):
+    """Response from POST /datasets/{id}/files:bulk.
+
+    Returns one ``results`` entry per uploaded file. Per-file failures
+    do NOT abort the bulk -- the caller sees which files succeeded and
+    which didn't, with the error message inline. Aggregate counts let
+    a UI render "4/5 uploaded successfully" without scanning the list.
+    """
+
+    results: list[BulkFileResult]
+    total_files: int
+    succeeded: int
+    failed: int
+
+
 class ReuploadResponse(BaseModel):
     """Response from PUT /datasets/{ds}/tables/{id}:upload."""
 

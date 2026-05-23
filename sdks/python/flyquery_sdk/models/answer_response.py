@@ -21,6 +21,7 @@ from pydantic import BaseModel, ConfigDict, StrictBool, StrictInt, StrictStr, fi
 from typing import Any, ClassVar, Dict, List, Optional
 from uuid import UUID
 from flyquery_sdk.models.clarification_frame import ClarificationFrame
+from flyquery_sdk.models.usage_summary import UsageSummary
 from typing import Optional, Set
 from typing_extensions import Self
 from pydantic_core import to_jsonable_python
@@ -41,7 +42,8 @@ class AnswerResponse(BaseModel):
     snapshot_pins: Optional[Dict[str, StrictStr]] = None
     sql: Optional[StrictStr]
     truncated: Optional[StrictBool] = False
-    __properties: ClassVar[List[str]] = ["chart_hint", "clarification", "elapsed_ms", "execution_status", "explanation", "grounded_summary", "preview", "query_id", "row_count", "snapshot_pins", "sql", "truncated"]
+    usage: Optional[UsageSummary] = None
+    __properties: ClassVar[List[str]] = ["chart_hint", "clarification", "elapsed_ms", "execution_status", "explanation", "grounded_summary", "preview", "query_id", "row_count", "snapshot_pins", "sql", "truncated", "usage"]
 
     @field_validator('chart_hint')
     def chart_hint_validate_enum(cls, value):
@@ -105,6 +107,9 @@ class AnswerResponse(BaseModel):
         # override the default output from pydantic by calling `to_dict()` of clarification
         if self.clarification:
             _dict['clarification'] = self.clarification.to_dict()
+        # override the default output from pydantic by calling `to_dict()` of usage
+        if self.usage:
+            _dict['usage'] = self.usage.to_dict()
         # set to None if chart_hint (nullable) is None
         # and model_fields_set contains the field
         if self.chart_hint is None and "chart_hint" in self.model_fields_set:
@@ -150,6 +155,11 @@ class AnswerResponse(BaseModel):
         if self.sql is None and "sql" in self.model_fields_set:
             _dict['sql'] = None
 
+        # set to None if usage (nullable) is None
+        # and model_fields_set contains the field
+        if self.usage is None and "usage" in self.model_fields_set:
+            _dict['usage'] = None
+
         return _dict
 
     @classmethod
@@ -173,7 +183,8 @@ class AnswerResponse(BaseModel):
             "row_count": obj.get("row_count"),
             "snapshot_pins": obj.get("snapshot_pins"),
             "sql": obj.get("sql"),
-            "truncated": obj.get("truncated") if obj.get("truncated") is not None else False
+            "truncated": obj.get("truncated") if obj.get("truncated") is not None else False,
+            "usage": UsageSummary.from_dict(obj["usage"]) if obj.get("usage") is not None else None
         })
         return _obj
 

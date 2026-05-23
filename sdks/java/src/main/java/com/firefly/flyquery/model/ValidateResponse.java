@@ -42,7 +42,7 @@ import com.fasterxml.jackson.annotation.JsonTypeName;
   ValidateResponse.JSON_PROPERTY_SQL,
   ValidateResponse.JSON_PROPERTY_TABLE_REFS
 })
-@javax.annotation.Generated(value = "org.openapitools.codegen.languages.JavaClientCodegen", date = "2026-05-23T22:03:38.852419+02:00[Europe/Madrid]", comments = "Generator version: 7.22.0")
+@javax.annotation.Generated(value = "org.openapitools.codegen.languages.JavaClientCodegen", date = "2026-05-24T00:36:39.059958+02:00[Europe/Madrid]", comments = "Generator version: 7.22.0")
 public class ValidateResponse {
   public static final String JSON_PROPERTY_AST_CLASSIFICATION = "ast_classification";
   @javax.annotation.Nullable

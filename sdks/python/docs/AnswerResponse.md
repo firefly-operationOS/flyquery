@@ -18,6 +18,7 @@ Name | Type | Description | Notes
 **snapshot_pins** | **Dict[str, str]** |  | [optional] 
 **sql** | **str** |  | 
 **truncated** | **bool** |  | [optional] [default to False]
+**usage** | [**UsageSummary**](UsageSummary.md) |  | [optional] 
 
 ## Example
 

@@ -1,6 +1,6 @@
 [project]
 name = "flyquery_sdk"
-version = "26.5.5"
+version = "26.5.6"
 description = "Async-first Python client for flyquery — Tabular Intelligence: Text-to-SQL service over user-uploaded structured files."
 authors = [
   { name = "Firefly Software Solutions Inc", email = "team@firefly.io" },
@@ -41,6 +41,10 @@ dependencies = [
   "aiohttp-retry (>=2.8.3)",
   "pydantic (>=2.11)",
   "typing-extensions (>=4.7.1)",
+  # The hand-written ``FlyqueryClient`` ergonomic wrapper uses httpx
+  # for bulk + batch endpoints (multi-part fan-out) that the
+  # generated aiohttp surface can't express compactly.
+  "httpx (>=0.28)",
 ]
 
 [project.optional-dependencies]

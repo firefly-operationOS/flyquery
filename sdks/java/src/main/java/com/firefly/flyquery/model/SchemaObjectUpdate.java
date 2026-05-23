@@ -42,7 +42,7 @@ import com.fasterxml.jackson.annotation.JsonTypeName;
   SchemaObjectUpdate.JSON_PROPERTY_PII_TAG,
   SchemaObjectUpdate.JSON_PROPERTY_SYNONYMS_JSON
 })
-@javax.annotation.Generated(value = "org.openapitools.codegen.languages.JavaClientCodegen", date = "2026-05-23T22:03:38.852419+02:00[Europe/Madrid]", comments = "Generator version: 7.22.0")
+@javax.annotation.Generated(value = "org.openapitools.codegen.languages.JavaClientCodegen", date = "2026-05-24T00:36:39.059958+02:00[Europe/Madrid]", comments = "Generator version: 7.22.0")
 public class SchemaObjectUpdate {
   public static final String JSON_PROPERTY_BUSINESS_OWNER = "business_owner";
   @javax.annotation.Nullable

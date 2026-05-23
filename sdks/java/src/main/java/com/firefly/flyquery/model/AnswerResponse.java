@@ -21,6 +21,7 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonTypeName;
 import com.fasterxml.jackson.annotation.JsonValue;
 import com.firefly.flyquery.model.ClarificationFrame;
+import com.firefly.flyquery.model.UsageSummary;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -49,9 +50,10 @@ import com.fasterxml.jackson.annotation.JsonTypeName;
   AnswerResponse.JSON_PROPERTY_ROW_COUNT,
   AnswerResponse.JSON_PROPERTY_SNAPSHOT_PINS,
   AnswerResponse.JSON_PROPERTY_SQL,
-  AnswerResponse.JSON_PROPERTY_TRUNCATED
+  AnswerResponse.JSON_PROPERTY_TRUNCATED,
+  AnswerResponse.JSON_PROPERTY_USAGE
 })
-@javax.annotation.Generated(value = "org.openapitools.codegen.languages.JavaClientCodegen", date = "2026-05-23T22:03:38.852419+02:00[Europe/Madrid]", comments = "Generator version: 7.22.0")
+@javax.annotation.Generated(value = "org.openapitools.codegen.languages.JavaClientCodegen", date = "2026-05-24T00:36:39.059958+02:00[Europe/Madrid]", comments = "Generator version: 7.22.0")
 public class AnswerResponse {
   /**
    * Gets or Sets chartHint
@@ -180,6 +182,10 @@ public class AnswerResponse {
   public static final String JSON_PROPERTY_TRUNCATED = "truncated";
   @javax.annotation.Nullable
   private Boolean truncated = false;
+
+  public static final String JSON_PROPERTY_USAGE = "usage";
+  @javax.annotation.Nullable
+  private JsonNullable<UsageSummary> usage = JsonNullable.<UsageSummary>undefined();
 
   public AnswerResponse() {
   }
@@ -544,6 +550,39 @@ public class AnswerResponse {
     this.truncated = truncated;
   }
 
+  public AnswerResponse usage(@javax.annotation.Nullable UsageSummary usage) {
+    this.usage = JsonNullable.<UsageSummary>of(usage);
+    
+    return this;
+  }
+
+  /**
+   * Get usage
+   * @return usage
+   */
+  @javax.annotation.Nullable
+  @JsonIgnore
+
+  public UsageSummary getUsage() {
+        return usage.orElse(null);
+  }
+
+  @JsonProperty(value = JSON_PROPERTY_USAGE, required = false)
+  @JsonInclude(value = JsonInclude.Include.USE_DEFAULTS)
+
+  public JsonNullable<UsageSummary> getUsage_JsonNullable() {
+    return usage;
+  }
+  
+  @JsonProperty(JSON_PROPERTY_USAGE)
+  public void setUsage_JsonNullable(JsonNullable<UsageSummary> usage) {
+    this.usage = usage;
+  }
+
+  public void setUsage(@javax.annotation.Nullable UsageSummary usage) {
+    this.usage = JsonNullable.<UsageSummary>of(usage);
+  }
+
 
   @Override
   public boolean equals(Object o) {
@@ -565,7 +604,8 @@ public class AnswerResponse {
         Objects.equals(this.rowCount, answerResponse.rowCount) &&
         Objects.equals(this.snapshotPins, answerResponse.snapshotPins) &&
         Objects.equals(this.sql, answerResponse.sql) &&
-        Objects.equals(this.truncated, answerResponse.truncated);
+        Objects.equals(this.truncated, answerResponse.truncated) &&
+        equalsNullable(this.usage, answerResponse.usage);
   }
 
   private static <T> boolean equalsNullable(JsonNullable<T> a, JsonNullable<T> b) {
@@ -574,7 +614,7 @@ public class AnswerResponse {
 
   @Override
   public int hashCode() {
-    return Objects.hash(hashCodeNullable(chartHint), hashCodeNullable(clarification), elapsedMs, executionStatus, hashCodeNullable(explanation), hashCodeNullable(groundedSummary), preview, queryId, rowCount, snapshotPins, sql, truncated);
+    return Objects.hash(hashCodeNullable(chartHint), hashCodeNullable(clarification), elapsedMs, executionStatus, hashCodeNullable(explanation), hashCodeNullable(groundedSummary), preview, queryId, rowCount, snapshotPins, sql, truncated, hashCodeNullable(usage));
   }
 
   private static <T> int hashCodeNullable(JsonNullable<T> a) {
@@ -600,6 +640,7 @@ public class AnswerResponse {
     sb.append("    snapshotPins: ").append(toIndentedString(snapshotPins)).append("\n");
     sb.append("    sql: ").append(toIndentedString(sql)).append("\n");
     sb.append("    truncated: ").append(toIndentedString(truncated)).append("\n");
+    sb.append("    usage: ").append(toIndentedString(usage)).append("\n");
     sb.append("}");
     return sb.toString();
   }

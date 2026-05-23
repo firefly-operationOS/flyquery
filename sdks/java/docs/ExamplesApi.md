@@ -13,7 +13,7 @@ All URIs are relative to *http://localhost*
 
 ## approve
 
-> ExampleRead approve(exampleId, xTenantId, xWorkspaceId, xCorrelationId, idempotencyKey)
+> ExampleRead approve(exampleId)
 
 Approve an example (quality → APPROVED).
 
@@ -24,7 +24,6 @@ Approve an example (quality → APPROVED).
 import com.firefly.flyquery.ApiClient;
 import com.firefly.flyquery.ApiException;
 import com.firefly.flyquery.Configuration;
-import com.firefly.flyquery.auth.*;
 import com.firefly.flyquery.models.*;
 import com.firefly.flyquery.api.ExamplesApi;
 
@@ -32,27 +31,11 @@ public class Example {
     public static void main(String[] args) {
         ApiClient defaultClient = Configuration.getDefaultApiClient();
         defaultClient.setBasePath("http://localhost");
-        
-        // Configure API key authorization: WorkspaceContext
-        ApiKeyAuth WorkspaceContext = (ApiKeyAuth) defaultClient.getAuthentication("WorkspaceContext");
-        WorkspaceContext.setApiKey("YOUR API KEY");
-        // Uncomment the following line to set a prefix for the API key, e.g. "Token" (defaults to null)
-        //WorkspaceContext.setApiKeyPrefix("Token");
-
-        // Configure API key authorization: TenantContext
-        ApiKeyAuth TenantContext = (ApiKeyAuth) defaultClient.getAuthentication("TenantContext");
-        TenantContext.setApiKey("YOUR API KEY");
-        // Uncomment the following line to set a prefix for the API key, e.g. "Token" (defaults to null)
-        //TenantContext.setApiKeyPrefix("Token");
 
         ExamplesApi apiInstance = new ExamplesApi(defaultClient);
         String exampleId = "exampleId_example"; // String | 
-        String xTenantId = "acme-corp"; // String | Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present.
-        String xWorkspaceId = "00000000-0000-0000-0000-000000000001"; // String | Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation.
-        UUID xCorrelationId = UUID.fromString("550e8400-e29b-41d4-a716-446655440000"); // UUID | Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.
-        String idempotencyKey = "ingest-2026-05-23-abc123"; // String | Optional client-supplied idempotency key for mutating operations. The first request with a key persists its result; subsequent requests with the same key + same tenant return the cached response. Keys expire after 24h.
         try {
-            ExampleRead result = apiInstance.approve(exampleId, xTenantId, xWorkspaceId, xCorrelationId, idempotencyKey);
+            ExampleRead result = apiInstance.approve(exampleId);
             System.out.println(result);
         } catch (ApiException e) {
             System.err.println("Exception when calling ExamplesApi#approve");
@@ -71,10 +54,6 @@ public class Example {
 | Name | Type | Description  | Notes |
 |------------- | ------------- | ------------- | -------------|
 | **exampleId** | **String**|  | |
-| **xTenantId** | **String**| Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present. | |
-| **xWorkspaceId** | **String**| Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation. | |
-| **xCorrelationId** | **UUID**| Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header. | [optional] |
-| **idempotencyKey** | **String**| Optional client-supplied idempotency key for mutating operations. The first request with a key persists its result; subsequent requests with the same key + same tenant return the cached response. Keys expire after 24h. | [optional] |
 
 ### Return type
 
@@ -82,7 +61,7 @@ public class Example {
 
 ### Authorization
 
-[WorkspaceContext](../README.md#WorkspaceContext), [TenantContext](../README.md#TenantContext)
+No authorization required
 
 ### HTTP request headers
 
@@ -98,7 +77,7 @@ public class Example {
 
 ## create
 
-> ExampleRead create(xTenantId, xWorkspaceId, exampleCreate, xCorrelationId, idempotencyKey)
+> ExampleRead create(exampleCreate)
 
 Create an example; defaults to source&#x3D;USER_CURATED, quality&#x3D;PROPOSED.
 
@@ -109,7 +88,6 @@ Create an example; defaults to source&#x3D;USER_CURATED, quality&#x3D;PROPOSED.
 import com.firefly.flyquery.ApiClient;
 import com.firefly.flyquery.ApiException;
 import com.firefly.flyquery.Configuration;
-import com.firefly.flyquery.auth.*;
 import com.firefly.flyquery.models.*;
 import com.firefly.flyquery.api.ExamplesApi;
 
@@ -117,27 +95,11 @@ public class Example {
     public static void main(String[] args) {
         ApiClient defaultClient = Configuration.getDefaultApiClient();
         defaultClient.setBasePath("http://localhost");
-        
-        // Configure API key authorization: WorkspaceContext
-        ApiKeyAuth WorkspaceContext = (ApiKeyAuth) defaultClient.getAuthentication("WorkspaceContext");
-        WorkspaceContext.setApiKey("YOUR API KEY");
-        // Uncomment the following line to set a prefix for the API key, e.g. "Token" (defaults to null)
-        //WorkspaceContext.setApiKeyPrefix("Token");
-
-        // Configure API key authorization: TenantContext
-        ApiKeyAuth TenantContext = (ApiKeyAuth) defaultClient.getAuthentication("TenantContext");
-        TenantContext.setApiKey("YOUR API KEY");
-        // Uncomment the following line to set a prefix for the API key, e.g. "Token" (defaults to null)
-        //TenantContext.setApiKeyPrefix("Token");
 
         ExamplesApi apiInstance = new ExamplesApi(defaultClient);
-        String xTenantId = "acme-corp"; // String | Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present.
-        String xWorkspaceId = "00000000-0000-0000-0000-000000000001"; // String | Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation.
         ExampleCreate exampleCreate = new ExampleCreate(); // ExampleCreate | 
-        UUID xCorrelationId = UUID.fromString("550e8400-e29b-41d4-a716-446655440000"); // UUID | Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.
-        String idempotencyKey = "ingest-2026-05-23-abc123"; // String | Optional client-supplied idempotency key for mutating operations. The first request with a key persists its result; subsequent requests with the same key + same tenant return the cached response. Keys expire after 24h.
         try {
-            ExampleRead result = apiInstance.create(xTenantId, xWorkspaceId, exampleCreate, xCorrelationId, idempotencyKey);
+            ExampleRead result = apiInstance.create(exampleCreate);
             System.out.println(result);
         } catch (ApiException e) {
             System.err.println("Exception when calling ExamplesApi#create");
@@ -155,11 +117,7 @@ public class Example {
 
 | Name | Type | Description  | Notes |
 |------------- | ------------- | ------------- | -------------|
-| **xTenantId** | **String**| Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present. | |
-| **xWorkspaceId** | **String**| Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation. | |
 | **exampleCreate** | [**ExampleCreate**](ExampleCreate.md)|  | |
-| **xCorrelationId** | **UUID**| Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header. | [optional] |
-| **idempotencyKey** | **String**| Optional client-supplied idempotency key for mutating operations. The first request with a key persists its result; subsequent requests with the same key + same tenant return the cached response. Keys expire after 24h. | [optional] |
 
 ### Return type
 
@@ -167,7 +125,7 @@ public class Example {
 
 ### Authorization
 
-[WorkspaceContext](../README.md#WorkspaceContext), [TenantContext](../README.md#TenantContext)
+No authorization required
 
 ### HTTP request headers
 
@@ -184,7 +142,7 @@ public class Example {
 
 ## listExamples
 
-> listExamples(xTenantId, xWorkspaceId, quality, datasetId, xCorrelationId)
+> listExamples(quality, datasetId)
 
 List examples for the caller&#39;s workspace, with optional filters.
 
@@ -195,7 +153,6 @@ List examples for the caller&#39;s workspace, with optional filters.
 import com.firefly.flyquery.ApiClient;
 import com.firefly.flyquery.ApiException;
 import com.firefly.flyquery.Configuration;
-import com.firefly.flyquery.auth.*;
 import com.firefly.flyquery.models.*;
 import com.firefly.flyquery.api.ExamplesApi;
 
@@ -203,27 +160,12 @@ public class Example {
     public static void main(String[] args) {
         ApiClient defaultClient = Configuration.getDefaultApiClient();
         defaultClient.setBasePath("http://localhost");
-        
-        // Configure API key authorization: WorkspaceContext
-        ApiKeyAuth WorkspaceContext = (ApiKeyAuth) defaultClient.getAuthentication("WorkspaceContext");
-        WorkspaceContext.setApiKey("YOUR API KEY");
-        // Uncomment the following line to set a prefix for the API key, e.g. "Token" (defaults to null)
-        //WorkspaceContext.setApiKeyPrefix("Token");
-
-        // Configure API key authorization: TenantContext
-        ApiKeyAuth TenantContext = (ApiKeyAuth) defaultClient.getAuthentication("TenantContext");
-        TenantContext.setApiKey("YOUR API KEY");
-        // Uncomment the following line to set a prefix for the API key, e.g. "Token" (defaults to null)
-        //TenantContext.setApiKeyPrefix("Token");
 
         ExamplesApi apiInstance = new ExamplesApi(defaultClient);
-        String xTenantId = "acme-corp"; // String | Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present.
-        String xWorkspaceId = "00000000-0000-0000-0000-000000000001"; // String | Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation.
         String quality = "quality_example"; // String | 
         String datasetId = "datasetId_example"; // String | 
-        UUID xCorrelationId = UUID.fromString("550e8400-e29b-41d4-a716-446655440000"); // UUID | Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.
         try {
-            apiInstance.listExamples(xTenantId, xWorkspaceId, quality, datasetId, xCorrelationId);
+            apiInstance.listExamples(quality, datasetId);
         } catch (ApiException e) {
             System.err.println("Exception when calling ExamplesApi#listExamples");
             System.err.println("Status code: " + e.getCode());
@@ -240,11 +182,8 @@ public class Example {
 
 | Name | Type | Description  | Notes |
 |------------- | ------------- | ------------- | -------------|
-| **xTenantId** | **String**| Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present. | |
-| **xWorkspaceId** | **String**| Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation. | |
 | **quality** | **String**|  | [optional] |
 | **datasetId** | **String**|  | [optional] |
-| **xCorrelationId** | **UUID**| Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header. | [optional] |
 
 ### Return type
 
@@ -252,7 +191,7 @@ null (empty response body)
 
 ### Authorization
 
-[WorkspaceContext](../README.md#WorkspaceContext), [TenantContext](../README.md#TenantContext)
+No authorization required
 
 ### HTTP request headers
 
@@ -268,7 +207,7 @@ null (empty response body)
 
 ## reject
 
-> ExampleRead reject(exampleId, xTenantId, xWorkspaceId, xCorrelationId, idempotencyKey)
+> ExampleRead reject(exampleId)
 
 Reject an example (quality → REJECTED).
 
@@ -279,7 +218,6 @@ Reject an example (quality → REJECTED).
 import com.firefly.flyquery.ApiClient;
 import com.firefly.flyquery.ApiException;
 import com.firefly.flyquery.Configuration;
-import com.firefly.flyquery.auth.*;
 import com.firefly.flyquery.models.*;
 import com.firefly.flyquery.api.ExamplesApi;
 
@@ -287,27 +225,11 @@ public class Example {
     public static void main(String[] args) {
         ApiClient defaultClient = Configuration.getDefaultApiClient();
         defaultClient.setBasePath("http://localhost");
-        
-        // Configure API key authorization: WorkspaceContext
-        ApiKeyAuth WorkspaceContext = (ApiKeyAuth) defaultClient.getAuthentication("WorkspaceContext");
-        WorkspaceContext.setApiKey("YOUR API KEY");
-        // Uncomment the following line to set a prefix for the API key, e.g. "Token" (defaults to null)
-        //WorkspaceContext.setApiKeyPrefix("Token");
-
-        // Configure API key authorization: TenantContext
-        ApiKeyAuth TenantContext = (ApiKeyAuth) defaultClient.getAuthentication("TenantContext");
-        TenantContext.setApiKey("YOUR API KEY");
-        // Uncomment the following line to set a prefix for the API key, e.g. "Token" (defaults to null)
-        //TenantContext.setApiKeyPrefix("Token");
 
         ExamplesApi apiInstance = new ExamplesApi(defaultClient);
         String exampleId = "exampleId_example"; // String | 
-        String xTenantId = "acme-corp"; // String | Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present.
-        String xWorkspaceId = "00000000-0000-0000-0000-000000000001"; // String | Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation.
-        UUID xCorrelationId = UUID.fromString("550e8400-e29b-41d4-a716-446655440000"); // UUID | Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.
-        String idempotencyKey = "ingest-2026-05-23-abc123"; // String | Optional client-supplied idempotency key for mutating operations. The first request with a key persists its result; subsequent requests with the same key + same tenant return the cached response. Keys expire after 24h.
         try {
-            ExampleRead result = apiInstance.reject(exampleId, xTenantId, xWorkspaceId, xCorrelationId, idempotencyKey);
+            ExampleRead result = apiInstance.reject(exampleId);
             System.out.println(result);
         } catch (ApiException e) {
             System.err.println("Exception when calling ExamplesApi#reject");
@@ -326,10 +248,6 @@ public class Example {
 | Name | Type | Description  | Notes |
 |------------- | ------------- | ------------- | -------------|
 | **exampleId** | **String**|  | |
-| **xTenantId** | **String**| Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present. | |
-| **xWorkspaceId** | **String**| Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation. | |
-| **xCorrelationId** | **UUID**| Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header. | [optional] |
-| **idempotencyKey** | **String**| Optional client-supplied idempotency key for mutating operations. The first request with a key persists its result; subsequent requests with the same key + same tenant return the cached response. Keys expire after 24h. | [optional] |
 
 ### Return type
 
@@ -337,7 +255,7 @@ public class Example {
 
 ### Authorization
 
-[WorkspaceContext](../README.md#WorkspaceContext), [TenantContext](../README.md#TenantContext)
+No authorization required
 
 ### HTTP request headers
 

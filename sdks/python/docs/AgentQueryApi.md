@@ -11,7 +11,7 @@ Method | HTTP request | Description
 
 
 # **explain**
-> ExplainResponse explain(x_agent_token, query_request, x_correlation_id=x_correlation_id, idempotency_key=idempotency_key)
+> ExplainResponse explain(query_request)
 
 Run Grounding + Generation only (agent-tier).
 
@@ -21,7 +21,6 @@ Run Grounding + Generation only (agent-tier).
 
 ### Example
 
-* Api Key Authentication (AgentToken):
 
 ```python
 import flyquery_sdk
@@ -36,29 +35,16 @@ configuration = flyquery_sdk.Configuration(
     host = "http://localhost"
 )
 
-# The client must configure the authentication and authorization parameters
-# in accordance with the API server security policy.
-# Examples for each auth method are provided below, use the example that
-# satisfies your auth use case.
-
-# Configure API key authorization: AgentToken
-configuration.api_key['AgentToken'] = os.environ["API_KEY"]
-
-# Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
-# configuration.api_key_prefix['AgentToken'] = 'Bearer'
 
 # Enter a context with an instance of the API client
 async with flyquery_sdk.ApiClient(configuration) as api_client:
     # Create an instance of the API class
     api_instance = flyquery_sdk.AgentQueryApi(api_client)
-    x_agent_token = 'fqt_live_aBcDeF1234567890aBcDeF1234567890' # str | Machine-to-machine bearer token. Replaces X-Tenant-Id and X-Workspace-Id on agent-tier endpoints -- the token's claims encode the tenant + workspace + scopes. Issue via ``POST /api/v1/agent-tokens``.
     query_request = flyquery_sdk.QueryRequest() # QueryRequest | 
-    x_correlation_id = UUID('550e8400-e29b-41d4-a716-446655440000') # UUID | Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header. (optional)
-    idempotency_key = 'ingest-2026-05-23-abc123' # str | Optional client-supplied idempotency key for mutating operations. The first request with a key persists its result; subsequent requests with the same key + same tenant return the cached response. Keys expire after 24h. (optional)
 
     try:
         # Run Grounding + Generation only (agent-tier).
-        api_response = await api_instance.explain(x_agent_token, query_request, x_correlation_id=x_correlation_id, idempotency_key=idempotency_key)
+        api_response = await api_instance.explain(query_request)
         print("The response of AgentQueryApi->explain:\n")
         pprint(api_response)
     except Exception as e:
@@ -72,10 +58,7 @@ async with flyquery_sdk.ApiClient(configuration) as api_client:
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **x_agent_token** | **str**| Machine-to-machine bearer token. Replaces X-Tenant-Id and X-Workspace-Id on agent-tier endpoints -- the token&#39;s claims encode the tenant + workspace + scopes. Issue via &#x60;&#x60;POST /api/v1/agent-tokens&#x60;&#x60;. | 
  **query_request** | [**QueryRequest**](QueryRequest.md)|  | 
- **x_correlation_id** | **UUID**| Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header. | [optional] 
- **idempotency_key** | **str**| Optional client-supplied idempotency key for mutating operations. The first request with a key persists its result; subsequent requests with the same key + same tenant return the cached response. Keys expire after 24h. | [optional] 
 
 ### Return type
 
@@ -83,7 +66,7 @@ Name | Type | Description  | Notes
 
 ### Authorization
 
-[AgentToken](../README.md#AgentToken)
+No authorization required
 
 ### HTTP request headers
 
@@ -100,7 +83,7 @@ Name | Type | Description  | Notes
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **query**
-> AnswerResponse query(x_agent_token, query_request, x_correlation_id=x_correlation_id, idempotency_key=idempotency_key)
+> AnswerResponse query(query_request)
 
 Run the full NL → SQL → result pipeline (agent-tier).
 
@@ -110,7 +93,6 @@ Run the full NL → SQL → result pipeline (agent-tier).
 
 ### Example
 
-* Api Key Authentication (AgentToken):
 
 ```python
 import flyquery_sdk
@@ -125,29 +107,16 @@ configuration = flyquery_sdk.Configuration(
     host = "http://localhost"
 )
 
-# The client must configure the authentication and authorization parameters
-# in accordance with the API server security policy.
-# Examples for each auth method are provided below, use the example that
-# satisfies your auth use case.
-
-# Configure API key authorization: AgentToken
-configuration.api_key['AgentToken'] = os.environ["API_KEY"]
-
-# Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
-# configuration.api_key_prefix['AgentToken'] = 'Bearer'
 
 # Enter a context with an instance of the API client
 async with flyquery_sdk.ApiClient(configuration) as api_client:
     # Create an instance of the API class
     api_instance = flyquery_sdk.AgentQueryApi(api_client)
-    x_agent_token = 'fqt_live_aBcDeF1234567890aBcDeF1234567890' # str | Machine-to-machine bearer token. Replaces X-Tenant-Id and X-Workspace-Id on agent-tier endpoints -- the token's claims encode the tenant + workspace + scopes. Issue via ``POST /api/v1/agent-tokens``.
     query_request = flyquery_sdk.QueryRequest() # QueryRequest | 
-    x_correlation_id = UUID('550e8400-e29b-41d4-a716-446655440000') # UUID | Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header. (optional)
-    idempotency_key = 'ingest-2026-05-23-abc123' # str | Optional client-supplied idempotency key for mutating operations. The first request with a key persists its result; subsequent requests with the same key + same tenant return the cached response. Keys expire after 24h. (optional)
 
     try:
         # Run the full NL → SQL → result pipeline (agent-tier).
-        api_response = await api_instance.query(x_agent_token, query_request, x_correlation_id=x_correlation_id, idempotency_key=idempotency_key)
+        api_response = await api_instance.query(query_request)
         print("The response of AgentQueryApi->query:\n")
         pprint(api_response)
     except Exception as e:
@@ -161,10 +130,7 @@ async with flyquery_sdk.ApiClient(configuration) as api_client:
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **x_agent_token** | **str**| Machine-to-machine bearer token. Replaces X-Tenant-Id and X-Workspace-Id on agent-tier endpoints -- the token&#39;s claims encode the tenant + workspace + scopes. Issue via &#x60;&#x60;POST /api/v1/agent-tokens&#x60;&#x60;. | 
  **query_request** | [**QueryRequest**](QueryRequest.md)|  | 
- **x_correlation_id** | **UUID**| Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header. | [optional] 
- **idempotency_key** | **str**| Optional client-supplied idempotency key for mutating operations. The first request with a key persists its result; subsequent requests with the same key + same tenant return the cached response. Keys expire after 24h. | [optional] 
 
 ### Return type
 
@@ -172,7 +138,7 @@ Name | Type | Description  | Notes
 
 ### Authorization
 
-[AgentToken](../README.md#AgentToken)
+No authorization required
 
 ### HTTP request headers
 
@@ -189,7 +155,7 @@ Name | Type | Description  | Notes
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **stream**
-> stream(x_agent_token, query_request, x_correlation_id=x_correlation_id, idempotency_key=idempotency_key)
+> stream(query_request)
 
 Run the pipeline as SSE stream (agent-tier).
 
@@ -199,7 +165,6 @@ Run the pipeline as SSE stream (agent-tier).
 
 ### Example
 
-* Api Key Authentication (AgentToken):
 
 ```python
 import flyquery_sdk
@@ -213,29 +178,16 @@ configuration = flyquery_sdk.Configuration(
     host = "http://localhost"
 )
 
-# The client must configure the authentication and authorization parameters
-# in accordance with the API server security policy.
-# Examples for each auth method are provided below, use the example that
-# satisfies your auth use case.
-
-# Configure API key authorization: AgentToken
-configuration.api_key['AgentToken'] = os.environ["API_KEY"]
-
-# Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
-# configuration.api_key_prefix['AgentToken'] = 'Bearer'
 
 # Enter a context with an instance of the API client
 async with flyquery_sdk.ApiClient(configuration) as api_client:
     # Create an instance of the API class
     api_instance = flyquery_sdk.AgentQueryApi(api_client)
-    x_agent_token = 'fqt_live_aBcDeF1234567890aBcDeF1234567890' # str | Machine-to-machine bearer token. Replaces X-Tenant-Id and X-Workspace-Id on agent-tier endpoints -- the token's claims encode the tenant + workspace + scopes. Issue via ``POST /api/v1/agent-tokens``.
     query_request = flyquery_sdk.QueryRequest() # QueryRequest | 
-    x_correlation_id = UUID('550e8400-e29b-41d4-a716-446655440000') # UUID | Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header. (optional)
-    idempotency_key = 'ingest-2026-05-23-abc123' # str | Optional client-supplied idempotency key for mutating operations. The first request with a key persists its result; subsequent requests with the same key + same tenant return the cached response. Keys expire after 24h. (optional)
 
     try:
         # Run the pipeline as SSE stream (agent-tier).
-        await api_instance.stream(x_agent_token, query_request, x_correlation_id=x_correlation_id, idempotency_key=idempotency_key)
+        await api_instance.stream(query_request)
     except Exception as e:
         print("Exception when calling AgentQueryApi->stream: %s\n" % e)
 ```
@@ -247,10 +199,7 @@ async with flyquery_sdk.ApiClient(configuration) as api_client:
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **x_agent_token** | **str**| Machine-to-machine bearer token. Replaces X-Tenant-Id and X-Workspace-Id on agent-tier endpoints -- the token&#39;s claims encode the tenant + workspace + scopes. Issue via &#x60;&#x60;POST /api/v1/agent-tokens&#x60;&#x60;. | 
  **query_request** | [**QueryRequest**](QueryRequest.md)|  | 
- **x_correlation_id** | **UUID**| Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header. | [optional] 
- **idempotency_key** | **str**| Optional client-supplied idempotency key for mutating operations. The first request with a key persists its result; subsequent requests with the same key + same tenant return the cached response. Keys expire after 24h. | [optional] 
 
 ### Return type
 
@@ -258,7 +207,7 @@ void (empty response body)
 
 ### Authorization
 
-[AgentToken](../README.md#AgentToken)
+No authorization required
 
 ### HTTP request headers
 
@@ -275,7 +224,7 @@ void (empty response body)
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **validate**
-> ValidateResponse validate(x_agent_token, query_request, x_correlation_id=x_correlation_id, idempotency_key=idempotency_key)
+> ValidateResponse validate(query_request)
 
 Run Grounding + Generation + AST + ScopeGuard (agent-tier).
 
@@ -285,7 +234,6 @@ Run Grounding + Generation + AST + ScopeGuard (agent-tier).
 
 ### Example
 
-* Api Key Authentication (AgentToken):
 
 ```python
 import flyquery_sdk
@@ -300,29 +248,16 @@ configuration = flyquery_sdk.Configuration(
     host = "http://localhost"
 )
 
-# The client must configure the authentication and authorization parameters
-# in accordance with the API server security policy.
-# Examples for each auth method are provided below, use the example that
-# satisfies your auth use case.
-
-# Configure API key authorization: AgentToken
-configuration.api_key['AgentToken'] = os.environ["API_KEY"]
-
-# Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
-# configuration.api_key_prefix['AgentToken'] = 'Bearer'
 
 # Enter a context with an instance of the API client
 async with flyquery_sdk.ApiClient(configuration) as api_client:
     # Create an instance of the API class
     api_instance = flyquery_sdk.AgentQueryApi(api_client)
-    x_agent_token = 'fqt_live_aBcDeF1234567890aBcDeF1234567890' # str | Machine-to-machine bearer token. Replaces X-Tenant-Id and X-Workspace-Id on agent-tier endpoints -- the token's claims encode the tenant + workspace + scopes. Issue via ``POST /api/v1/agent-tokens``.
     query_request = flyquery_sdk.QueryRequest() # QueryRequest | 
-    x_correlation_id = UUID('550e8400-e29b-41d4-a716-446655440000') # UUID | Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header. (optional)
-    idempotency_key = 'ingest-2026-05-23-abc123' # str | Optional client-supplied idempotency key for mutating operations. The first request with a key persists its result; subsequent requests with the same key + same tenant return the cached response. Keys expire after 24h. (optional)
 
     try:
         # Run Grounding + Generation + AST + ScopeGuard (agent-tier).
-        api_response = await api_instance.validate(x_agent_token, query_request, x_correlation_id=x_correlation_id, idempotency_key=idempotency_key)
+        api_response = await api_instance.validate(query_request)
         print("The response of AgentQueryApi->validate:\n")
         pprint(api_response)
     except Exception as e:
@@ -336,10 +271,7 @@ async with flyquery_sdk.ApiClient(configuration) as api_client:
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **x_agent_token** | **str**| Machine-to-machine bearer token. Replaces X-Tenant-Id and X-Workspace-Id on agent-tier endpoints -- the token&#39;s claims encode the tenant + workspace + scopes. Issue via &#x60;&#x60;POST /api/v1/agent-tokens&#x60;&#x60;. | 
  **query_request** | [**QueryRequest**](QueryRequest.md)|  | 
- **x_correlation_id** | **UUID**| Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header. | [optional] 
- **idempotency_key** | **str**| Optional client-supplied idempotency key for mutating operations. The first request with a key persists its result; subsequent requests with the same key + same tenant return the cached response. Keys expire after 24h. | [optional] 
 
 ### Return type
 
@@ -347,7 +279,7 @@ Name | Type | Description  | Notes
 
 ### Authorization
 
-[AgentToken](../README.md#AgentToken)
+No authorization required
 
 ### HTTP request headers
 
