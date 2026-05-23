@@ -5,6 +5,22 @@ follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and
 the project uses [CalVer](https://calver.org/) (YY.MM.PP) per the
 Firefly Framework convention (memory: `firefly_uses_calver`).
 
+## [26.5.1] - 2026-05-23
+
+### Added
+- Plan 3 (Query Pipeline) shipped
+- Examples + Glossary CRUD with auto-promotion (AGENT_LEARNED → PROPOSED)
+- Semantic layer: MetricFlow-shape YAML + compiler + history versioning
+- Hybrid retriever (BM25 + pgvector + RRF) + cross-encoder reranker over schema KB
+- 4-agent query pipeline: GroundingAgent → GenerationAgent → CriticAgent → ExplainerAgent
+- AST classifier + ScopeGuard (sqlglot + table-kind enforcement + dataset allowlist)
+- DuckDB executor (in-process, ATTACH parquet snapshots, row_cap+1 overflow)
+- POST /api/v1/query + :explain + :validate + /query/stream (SSE with clarification frame)
+- Conversation memory with drill-down (prior executed_sql + table_qnames + snapshot_pins)
+- POST /api/v1/sql:execute behind workspace.allow_direct_sql
+- POST /api/v1/tables:derive + DML on DERIVED tables (read-modify-write Parquet)
+- Agent-tier mirrors: /api/v1/agent/{query,sql:execute,examples}
+
 ## [26.5.0] - 2026-05-23
 
 ### Added

@@ -44,9 +44,45 @@ TOK=$(curl -s -X POST http://localhost:8520/api/v1/agent-tokens \
 echo "token=$TOK"   # agt_<8hex>_<32hex>
 ```
 
-## 5. What you cannot do yet
+## 5. Upload data
 
-- Upload files (`POST /datasets/{id}/files`) — ships in Plan 2.
-- Ask `/query` — ships in Plan 3.
+```bash
+DS=$(curl -s -X POST http://localhost:8520/api/v1/datasets \
+  -H 'Content-Type: application/json' \
+  -H "X-Tenant-Id: demo" -H "X-Workspace-Id: $WS" \
+  -d '{"name":"Sales 2026"}' | jq -r .id)
+echo "dataset=$DS"
 
-See `docs/superpowers/plans/` for the next plans.
+curl -s -X POST "http://localhost:8520/api/v1/datasets/$DS/files" \
+  -H "X-Tenant-Id: demo" -H "X-Workspace-Id: $WS" \
+  -F "file=@orders.csv"
+```
+
+## Asking questions
+
+```bash
+# Ask a question via POST /api/v1/query
+curl -X POST http://localhost:8520/api/v1/query \
+  -H 'Content-Type: application/json' \
+  -H "X-Tenant-Id: demo" -H "X-Workspace-Id: $WS" \
+  -d "{\"dataset_id\":\"$DS\",\"question\":\"what is total revenue by region?\"}"
+
+# Stream the pipeline stages
+curl -X POST -N http://localhost:8520/api/v1/query/stream \
+  -H 'Content-Type: application/json' \
+  -H "X-Tenant-Id: demo" -H "X-Workspace-Id: $WS" \
+  -d "{\"dataset_id\":\"$DS\",\"question\":\"what is total revenue by region?\"}"
+
+# Drill-down via conversation
+CONV=$(curl -s -X POST http://localhost:8520/api/v1/conversations \
+  -H "X-Tenant-Id: demo" -H "X-Workspace-Id: $WS" \
+  -H 'Content-Type: application/json' -d '{}' | jq -r .id)
+curl -X POST "http://localhost:8520/api/v1/conversations/$CONV/turn" \
+  -H 'Content-Type: application/json' \
+  -H "X-Tenant-Id: demo" -H "X-Workspace-Id: $WS" \
+  -d "{\"dataset_id\":\"$DS\",\"question\":\"show me total revenue by region\"}"
+curl -X POST "http://localhost:8520/api/v1/conversations/$CONV/turn" \
+  -H 'Content-Type: application/json' \
+  -H "X-Tenant-Id: demo" -H "X-Workspace-Id: $WS" \
+  -d "{\"dataset_id\":\"$DS\",\"question\":\"now for orders in May 2026 only\"}"
+```
