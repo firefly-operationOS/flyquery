@@ -1,0 +1,893 @@
+openapi: 3.1.0
+info:
+  description: Operational Structured-Data Intelligence (upload-driven) -- multi-tenant
+    ingestion + Text-to-SQL over user-uploaded structured files (CSV / TSV / XLSX
+    / XLS / ODS / JSON / JSONL / Parquet / Avro / ORC / Arrow / Feather + .gz/.zip/.bz2
+    variants). Materialises uploads to Parquet on object storage; indexes a long-lived
+    schema knowledge base; answers natural-language questions via a multi-agent pipeline.
+    Part of Firefly OperationOS.
+  title: flyquery
+  version: 26.5.0
+servers:
+- url: /
+paths:
+  /api/v1/agent-tokens:
+    get:
+      operationId: lazy_endpoint_api_v1_agent_tokens_get
+      responses:
+        "200":
+          content:
+            application/json:
+              schema: {}
+          description: Successful Response
+      summary: Lazy Endpoint
+      x-accepts:
+      - application/json
+    post:
+      operationId: lazy_endpoint_api_v1_agent_tokens_post
+      responses:
+        "201":
+          content:
+            application/json:
+              schema: {}
+          description: Successful Response
+      summary: Lazy Endpoint
+      x-accepts:
+      - application/json
+  /api/v1/agent-tokens/{token_id}:
+    delete:
+      operationId: lazy_endpoint_api_v1_agent_tokens__token_id__delete
+      responses:
+        "204":
+          description: Successful Response
+      summary: Lazy Endpoint
+      x-accepts:
+      - application/json
+  /api/v1/agent/examples:
+    get:
+      operationId: lazy_endpoint_api_v1_agent_examples_get
+      responses:
+        "200":
+          content:
+            application/json:
+              schema: {}
+          description: Successful Response
+      summary: Lazy Endpoint
+      x-accepts:
+      - application/json
+    post:
+      operationId: lazy_endpoint_api_v1_agent_examples_post
+      responses:
+        "201":
+          content:
+            application/json:
+              schema: {}
+          description: Successful Response
+      summary: Lazy Endpoint
+      x-accepts:
+      - application/json
+  /api/v1/agent/query:
+    post:
+      operationId: lazy_endpoint_api_v1_agent_query_post
+      responses:
+        "200":
+          content:
+            application/json:
+              schema: {}
+          description: Successful Response
+      summary: Lazy Endpoint
+      x-accepts:
+      - application/json
+  /api/v1/agent/query/stream:
+    post:
+      operationId: lazy_endpoint_api_v1_agent_query_stream_post
+      responses:
+        "200":
+          content:
+            application/json:
+              schema: {}
+          description: Successful Response
+      summary: Lazy Endpoint
+      x-accepts:
+      - application/json
+  /api/v1/agent/query:explain:
+    post:
+      operationId: lazy_endpoint_api_v1_agent_query_explain_post
+      responses:
+        "200":
+          content:
+            application/json:
+              schema: {}
+          description: Successful Response
+      summary: Lazy Endpoint
+      x-accepts:
+      - application/json
+  /api/v1/agent/query:validate:
+    post:
+      operationId: lazy_endpoint_api_v1_agent_query_validate_post
+      responses:
+        "200":
+          content:
+            application/json:
+              schema: {}
+          description: Successful Response
+      summary: Lazy Endpoint
+      x-accepts:
+      - application/json
+  /api/v1/agent/sql:execute:
+    post:
+      operationId: lazy_endpoint_api_v1_agent_sql_execute_post
+      responses:
+        "200":
+          content:
+            application/json:
+              schema: {}
+          description: Successful Response
+      summary: Lazy Endpoint
+      x-accepts:
+      - application/json
+  /api/v1/agent/sql:execute/stream:
+    post:
+      operationId: lazy_endpoint_api_v1_agent_sql_execute_stream_post
+      responses:
+        "200":
+          content:
+            application/json:
+              schema: {}
+          description: Successful Response
+      summary: Lazy Endpoint
+      x-accepts:
+      - application/json
+  /api/v1/agent/version:
+    get:
+      operationId: lazy_endpoint_api_v1_agent_version_get
+      responses:
+        "200":
+          content:
+            application/json:
+              schema: {}
+          description: Successful Response
+      summary: Lazy Endpoint
+      x-accepts:
+      - application/json
+  /api/v1/conversations:
+    get:
+      operationId: lazy_endpoint_api_v1_conversations_get
+      responses:
+        "200":
+          content:
+            application/json:
+              schema: {}
+          description: Successful Response
+      summary: Lazy Endpoint
+      x-accepts:
+      - application/json
+    post:
+      operationId: lazy_endpoint_api_v1_conversations_post
+      responses:
+        "201":
+          content:
+            application/json:
+              schema: {}
+          description: Successful Response
+      summary: Lazy Endpoint
+      x-accepts:
+      - application/json
+  /api/v1/conversations/{conversation_id}:
+    get:
+      operationId: lazy_endpoint_api_v1_conversations__conversation_id__get
+      responses:
+        "200":
+          content:
+            application/json:
+              schema: {}
+          description: Successful Response
+      summary: Lazy Endpoint
+      x-accepts:
+      - application/json
+  /api/v1/conversations/{conversation_id}/turn:
+    post:
+      operationId: lazy_endpoint_api_v1_conversations__conversation_id__turn_post
+      responses:
+        "200":
+          content:
+            application/json:
+              schema: {}
+          description: Successful Response
+      summary: Lazy Endpoint
+      x-accepts:
+      - application/json
+  /api/v1/datasets:
+    get:
+      operationId: lazy_endpoint_api_v1_datasets_get
+      responses:
+        "200":
+          content:
+            application/json:
+              schema: {}
+          description: Successful Response
+      summary: Lazy Endpoint
+      x-accepts:
+      - application/json
+    post:
+      operationId: lazy_endpoint_api_v1_datasets_post
+      responses:
+        "201":
+          content:
+            application/json:
+              schema: {}
+          description: Successful Response
+      summary: Lazy Endpoint
+      x-accepts:
+      - application/json
+  /api/v1/datasets/{dataset_id}:
+    delete:
+      operationId: lazy_endpoint_api_v1_datasets__dataset_id__delete
+      responses:
+        "200":
+          content:
+            application/json:
+              schema: {}
+          description: Successful Response
+      summary: Lazy Endpoint
+      x-accepts:
+      - application/json
+    get:
+      operationId: lazy_endpoint_api_v1_datasets__dataset_id__get
+      responses:
+        "200":
+          content:
+            application/json:
+              schema: {}
+          description: Successful Response
+      summary: Lazy Endpoint
+      x-accepts:
+      - application/json
+    put:
+      operationId: lazy_endpoint_api_v1_datasets__dataset_id__put
+      responses:
+        "200":
+          content:
+            application/json:
+              schema: {}
+          description: Successful Response
+      summary: Lazy Endpoint
+      x-accepts:
+      - application/json
+  /api/v1/datasets/{dataset_id}/files:
+    post:
+      operationId: lazy_endpoint_api_v1_datasets__dataset_id__files_post
+      responses:
+        "201":
+          content:
+            application/json:
+              schema: {}
+          description: Successful Response
+      summary: Lazy Endpoint
+      x-accepts:
+      - application/json
+  /api/v1/datasets/{dataset_id}/relations:
+    get:
+      operationId: lazy_endpoint_api_v1_datasets__dataset_id__relations_get
+      responses:
+        "200":
+          content:
+            application/json:
+              schema: {}
+          description: Successful Response
+      summary: Lazy Endpoint
+      x-accepts:
+      - application/json
+  /api/v1/datasets/{dataset_id}/tables:
+    get:
+      operationId: lazy_endpoint_api_v1_datasets__dataset_id__tables_get
+      responses:
+        "200":
+          content:
+            application/json:
+              schema: {}
+          description: Successful Response
+      summary: Lazy Endpoint
+      x-accepts:
+      - application/json
+  /api/v1/datasets/{dataset_id}/tables/{table_id}:upload:
+    put:
+      operationId: lazy_endpoint_api_v1_datasets__dataset_id__tables__table_id__upload_put
+      responses:
+        "201":
+          content:
+            application/json:
+              schema: {}
+          description: Successful Response
+      summary: Lazy Endpoint
+      x-accepts:
+      - application/json
+  /api/v1/examples:
+    get:
+      operationId: lazy_endpoint_api_v1_examples_get
+      responses:
+        "200":
+          content:
+            application/json:
+              schema: {}
+          description: Successful Response
+      summary: Lazy Endpoint
+      x-accepts:
+      - application/json
+    post:
+      operationId: lazy_endpoint_api_v1_examples_post
+      responses:
+        "201":
+          content:
+            application/json:
+              schema: {}
+          description: Successful Response
+      summary: Lazy Endpoint
+      x-accepts:
+      - application/json
+  /api/v1/examples/{example_id}:approve:
+    post:
+      operationId: lazy_endpoint_api_v1_examples__example_id__approve_post
+      responses:
+        "200":
+          content:
+            application/json:
+              schema: {}
+          description: Successful Response
+      summary: Lazy Endpoint
+      x-accepts:
+      - application/json
+  /api/v1/examples/{example_id}:reject:
+    post:
+      operationId: lazy_endpoint_api_v1_examples__example_id__reject_post
+      responses:
+        "200":
+          content:
+            application/json:
+              schema: {}
+          description: Successful Response
+      summary: Lazy Endpoint
+      x-accepts:
+      - application/json
+  /api/v1/glossary:
+    get:
+      operationId: lazy_endpoint_api_v1_glossary_get
+      responses:
+        "200":
+          content:
+            application/json:
+              schema: {}
+          description: Successful Response
+      summary: Lazy Endpoint
+      x-accepts:
+      - application/json
+    post:
+      operationId: lazy_endpoint_api_v1_glossary_post
+      responses:
+        "201":
+          content:
+            application/json:
+              schema: {}
+          description: Successful Response
+      summary: Lazy Endpoint
+      x-accepts:
+      - application/json
+  /api/v1/glossary/{term_id}:
+    delete:
+      operationId: lazy_endpoint_api_v1_glossary__term_id__delete
+      responses:
+        "204":
+          description: Successful Response
+      summary: Lazy Endpoint
+      x-accepts:
+      - application/json
+    put:
+      operationId: lazy_endpoint_api_v1_glossary__term_id__put
+      responses:
+        "200":
+          content:
+            application/json:
+              schema: {}
+          description: Successful Response
+      summary: Lazy Endpoint
+      x-accepts:
+      - application/json
+  /api/v1/ingest-jobs:
+    get:
+      operationId: lazy_endpoint_api_v1_ingest_jobs_get
+      responses:
+        "200":
+          content:
+            application/json:
+              schema: {}
+          description: Successful Response
+      summary: Lazy Endpoint
+      x-accepts:
+      - application/json
+    post:
+      operationId: lazy_endpoint_api_v1_ingest_jobs_post
+      responses:
+        "201":
+          content:
+            application/json:
+              schema: {}
+          description: Successful Response
+      summary: Lazy Endpoint
+      x-accepts:
+      - application/json
+  /api/v1/ingest-jobs/{job_id}:
+    get:
+      operationId: lazy_endpoint_api_v1_ingest_jobs__job_id__get
+      responses:
+        "200":
+          content:
+            application/json:
+              schema: {}
+          description: Successful Response
+      summary: Lazy Endpoint
+      x-accepts:
+      - application/json
+  /api/v1/ingest-jobs/{job_id}/events:
+    get:
+      operationId: lazy_endpoint_api_v1_ingest_jobs__job_id__events_get
+      responses:
+        "200":
+          content:
+            application/json:
+              schema: {}
+          description: Successful Response
+      summary: Lazy Endpoint
+      x-accepts:
+      - application/json
+  /api/v1/ingest-jobs/{job_id}/stream:
+    get:
+      operationId: lazy_endpoint_api_v1_ingest_jobs__job_id__stream_get
+      responses:
+        "200":
+          content:
+            application/json:
+              schema: {}
+          description: Successful Response
+      summary: Lazy Endpoint
+      x-accepts:
+      - application/json
+  /api/v1/ingest-jobs/{job_id}:cancel:
+    post:
+      operationId: lazy_endpoint_api_v1_ingest_jobs__job_id__cancel_post
+      responses:
+        "200":
+          content:
+            application/json:
+              schema: {}
+          description: Successful Response
+      summary: Lazy Endpoint
+      x-accepts:
+      - application/json
+  /api/v1/query:
+    post:
+      operationId: lazy_endpoint_api_v1_query_post
+      responses:
+        "200":
+          content:
+            application/json:
+              schema: {}
+          description: Successful Response
+      summary: Lazy Endpoint
+      x-accepts:
+      - application/json
+  /api/v1/query/stream:
+    post:
+      operationId: lazy_endpoint_api_v1_query_stream_post
+      responses:
+        "200":
+          content:
+            application/json:
+              schema: {}
+          description: Successful Response
+      summary: Lazy Endpoint
+      x-accepts:
+      - application/json
+  /api/v1/query:explain:
+    post:
+      operationId: lazy_endpoint_api_v1_query_explain_post
+      responses:
+        "200":
+          content:
+            application/json:
+              schema: {}
+          description: Successful Response
+      summary: Lazy Endpoint
+      x-accepts:
+      - application/json
+  /api/v1/query:validate:
+    post:
+      operationId: lazy_endpoint_api_v1_query_validate_post
+      responses:
+        "200":
+          content:
+            application/json:
+              schema: {}
+          description: Successful Response
+      summary: Lazy Endpoint
+      x-accepts:
+      - application/json
+  /api/v1/relations/{relation_id}:approve:
+    post:
+      operationId: lazy_endpoint_api_v1_relations__relation_id__approve_post
+      responses:
+        "200":
+          content:
+            application/json:
+              schema: {}
+          description: Successful Response
+      summary: Lazy Endpoint
+      x-accepts:
+      - application/json
+  /api/v1/relations/{relation_id}:reject:
+    post:
+      operationId: lazy_endpoint_api_v1_relations__relation_id__reject_post
+      responses:
+        "200":
+          content:
+            application/json:
+              schema: {}
+          description: Successful Response
+      summary: Lazy Endpoint
+      x-accepts:
+      - application/json
+  /api/v1/schema-changes/{change_id}:confirm:
+    post:
+      operationId: lazy_endpoint_api_v1_schema_changes__change_id__confirm_post
+      responses:
+        "200":
+          content:
+            application/json:
+              schema: {}
+          description: Successful Response
+      summary: Lazy Endpoint
+      x-accepts:
+      - application/json
+  /api/v1/schema-objects/{object_id}:
+    get:
+      operationId: lazy_endpoint_api_v1_schema_objects__object_id__get
+      responses:
+        "200":
+          content:
+            application/json:
+              schema: {}
+          description: Successful Response
+      summary: Lazy Endpoint
+      x-accepts:
+      - application/json
+    put:
+      operationId: lazy_endpoint_api_v1_schema_objects__object_id__put
+      responses:
+        "200":
+          content:
+            application/json:
+              schema: {}
+          description: Successful Response
+      summary: Lazy Endpoint
+      x-accepts:
+      - application/json
+  /api/v1/semantic/dimensions:
+    get:
+      operationId: lazy_endpoint_api_v1_semantic_dimensions_get
+      responses:
+        "200":
+          content:
+            application/json:
+              schema: {}
+          description: Successful Response
+      summary: Lazy Endpoint
+      x-accepts:
+      - application/json
+    post:
+      operationId: lazy_endpoint_api_v1_semantic_dimensions_post
+      responses:
+        "201":
+          content:
+            application/json:
+              schema: {}
+          description: Successful Response
+      summary: Lazy Endpoint
+      x-accepts:
+      - application/json
+  /api/v1/semantic/dimensions/{dimension_id}:
+    get:
+      operationId: lazy_endpoint_api_v1_semantic_dimensions__dimension_id__get
+      responses:
+        "200":
+          content:
+            application/json:
+              schema: {}
+          description: Successful Response
+      summary: Lazy Endpoint
+      x-accepts:
+      - application/json
+    put:
+      operationId: lazy_endpoint_api_v1_semantic_dimensions__dimension_id__put
+      responses:
+        "200":
+          content:
+            application/json:
+              schema: {}
+          description: Successful Response
+      summary: Lazy Endpoint
+      x-accepts:
+      - application/json
+  /api/v1/semantic/dimensions/{dimension_id}/history:
+    get:
+      operationId: lazy_endpoint_api_v1_semantic_dimensions__dimension_id__history_get
+      responses:
+        "200":
+          content:
+            application/json:
+              schema: {}
+          description: Successful Response
+      summary: Lazy Endpoint
+      x-accepts:
+      - application/json
+  /api/v1/semantic/dimensions/{dimension_id}:publish:
+    post:
+      operationId: lazy_endpoint_api_v1_semantic_dimensions__dimension_id__publish_post
+      responses:
+        "200":
+          content:
+            application/json:
+              schema: {}
+          description: Successful Response
+      summary: Lazy Endpoint
+      x-accepts:
+      - application/json
+  /api/v1/semantic/dimensions/{dimension_id}:retire:
+    post:
+      operationId: lazy_endpoint_api_v1_semantic_dimensions__dimension_id__retire_post
+      responses:
+        "200":
+          content:
+            application/json:
+              schema: {}
+          description: Successful Response
+      summary: Lazy Endpoint
+      x-accepts:
+      - application/json
+  /api/v1/semantic/metrics:
+    get:
+      operationId: lazy_endpoint_api_v1_semantic_metrics_get
+      responses:
+        "200":
+          content:
+            application/json:
+              schema: {}
+          description: Successful Response
+      summary: Lazy Endpoint
+      x-accepts:
+      - application/json
+    post:
+      operationId: lazy_endpoint_api_v1_semantic_metrics_post
+      responses:
+        "201":
+          content:
+            application/json:
+              schema: {}
+          description: Successful Response
+      summary: Lazy Endpoint
+      x-accepts:
+      - application/json
+  /api/v1/semantic/metrics/{metric_id}:
+    get:
+      operationId: lazy_endpoint_api_v1_semantic_metrics__metric_id__get
+      responses:
+        "200":
+          content:
+            application/json:
+              schema: {}
+          description: Successful Response
+      summary: Lazy Endpoint
+      x-accepts:
+      - application/json
+    put:
+      operationId: lazy_endpoint_api_v1_semantic_metrics__metric_id__put
+      responses:
+        "200":
+          content:
+            application/json:
+              schema: {}
+          description: Successful Response
+      summary: Lazy Endpoint
+      x-accepts:
+      - application/json
+  /api/v1/semantic/metrics/{metric_id}/history:
+    get:
+      operationId: lazy_endpoint_api_v1_semantic_metrics__metric_id__history_get
+      responses:
+        "200":
+          content:
+            application/json:
+              schema: {}
+          description: Successful Response
+      summary: Lazy Endpoint
+      x-accepts:
+      - application/json
+  /api/v1/semantic/metrics/{metric_id}:publish:
+    post:
+      operationId: lazy_endpoint_api_v1_semantic_metrics__metric_id__publish_post
+      responses:
+        "200":
+          content:
+            application/json:
+              schema: {}
+          description: Successful Response
+      summary: Lazy Endpoint
+      x-accepts:
+      - application/json
+  /api/v1/semantic/metrics/{metric_id}:retire:
+    post:
+      operationId: lazy_endpoint_api_v1_semantic_metrics__metric_id__retire_post
+      responses:
+        "200":
+          content:
+            application/json:
+              schema: {}
+          description: Successful Response
+      summary: Lazy Endpoint
+      x-accepts:
+      - application/json
+  /api/v1/sql:execute:
+    post:
+      operationId: lazy_endpoint_api_v1_sql_execute_post
+      responses:
+        "200":
+          content:
+            application/json:
+              schema: {}
+          description: Successful Response
+      summary: Lazy Endpoint
+      x-accepts:
+      - application/json
+  /api/v1/sql:execute/stream:
+    post:
+      operationId: lazy_endpoint_api_v1_sql_execute_stream_post
+      responses:
+        "200":
+          content:
+            application/json:
+              schema: {}
+          description: Successful Response
+      summary: Lazy Endpoint
+      x-accepts:
+      - application/json
+  /api/v1/tables/{table_id}:
+    get:
+      operationId: lazy_endpoint_api_v1_tables__table_id__get
+      responses:
+        "200":
+          content:
+            application/json:
+              schema: {}
+          description: Successful Response
+      summary: Lazy Endpoint
+      x-accepts:
+      - application/json
+  /api/v1/tables/{table_id}/changes:
+    get:
+      operationId: lazy_endpoint_api_v1_tables__table_id__changes_get
+      responses:
+        "200":
+          content:
+            application/json:
+              schema: {}
+          description: Successful Response
+      summary: Lazy Endpoint
+      x-accepts:
+      - application/json
+  /api/v1/tables/{table_id}/objects:
+    get:
+      operationId: lazy_endpoint_api_v1_tables__table_id__objects_get
+      responses:
+        "200":
+          content:
+            application/json:
+              schema: {}
+          description: Successful Response
+      summary: Lazy Endpoint
+      x-accepts:
+      - application/json
+  /api/v1/tables/{table_id}/snapshots:
+    get:
+      operationId: lazy_endpoint_api_v1_tables__table_id__snapshots_get
+      responses:
+        "200":
+          content:
+            application/json:
+              schema: {}
+          description: Successful Response
+      summary: Lazy Endpoint
+      x-accepts:
+      - application/json
+  /api/v1/tables:derive:
+    post:
+      operationId: lazy_endpoint_api_v1_tables_derive_post
+      responses:
+        "201":
+          content:
+            application/json:
+              schema: {}
+          description: Successful Response
+      summary: Lazy Endpoint
+      x-accepts:
+      - application/json
+  /api/v1/version:
+    get:
+      operationId: lazy_endpoint_api_v1_version_get
+      responses:
+        "200":
+          content:
+            application/json:
+              schema: {}
+          description: Successful Response
+      summary: Lazy Endpoint
+      x-accepts:
+      - application/json
+  /api/v1/workspaces:
+    get:
+      operationId: lazy_endpoint_api_v1_workspaces_get
+      responses:
+        "200":
+          content:
+            application/json:
+              schema: {}
+          description: Successful Response
+      summary: Lazy Endpoint
+      x-accepts:
+      - application/json
+    post:
+      operationId: lazy_endpoint_api_v1_workspaces_post
+      responses:
+        "201":
+          content:
+            application/json:
+              schema: {}
+          description: Successful Response
+      summary: Lazy Endpoint
+      x-accepts:
+      - application/json
+  /api/v1/workspaces/{workspace_id}:
+    get:
+      operationId: lazy_endpoint_api_v1_workspaces__workspace_id__get
+      responses:
+        "200":
+          content:
+            application/json:
+              schema: {}
+          description: Successful Response
+      summary: Lazy Endpoint
+      x-accepts:
+      - application/json
+    put:
+      operationId: lazy_endpoint_api_v1_workspaces__workspace_id__put
+      responses:
+        "200":
+          content:
+            application/json:
+              schema: {}
+          description: Successful Response
+      summary: Lazy Endpoint
+      x-accepts:
+      - application/json
+  /api/v1/workspaces/{workspace_id}:purge:
+    delete:
+      operationId: lazy_endpoint_api_v1_workspaces__workspace_id__purge_delete
+      responses:
+        "202":
+          content:
+            application/json:
+              schema: {}
+          description: Successful Response
+      summary: Lazy Endpoint
+      x-accepts:
+      - application/json
+components:
+  schemas: {}
+
