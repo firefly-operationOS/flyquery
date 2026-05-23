@@ -6,29 +6,66 @@ files for all AST-referenced tables as VIEWs, runs the user SQL wrapped
 in a LIMIT row_cap+1 query to detect overflow, and returns an
 ``ExecutionResult`` or ``ExecutionError``.
 
-Design choices:
+Design choices
+--------------
 - Fresh :memory: per call: no shared state, no connection pool needed.
 - ``asyncio.to_thread``: DuckDB's Python API is synchronous; offload to a
   thread pool so the event loop stays unblocked.
 - LIMIT row_cap+1: detect overflow without reading all rows into memory.
 - All DuckDB exceptions are caught and returned as ``ExecutionError`` so
   the caller (QueryService) can decide whether to retry via CriticAgent.
+
+DML on DERIVED tables (copy-on-write)
+--------------------------------------
+When ``execute()`` is called with a DML statement (INSERT/UPDATE/DELETE)
+against a DERIVED table, the executor applies a copy-on-write strategy:
+
+1. Read the current Parquet into a DuckDB temp table (``_cow_<name>``).
+2. Create a mutable ``TABLE <name>`` from the temp data (so DML lands on it).
+3. Execute the DML statement against the in-memory table.
+4. Write the mutated table back to a **new** Parquet byte string via
+   ``COPY <name> TO '<tempfile>' (FORMAT PARQUET)``.
+5. Return the new Parquet bytes as ``DmlMutationResult`` so the caller
+   (``SqlExecuteController``) can upload a new versioned snapshot and bump
+   ``flyquery_tables.current_snapshot_id``.
+
+The upstream scope guard ensures DML only reaches here when the token
+carries ``flyquery.derived:write`` and all table_refs are DERIVED.
 """
 
 from __future__ import annotations
 
 import asyncio
-from dataclasses import dataclass
+import os
+import tempfile
+from dataclasses import dataclass, field
 
 
 @dataclass(frozen=True)
 class ExecutionResult:
-    """A successful query result."""
+    """A successful SELECT query result."""
 
     rows: list[dict]
     columns: list[str]
     row_count: int
     truncated: bool
+
+
+@dataclass(frozen=True)
+class DmlMutationResult:
+    """Result of a DML (INSERT/UPDATE/DELETE) on a DERIVED table.
+
+    Copy-on-write: the caller must upload ``new_parquet_bytes`` as a
+    new versioned snapshot and bump ``flyquery_tables.current_snapshot_id``.
+
+    :param table_name: the DERIVED table name that was mutated
+    :param rows_affected: approximate count of rows in the mutated table
+    :param new_parquet_bytes: full Parquet content of the mutated table
+    """
+
+    table_name: str
+    rows_affected: int
+    new_parquet_bytes: bytes
 
 
 @dataclass(frozen=True)
@@ -42,10 +79,22 @@ class ExecutionError:
 class DuckDBExecutor:
     """Executes SQL against DuckDB with parquet-backed views.
 
+    SELECT
+    ~~~~~~
     Each call opens a fresh ``:memory:`` DuckDB connection, creates a VIEW
     for every entry in ``attached_tables``, runs the SQL wrapped in a
     ``SELECT * FROM (...) LIMIT row_cap+1`` envelope, then closes the
     connection.
+
+    DML on DERIVED tables
+    ~~~~~~~~~~~~~~~~~~~~~
+    When ``derived_tables`` is non-empty (mapping: name → current parquet path),
+    and the SQL is a DML statement, the executor applies copy-on-write:
+
+    1. Read the existing Parquet into ``CREATE TABLE _cow_<name> AS SELECT ...``.
+    2. Run ``INSERT/UPDATE/DELETE`` against the in-memory table (renamed to ``<name>``).
+    3. Export the mutated table to a temp Parquet file via ``COPY ... TO ... (FORMAT PARQUET)``.
+    4. Return a :class:`DmlMutationResult` with the new Parquet bytes.
 
     :param settings: :class:`FlyquerySettings` — reads ``duckdb_memory_limit``,
         ``default_statement_timeout_ms``, and ``default_row_cap``.
@@ -59,22 +108,43 @@ class DuckDBExecutor:
         self,
         sql: str,
         attached_tables: dict[str, str],
-    ) -> ExecutionResult | ExecutionError:
+        derived_tables: dict[str, str] | None = None,
+    ) -> ExecutionResult | DmlMutationResult | ExecutionError:
         """Run ``sql`` asynchronously against the provided parquet views.
 
-        :param sql: SQL statement to execute (single SELECT; no trailing semicolon required)
+        :param sql: SQL statement to execute
         :param attached_tables: mapping of unqualified table name → absolute parquet path
-        :return: :class:`ExecutionResult` on success, :class:`ExecutionError` on failure
+            (used as read-only VIEWs for SELECT; source data for DML copy-on-write)
+        :param derived_tables: when provided, these table names are treated as mutable
+            DERIVED tables; DML runs copy-on-write and returns :class:`DmlMutationResult`
+        :return: :class:`ExecutionResult` for SELECT, :class:`DmlMutationResult` for DML,
+            or :class:`ExecutionError` on failure
         """
-        return await asyncio.to_thread(self._sync, sql, attached_tables)
+        return await asyncio.to_thread(self._sync, sql, attached_tables, derived_tables or {})
 
-    def _sync(self, sql: str, attached_tables: dict[str, str]) -> ExecutionResult | ExecutionError:
+    def _sync(
+        self,
+        sql: str,
+        attached_tables: dict[str, str],
+        derived_tables: dict[str, str],
+    ) -> ExecutionResult | DmlMutationResult | ExecutionError:
         """Synchronous execution body run in a thread pool worker."""
         try:
             import duckdb
         except ImportError as exc:
             return ExecutionError(message=f"duckdb not installed: {exc}")
 
+        if derived_tables:
+            return self._sync_dml(sql, attached_tables, derived_tables, duckdb)
+        return self._sync_select(sql, attached_tables, duckdb)
+
+    def _sync_select(
+        self,
+        sql: str,
+        attached_tables: dict[str, str],
+        duckdb,  # noqa: ANN001
+    ) -> ExecutionResult | ExecutionError:
+        """Execute a SELECT and return rows."""
         conn = duckdb.connect(":memory:")
         try:
             conn.execute(f"SET memory_limit='{self._memory_limit}'")
@@ -109,3 +179,77 @@ class DuckDBExecutor:
             return ExecutionError(message=str(exc))
         finally:
             conn.close()
+
+    def _sync_dml(
+        self,
+        sql: str,
+        attached_tables: dict[str, str],
+        derived_tables: dict[str, str],
+        duckdb,  # noqa: ANN001
+    ) -> DmlMutationResult | ExecutionError:
+        """Execute DML on DERIVED tables using copy-on-write.
+
+        Steps:
+        1. Read existing Parquet into a mutable DuckDB TABLE.
+        2. Execute the DML statement.
+        3. Export the mutated table back to a temp Parquet.
+        4. Return new Parquet bytes via DmlMutationResult.
+
+        Only the first DERIVED table name found in ``derived_tables`` is
+        treated as the mutation target; all other attached_tables are
+        available as read-only VIEWs.
+        """
+        # For now, support exactly one DERIVED target per DML statement.
+        target_name = next(iter(derived_tables))
+        current_parquet_path = derived_tables[target_name]
+
+        conn = duckdb.connect(":memory:")
+        tmp_path: str | None = None
+
+        try:
+            conn.execute(f"SET memory_limit='{self._memory_limit}'")
+            conn.execute("SET threads=2")
+
+            # Provide read-only views for all non-target tables.
+            for name, path in attached_tables.items():
+                if name == target_name:
+                    continue
+                conn.execute(
+                    f"CREATE VIEW {name} AS SELECT * FROM read_parquet('{path}')"
+                )
+
+            # Load the DERIVED table as a mutable TABLE (not a VIEW).
+            conn.execute(
+                f"CREATE TABLE {target_name} AS "
+                f"SELECT * FROM read_parquet('{current_parquet_path}')"
+            )
+
+            # Execute the DML statement.
+            conn.execute(sql.rstrip(";"))
+
+            # Count rows in the mutated table.
+            count_cursor = conn.execute(f"SELECT COUNT(*) FROM {target_name}")
+            rows_affected: int = count_cursor.fetchone()[0]  # type: ignore[index]
+
+            # Export the mutated table to a temp Parquet file.
+            fd, tmp_path = tempfile.mkstemp(suffix=".parquet")
+            os.close(fd)
+            conn.execute(
+                f"COPY {target_name} TO '{tmp_path}' (FORMAT PARQUET, COMPRESSION SNAPPY)"
+            )
+
+            with open(tmp_path, "rb") as fh:
+                new_parquet_bytes = fh.read()
+
+            return DmlMutationResult(
+                table_name=target_name,
+                rows_affected=rows_affected,
+                new_parquet_bytes=new_parquet_bytes,
+            )
+
+        except Exception as exc:  # noqa: BLE001
+            return ExecutionError(message=str(exc))
+        finally:
+            conn.close()
+            if tmp_path and os.path.exists(tmp_path):
+                os.unlink(tmp_path)
