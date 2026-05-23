@@ -85,7 +85,7 @@ tasks:
   openapi-snapshot:
     desc: Snapshot the current OpenAPI spec to openapi.json
     cmds:
-      - uv run python scripts/openapi_snapshot.py > openapi.json
+      - uv run python scripts/openapi_snapshot.py
 
   sdk:python:
     desc: Regenerate the Python SDK from openapi.json
