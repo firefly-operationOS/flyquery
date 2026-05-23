@@ -127,9 +127,24 @@ class CsvReader:
 
 
 def _date_format_for_locale(locale: str) -> str | None:
-    """Pick DuckDB's `dateformat` from a workspace locale."""
-    if locale.startswith("en-US"):
-        return "%m/%d/%Y"
+    """Pick DuckDB's ``dateformat`` hint from a workspace locale.
+
+    DuckDB auto-detect already handles ISO 8601 dates (``YYYY-MM-DD``) and
+    US-style ``MM/DD/YYYY`` dates without an explicit hint. The only case where
+    a hint is *required* is for DD/MM/YYYY European locales, because DuckDB's
+    default ambiguity resolution prefers MM/DD interpretation when day ≤ 12
+    (e.g. ``01/02/2026`` → Feb 1 without a hint, Jan 2 with ``%m/%d/%Y``).
+
+    Applying ``%m/%d/%Y`` to a CSV that already contains ISO-format dates
+    (``2026-01-15``) causes DuckDB to widen the column type from DATE to
+    TIMESTAMP, which is a schema-quality regression. Since DuckDB handles
+    both ISO and MM/DD/YYYY automatically, we only issue the DD/MM/YYYY hint
+    for the locales where it is unambiguously needed.
+
+    Locales with DD/MM/YYYY calendar convention:
+    en-GB, fr (French), es (Spanish), de (German), it (Italian),
+    pt (Portuguese), nl (Dutch), and most of the rest of the world.
+    """
     if locale.startswith(("en-GB", "fr", "es", "de", "it", "pt", "nl")):
         return "%d/%m/%Y"
     return None
