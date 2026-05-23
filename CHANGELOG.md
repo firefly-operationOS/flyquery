@@ -5,6 +5,16 @@ follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and
 the project uses [CalVer](https://calver.org/) (YY.MM.PP) per the
 Firefly Framework convention (memory: `firefly_uses_calver`).
 
+## [26.5.2] - 2026-05-23
+
+### Added
+- Plan 4 (Packaging) shipped
+- `openapi.json` committed snapshot + drift gate (`task openapi-snapshot`)
+- Python SDK auto-generated (`sdks/python/`, package `flyquery-sdk`, asyncio library)
+- Java SDK auto-generated (`sdks/java/`, `io.firefly:flyquery-sdk:26.5.2`, okhttp-gson)
+- Full `docs/` set: architecture, api-reference, ingestion, file-formats, semantic-layer, payload-reference, security, deployment, firefly-intelligence-system
+- CI: `publish-sdk-python` + `publish-sdk-java` workflows (tag-triggered)
+
 ## [26.5.1] - 2026-05-23
 
 ### Added
