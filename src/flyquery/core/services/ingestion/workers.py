@@ -275,20 +275,26 @@ class IngestWorker:
                 workspace_id=workspace_id,
             )
         elif job_kind == "SAMPLE_REFRESH":
-            await self._check_cancelled(job_id)
-            exc = NotImplementedError("SAMPLE_REFRESH stage not yet implemented (Phase D)")
-            exc._stage = "sample"  # type: ignore[attr-defined]
-            raise exc
+            await self._run_sample_refresh(
+                job_id=job_id,
+                job=job,
+                tenant_id=tenant_id,
+                workspace_id=workspace_id,
+            )
         elif job_kind == "DESCRIBE_PASS":
-            await self._check_cancelled(job_id)
-            exc = NotImplementedError("DESCRIBE_PASS stage not yet implemented (Phase E)")
-            exc._stage = "describe"  # type: ignore[attr-defined]
-            raise exc
+            await self._run_describe_pass(
+                job_id=job_id,
+                job=job,
+                tenant_id=tenant_id,
+                workspace_id=workspace_id,
+            )
         elif job_kind == "RELATION_PASS":
-            await self._check_cancelled(job_id)
-            exc = NotImplementedError("RELATION_PASS stage not yet implemented (Phase E)")
-            exc._stage = "relations"  # type: ignore[attr-defined]
-            raise exc
+            await self._run_relation_pass(
+                job_id=job_id,
+                job=job,
+                tenant_id=tenant_id,
+                workspace_id=workspace_id,
+            )
         else:
             raise ValueError(f"unknown job_kind={job_kind!r}")
 
@@ -467,6 +473,126 @@ class IngestWorker:
                 session_factory=self._session_factory,
             )
 
+    async def _run_sample_refresh(
+        self,
+        *,
+        job_id: uuid.UUID,
+        job: dict[str, Any],
+        tenant_id: str,
+        workspace_id: uuid.UUID,
+    ) -> None:
+        """Run Stage 4 (sample) for SAMPLE_REFRESH jobs."""
+        from flyquery.core.services.ingestion.stages.sample import run_sample
+
+        table_id_raw = job.get("table_id")
+        if not table_id_raw:
+            raise RuntimeError(f"SAMPLE_REFRESH job {job_id} missing table_id")
+
+        # Load the current snapshot for the table
+        snapshot_id, parquet_key = await self._load_current_snapshot(
+            uuid.UUID(str(table_id_raw)), tenant_id
+        )
+        if snapshot_id is None:
+            raise RuntimeError(f"SAMPLE_REFRESH job {job_id}: table has no READY snapshot")
+
+        await self._check_cancelled(job_id)
+        result = await run_sample(
+            tenant_id=tenant_id,
+            snapshot_id=snapshot_id,
+            parquet_key=parquet_key,
+            session_factory=self._session_factory,
+            settings=self._settings,
+        )
+        await emit_stage(
+            ingest_job_id=job_id,
+            tenant_id=tenant_id,
+            workspace_id=workspace_id,
+            stage="sampled",
+            message="stage 4 complete (SAMPLE_REFRESH)",
+            payload=result,
+            session_factory=self._session_factory,
+        )
+
+    async def _run_describe_pass(
+        self,
+        *,
+        job_id: uuid.UUID,
+        job: dict[str, Any],
+        tenant_id: str,
+        workspace_id: uuid.UUID,
+    ) -> None:
+        """Run Stage 7 (describe) for DESCRIBE_PASS jobs.
+
+        DESCRIBE_PASS applies to all tables in the dataset (or the specific
+        table_id if provided).
+        """
+        from flyquery.core.services.ingestion.stages.describe import run_describe
+
+        dataset_id_raw = job.get("dataset_id")
+        if not dataset_id_raw:
+            raise RuntimeError(f"DESCRIBE_PASS job {job_id} missing dataset_id")
+
+        dataset_id = uuid.UUID(str(dataset_id_raw))
+        table_id_raw = job.get("table_id")
+
+        snapshots = await self._load_dataset_snapshots(
+            tenant_id, dataset_id,
+            table_id=uuid.UUID(str(table_id_raw)) if table_id_raw else None,
+        )
+
+        for snap in snapshots:
+            await self._check_cancelled(job_id)
+            result = await run_describe(
+                tenant_id=tenant_id,
+                snapshot_id=snap["id"],
+                session_factory=self._session_factory,
+                settings=self._settings,
+            )
+            await emit_stage(
+                ingest_job_id=job_id,
+                tenant_id=tenant_id,
+                workspace_id=workspace_id,
+                stage="described",
+                message=f"stage 7 complete (DESCRIBE_PASS snapshot={snap['id']})",
+                payload=result,
+                session_factory=self._session_factory,
+            )
+
+    async def _run_relation_pass(
+        self,
+        *,
+        job_id: uuid.UUID,
+        job: dict[str, Any],
+        tenant_id: str,
+        workspace_id: uuid.UUID,
+    ) -> None:
+        """Run Stage 6 (relations) for RELATION_PASS jobs."""
+        from flyquery.core.services.ingestion.stages.relations import run_relations
+
+        dataset_id_raw = job.get("dataset_id")
+        if not dataset_id_raw:
+            raise RuntimeError(f"RELATION_PASS job {job_id} missing dataset_id")
+
+        dataset_id = uuid.UUID(str(dataset_id_raw))
+
+        await self._check_cancelled(job_id)
+        result = await run_relations(
+            tenant_id=tenant_id,
+            workspace_id=workspace_id,
+            dataset_id=dataset_id,
+            session_factory=self._session_factory,
+            settings=self._settings,
+        )
+        await emit_stage(
+            ingest_job_id=job_id,
+            tenant_id=tenant_id,
+            workspace_id=workspace_id,
+            stage="relations_proposed",
+            message="stage 6 complete (RELATION_PASS)",
+            payload=result,
+            session_factory=self._session_factory,
+        )
+
     # ------------------------------------------------------------------
     # Cooperative cancel
     # ------------------------------------------------------------------
@@ -543,6 +669,54 @@ class IngestWorker:
                 ),
                 {"id": job_id, "err": _json_dumps(error_json)},
             )
+
+    # ------------------------------------------------------------------
+    async def _load_current_snapshot(
+        self, table_id: uuid.UUID, tenant_id: str
+    ) -> tuple[uuid.UUID | None, str]:
+        """Return (snapshot_id, parquet_key) for the table's current READY snapshot."""
+        async with self._session_factory() as s:
+            result = await s.execute(
+                sa.text(
+                    """
+                    SELECT sn.id, sn.parquet_object_key
+                    FROM flyquery_tables t
+                    JOIN flyquery_schema_snapshots sn ON sn.id = t.current_snapshot_id
+                    WHERE t.id = :tid AND t.tenant_id = :tenant
+                    """
+                ),
+                {"tid": table_id, "tenant": tenant_id},
+            )
+            row = result.mappings().first()
+            if not row:
+                return None, ""
+            return uuid.UUID(str(row["id"])), row["parquet_object_key"] or ""
+
+    async def _load_dataset_snapshots(
+        self,
+        tenant_id: str,
+        dataset_id: uuid.UUID,
+        table_id: uuid.UUID | None = None,
+    ) -> list[dict[str, Any]]:
+        """Return all READY snapshot records for the dataset (or a specific table)."""
+        async with self._session_factory() as s:
+            where = "WHERE t.dataset_id = :ds AND t.tenant_id = :tenant AND sn.status = 'READY'"
+            params: dict[str, Any] = {"ds": dataset_id, "tenant": tenant_id}
+            if table_id is not None:
+                where += " AND t.id = :tid"
+                params["tid"] = table_id
+            result = await s.execute(
+                sa.text(
+                    f"""
+                    SELECT sn.id, sn.parquet_object_key, sn.n_rows_actual, t.id AS table_id
+                    FROM flyquery_tables t
+                    JOIN flyquery_schema_snapshots sn ON sn.id = t.current_snapshot_id
+                    {where}
+                    """
+                ),
+                params,
+            )
+            return [dict(r) for r in result.mappings().all()]
 
     # ------------------------------------------------------------------
     # Helpers

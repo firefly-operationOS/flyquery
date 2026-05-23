@@ -24,6 +24,9 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from flyquery.core.services.ingestion.reader import ColumnSchema
 from flyquery.core.services.ingestion.stages.parse import ParsedTable
 
+# Rename auto-confirm threshold (passed from settings when available)
+_DEFAULT_AUTO_CONFIRM_THRESHOLD = 0.8
+
 logger = logging.getLogger(__name__)
 
 
@@ -47,6 +50,7 @@ async def run_reconcile(
     actor: str,
     triggered_by: str,
     session_factory: async_sessionmaker[AsyncSession],
+    settings: Any | None = None,
 ) -> ReconcileResult:
     """Execute Stage 3: reconcile."""
     mat = parsed.result
@@ -116,8 +120,39 @@ async def run_reconcile(
 
     prev_snap_id = prev_snapshot["id"] if prev_snapshot else None
 
+    # --- Rename detection (Stage 3 deep-dive) ---
+    # Build position-indexed maps from ColumnSchema for rename detection
+    new_col_by_pos: dict[int, ColumnSchema] = {c.position: c for c in mat.columns}
+    new_col_by_name: dict[str, ColumnSchema] = {c.name: c for c in mat.columns}
+
+    prev_snapshot_columns_detail: list[dict[str, Any]] = []
+    if prev_snapshot:
+        prev_snapshot_columns_detail = await _get_snapshot_columns_detail(
+            prev_snapshot["id"], tenant_id, session_factory
+        )
+
+    confirmed_renames: dict[str, str] = {}  # old_name → new_name
+    candidate_renames: list[tuple[str, list[str]]] = []  # (old_name, [candidate_new_names])
+
+    if prev_snapshot and removed and added:
+        confirmed_renames, candidate_renames = await _detect_renames(
+            removed_names=removed,
+            added_names=added,
+            prev_columns=prev_columns,
+            new_columns=new_columns,
+            prev_detail=prev_snapshot_columns_detail,
+            settings=settings,
+        )
+
+        # Update added/removed to exclude confirmed renames
+        for old_name, new_name in confirmed_renames.items():
+            if old_name in removed:
+                removed.remove(old_name)
+            if new_name in added:
+                added.remove(new_name)
+
     # --- Write schema_changes ---
-    if prev_snapshot and (added or removed or type_changed):
+    if prev_snapshot and (added or removed or type_changed or confirmed_renames or candidate_renames):
         await _write_schema_changes(
             tenant_id=tenant_id,
             workspace_id=workspace_id,
@@ -129,6 +164,8 @@ async def run_reconcile(
             added=added,
             removed=removed,
             type_changed=type_changed,
+            confirmed_renames=confirmed_renames,
+            candidate_renames=candidate_renames,
             session_factory=session_factory,
         )
 
@@ -346,6 +383,8 @@ async def _write_schema_changes(
     added: list[str],
     removed: list[str],
     type_changed: list[str],
+    confirmed_renames: dict[str, str] | None = None,
+    candidate_renames: list[tuple[str, list[str]]] | None = None,
     session_factory: async_sessionmaker[AsyncSession],
 ) -> None:
     async with session_factory() as s, s.begin():
@@ -428,3 +467,220 @@ async def _write_schema_changes(
                     "after": json.dumps({"data_type": new_columns[col_name]}),
                 },
             )
+
+        # Confirmed renames (auto-confirmed by position+type or agent ≥ 0.8)
+        for old_name, new_name in (confirmed_renames or {}).items():
+            await s.execute(
+                sa.text(
+                    """
+                    INSERT INTO flyquery_schema_changes (
+                        id, tenant_id, workspace_id, table_id,
+                        prev_snapshot_id, next_snapshot_id,
+                        column_name, change, before_json, after_json
+                    ) VALUES (
+                        :id, :tenant_id, :workspace_id, :table_id,
+                        :prev_snap, :next_snap,
+                        :col, 'RENAMED', CAST(:before AS jsonb), CAST(:after AS jsonb)
+                    )
+                    """
+                ),
+                {
+                    "id": uuid.uuid4(),
+                    "tenant_id": tenant_id,
+                    "workspace_id": workspace_id,
+                    "table_id": table_id,
+                    "prev_snap": prev_snapshot_id,
+                    "next_snap": next_snapshot_id,
+                    "col": old_name,
+                    "before": json.dumps({"column_name": old_name, "data_type": prev_columns.get(old_name)}),
+                    "after": json.dumps({"column_name": new_name, "data_type": new_columns.get(new_name)}),
+                },
+            )
+
+        # Candidate renames (ambiguous — require human review)
+        for old_name, candidates in (candidate_renames or []):
+            await s.execute(
+                sa.text(
+                    """
+                    INSERT INTO flyquery_schema_changes (
+                        id, tenant_id, workspace_id, table_id,
+                        prev_snapshot_id, next_snapshot_id,
+                        column_name, change, before_json, after_json
+                    ) VALUES (
+                        :id, :tenant_id, :workspace_id, :table_id,
+                        :prev_snap, :next_snap,
+                        :col, 'RENAMED_CANDIDATE', CAST(:before AS jsonb), CAST(:after AS jsonb)
+                    )
+                    """
+                ),
+                {
+                    "id": uuid.uuid4(),
+                    "tenant_id": tenant_id,
+                    "workspace_id": workspace_id,
+                    "table_id": table_id,
+                    "prev_snap": prev_snapshot_id,
+                    "next_snap": next_snapshot_id,
+                    "col": old_name,
+                    "before": json.dumps({"column_name": old_name, "data_type": prev_columns.get(old_name)}),
+                    "after": json.dumps({"candidates": candidates}),
+                },
+            )
+
+
+# ---------------------------------------------------------------------------
+# Rename detection helpers (Stage 3 deep-dive)
+# ---------------------------------------------------------------------------
+
+async def _get_snapshot_columns_detail(
+    snapshot_id: uuid.UUID,
+    tenant_id: str,
+    session_factory: async_sessionmaker[AsyncSession],
+) -> list[dict[str, Any]]:
+    """Return full column detail for rename comparison."""
+    async with session_factory() as s:
+        result = await s.execute(
+            sa.text(
+                """
+                SELECT qualified_name, data_type, description, sample_values_json
+                FROM flyquery_schema_objects
+                WHERE snapshot_id = :sid AND tenant_id = :tenant AND kind = 'COLUMN'
+                ORDER BY qualified_name
+                """
+            ),
+            {"sid": snapshot_id, "tenant": tenant_id},
+        )
+        rows = []
+        for r in result.mappings().all():
+            d = dict(r)
+            d["col_name"] = (d.get("qualified_name") or "").rsplit(".", 1)[-1]
+            rows.append(d)
+        return rows
+
+
+async def _detect_renames(
+    *,
+    removed_names: list[str],
+    added_names: list[str],
+    prev_columns: dict[str, str],
+    new_columns: dict[str, str],
+    prev_detail: list[dict[str, Any]],
+    settings: Any | None,
+) -> tuple[dict[str, str], list[tuple[str, list[str]]]]:
+    """Detect column renames via position+type signature + optional LLM agent.
+
+    Returns:
+      confirmed_renames: {old_name → new_name} (auto-confirmed)
+      candidate_renames: [(old_name, [candidate_new_names, ...])]
+    """
+    confirmed: dict[str, str] = {}
+    candidates: list[tuple[str, list[str]]] = []
+
+    if not removed_names or not added_names:
+        return confirmed, candidates
+
+    # Build type-signature groups for added and removed
+    # Group removed columns by data_type
+    removed_by_type: dict[str, list[str]] = {}
+    for name in removed_names:
+        dt = prev_columns.get(name, "")
+        removed_by_type.setdefault(dt, []).append(name)
+
+    added_by_type: dict[str, list[str]] = {}
+    for name in added_names:
+        dt = new_columns.get(name, "")
+        added_by_type.setdefault(dt, []).append(name)
+
+    unmatched_removed: set[str] = set(removed_names)
+
+    for dt, rem_cols in removed_by_type.items():
+        add_cols = added_by_type.get(dt, [])
+        if not add_cols:
+            continue
+
+        if len(rem_cols) == 1 and len(add_cols) == 1:
+            # Unambiguous: one removed ↔ one added, same type → auto-RENAMED
+            old_name = rem_cols[0]
+            new_name = add_cols[0]
+            confirmed[old_name] = new_name
+            unmatched_removed.discard(old_name)
+        else:
+            # Ambiguous: multiple candidates
+            for old_name in rem_cols:
+                if old_name in unmatched_removed:
+                    # Try LLM agent for disambiguation
+                    agent_result = await _invoke_rename_agent(
+                        old_name=old_name,
+                        candidate_names=add_cols,
+                        prev_detail=prev_detail,
+                        new_columns=new_columns,
+                        settings=settings,
+                    )
+                    if agent_result and agent_result[0] >= _DEFAULT_AUTO_CONFIRM_THRESHOLD:
+                        # Agent is confident enough
+                        confirmed[old_name] = agent_result[1]
+                        unmatched_removed.discard(old_name)
+                    else:
+                        candidates.append((old_name, add_cols))
+                        unmatched_removed.discard(old_name)
+
+    return confirmed, candidates
+
+
+async def _invoke_rename_agent(
+    *,
+    old_name: str,
+    candidate_names: list[str],
+    prev_detail: list[dict[str, Any]],
+    new_columns: dict[str, str],
+    settings: Any | None,
+) -> tuple[float, str] | None:
+    """Call RenameDetectionAgent. Returns (confidence, new_name) or None on failure."""
+    if settings is None:
+        return None
+
+    try:
+        from flyquery.core.agents.rename_detection_agent import (
+            AUTO_CONFIRM_THRESHOLD,
+            build_rename_detection_agent,
+        )
+    except (ImportError, RuntimeError) as exc:
+        logger.warning("rename_detection_agent unavailable (skip LLM): %s", exc)
+        return None
+
+    try:
+        # Build old column context
+        old_detail = next(
+            (c for c in prev_detail if c.get("col_name") == old_name), {}
+        )
+        candidates_ctx = []
+        for cname in candidate_names[:10]:
+            candidates_ctx.append({
+                "name": cname,
+                "data_type": new_columns.get(cname, "UNKNOWN"),
+                "description": None,
+                "samples": [],
+            })
+
+        prompt = json.dumps({
+            "removed_column": {
+                "name": old_name,
+                "data_type": old_detail.get("data_type"),
+                "description": old_detail.get("description"),
+                "samples": (old_detail.get("sample_values_json") or [])[:5],
+            },
+            "candidate_new_columns": candidates_ctx,
+        })
+
+        agent = build_rename_detection_agent(settings)
+        result = await agent.run(prompt)
+        proposals = result.output.items
+
+        if not proposals:
+            return None
+
+        top = proposals[0]
+        return (top.confidence, top.new_column)
+
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("rename_detection_agent failed (graceful skip): %s", exc)
+        return None
