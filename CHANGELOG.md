@@ -5,6 +5,14 @@ follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and
 the project uses [CalVer](https://calver.org/) (YY.MM.PP) per the
 Firefly Framework convention (memory: `firefly_uses_calver`).
 
+## [26.5.0] - 2026-05-23
+
+### Added
+- Plan 1 (Foundation) shipped: bootable service, lock-step modules,
+  full RLS-enabled Postgres schema (~20 tables), workspace + dataset
+  CRUD, agent-token mint/verify, ObjectStore port + LocalFs + S3
+  adapters, CI workflows.
+
 ## [Unreleased]
 
 ### Added
