@@ -6,6 +6,29 @@ from flyquery.core.services.ingestion.reader import TableExtractionRules
 
 FIX = Path(__file__).parent / "fixtures"
 
+# ---------------------------------------------------------------------------
+# JSON array-root
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.integration
+@pytest.mark.asyncio
+async def test_json_array_root_single_table(tmp_path):
+    """A top-level JSON array maps to a single table with correct schema."""
+    r = JsonReader()
+    tables = await r.enumerate_tables(str(FIX / "array_root.json"), TableExtractionRules())
+    assert len(tables) == 1
+    result = await r.materialise(
+        str(FIX / "array_root.json"),
+        tables[0],
+        target_parquet_key=str(tmp_path / "array_root.parquet"),
+        workspace_locale="en-US",
+        type_infer_sample_rows=4096,
+    )
+    assert result.n_rows_actual == 3
+    col_names = {c.name for c in result.columns}
+    assert {"user_id", "name", "score"} == col_names
+
 
 @pytest.mark.integration
 @pytest.mark.asyncio
