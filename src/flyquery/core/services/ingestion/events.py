@@ -62,7 +62,7 @@ async def emit_event(
                 sa.text(
                     "INSERT INTO flyquery_ingest_events "
                     "(tenant_id, workspace_id, ingest_job_id, stage, status, message, payload_json) "
-                    "VALUES (:tenant, :ws, :job_id, :stage, :status, :msg, :payload::jsonb)"
+                    "VALUES (:tenant, :ws, :job_id, :stage, :status, :msg, CAST(:payload AS jsonb))"
                 ),
                 {
                     "tenant": tenant_id,

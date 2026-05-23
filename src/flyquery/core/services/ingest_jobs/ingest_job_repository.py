@@ -50,7 +50,7 @@ class IngestJobRepository:
                          job_kind, request_json, status)
                     VALUES
                         (:tenant, :ws, :dataset, :table_id, :file_id,
-                         :kind, :req::jsonb, 'PENDING')
+                         :kind, CAST(:req AS jsonb), 'PENDING')
                     RETURNING
                         id, tenant_id, workspace_id, dataset_id, table_id, file_id,
                         snapshot_id, job_kind, status, attempts,

@@ -61,7 +61,7 @@ class FlyquerySettings(BaseSettings):
     describe_batch: int = 20
     relation_proposer_enabled: bool = True
     relation_proposer_max_per_pair: int = 3
-    relation_heuristic_min_confidence: float = 0.85
+    relation_heuristic_min_confidence: float = 0.5
     max_title_rows: int = 3
     type_infer_sample_rows: int = 8192
     default_locale: str = "en-US"

@@ -1,0 +1,24 @@
+{
+  "warehouses": [
+    {"warehouse_id": "WH1", "name": "North Hub", "city": "New York", "capacity": 5000},
+    {"warehouse_id": "WH2", "name": "South Hub", "city": "Miami", "capacity": 3000},
+    {"warehouse_id": "WH3", "name": "West Hub", "city": "Los Angeles", "capacity": 4500},
+    {"warehouse_id": "WH4", "name": "East Hub", "city": "Boston", "capacity": 2000},
+    {"warehouse_id": "WH5", "name": "Central Hub", "city": "Chicago", "capacity": 6000},
+    {"warehouse_id": "WH6", "name": "Mountain Hub", "city": "Denver", "capacity": 2500},
+    {"warehouse_id": "WH7", "name": "Pacific Hub", "city": "Seattle", "capacity": 3500},
+    {"warehouse_id": "WH8", "name": "Gulf Hub", "city": "Houston", "capacity": 4000}
+  ],
+  "inventory": [
+    {"inventory_id": 1, "warehouse_id": "WH1", "product_id": 101, "qty_on_hand": 250, "reorder_level": 50, "last_updated": "2026-01-10"},
+    {"inventory_id": 2, "warehouse_id": "WH1", "product_id": 102, "qty_on_hand": 180, "reorder_level": 30, "last_updated": "2026-01-10"},
+    {"inventory_id": 3, "warehouse_id": "WH2", "product_id": 101, "qty_on_hand": 120, "reorder_level": 25, "last_updated": "2026-01-11"},
+    {"inventory_id": 4, "warehouse_id": "WH2", "product_id": 103, "qty_on_hand": 95, "reorder_level": 20, "last_updated": "2026-01-11"},
+    {"inventory_id": 5, "warehouse_id": "WH3", "product_id": 104, "qty_on_hand": 400, "reorder_level": 100, "last_updated": "2026-01-12"},
+    {"inventory_id": 6, "warehouse_id": "WH3", "product_id": 102, "qty_on_hand": 60, "reorder_level": 15, "last_updated": "2026-01-12"},
+    {"inventory_id": 7, "warehouse_id": "WH4", "product_id": 103, "qty_on_hand": 200, "reorder_level": 40, "last_updated": "2026-01-13"},
+    {"inventory_id": 8, "warehouse_id": "WH5", "product_id": 101, "qty_on_hand": 310, "reorder_level": 60, "last_updated": "2026-01-14"},
+    {"inventory_id": 9, "warehouse_id": "WH6", "product_id": 104, "qty_on_hand": 75, "reorder_level": 15, "last_updated": "2026-01-15"},
+    {"inventory_id": 10, "warehouse_id": "WH7", "product_id": 103, "qty_on_hand": 140, "reorder_level": 28, "last_updated": "2026-01-16"}
+  ]
+}

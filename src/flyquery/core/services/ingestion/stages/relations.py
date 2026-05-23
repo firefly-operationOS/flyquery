@@ -220,11 +220,26 @@ async def _run_heuristic(
 
 
 def _is_pk_like(col: dict[str, Any], tbl: dict[str, Any]) -> bool:
-    """Return True if this column looks like the unique/PK side."""
+    """Return True if this column looks like the unique/PK side.
+
+    Primary check: profile_json.distinct_estimate >= 95% of n_rows_actual.
+    Fallback (when profile stage hasn't run yet): treat *_id / *_uuid / *_key
+    column names as PK-like — this covers v0 where only sync stages 1-3+9+10
+    have run.
+    """
     profile = col.get("profile_json") or {}
-    distinct_estimate = profile.get("distinct_estimate", 0)
-    n_rows_actual = tbl.get("n_rows_actual") or 1
-    return distinct_estimate >= 0.95 * n_rows_actual
+    distinct_estimate = profile.get("distinct_estimate")
+    if distinct_estimate is not None:
+        n_rows_actual = tbl.get("n_rows_actual") or 1
+        return distinct_estimate >= 0.95 * n_rows_actual
+    # Profile not available — fall back to name heuristic
+    col_name = (col.get("col_name") or "").lower()
+    return (
+        col_name.endswith("_id")
+        or col_name.endswith("_uuid")
+        or col_name.endswith("_key")
+        or col_name == "id"
+    )
 
 
 # ---------------------------------------------------------------------------

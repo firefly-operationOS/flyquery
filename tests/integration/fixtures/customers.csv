@@ -1,0 +1,11 @@
+customer_id,name,email,region
+42,Alice Smith,alice@example.com,EMEA
+7,Bob Jones,bob@example.com,APAC
+13,Carol White,carol@example.com,AMER
+99,Dave Black,dave@example.com,EMEA
+15,Eve Green,eve@example.com,APAC
+27,Frank Blue,frank@example.com,AMER
+34,Grace Red,grace@example.com,EMEA
+51,Hank Yellow,hank@example.com,APAC
+68,Iris Purple,iris@example.com,AMER
+82,Jake Orange,jake@example.com,EMEA

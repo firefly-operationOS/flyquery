@@ -664,7 +664,7 @@ class IngestWorker:
             await s.execute(
                 sa.text(
                     "UPDATE flyquery_ingest_jobs "
-                    "SET status = 'FAILED', finished_at = now(), result_json = :err::jsonb "
+                    "SET status = 'FAILED', finished_at = now(), result_json = CAST(:err AS jsonb) "
                     "WHERE id = :id AND status IN ('RUNNING', 'PENDING')"
                 ),
                 {"id": job_id, "err": _json_dumps(error_json)},

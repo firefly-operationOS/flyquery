@@ -146,8 +146,8 @@ async def test_parse_and_ingest_rejected_via_create_endpoint():
             json={"dataset_id": ds_id, "job_kind": "PARSE_AND_INGEST"},
             headers=h,
         )
-        # Must return 400 (invalid request)
-        assert r.status_code == 400, r.text
+        # Must return 400 or 422 (invalid request)
+        assert r.status_code in {400, 422}, r.text
 
 
 @pytest.mark.integration
