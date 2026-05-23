@@ -171,6 +171,8 @@ class TablesController:
                     before_json=r.get("before_json"),
                     after_json=r.get("after_json"),
                     llm_rationale=r.get("llm_rationale"),
+                    approved_by=r.get("approved_by"),
+                    approved_at=r.get("approved_at"),
                     created_at=r["created_at"],
                 ).model_dump(mode="json")
                 for r in rows

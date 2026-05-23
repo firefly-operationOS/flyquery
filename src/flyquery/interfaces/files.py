@@ -84,4 +84,6 @@ class SchemaChangeRead(BaseModel):
     before_json: dict | None
     after_json: dict | None
     llm_rationale: str | None
+    approved_by: str | None = None
+    approved_at: datetime | None = None
     created_at: datetime
