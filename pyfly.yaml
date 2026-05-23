@@ -1,0 +1,63 @@
+# Copyright 2026 Firefly Software Solutions Inc
+#
+# PyFly application configuration. Values override the property-driven
+# defaults activated by ``enable_core_stack``. Anything in the
+# environment (FLYQUERY_*) wins over this file because pydantic-settings
+# is loaded after pyfly merges its config sources.
+
+pyfly:
+  web:
+    enabled: true
+    base-path: /api
+  server:
+    enabled: true
+    host: 0.0.0.0
+    port: 8520
+
+  observability:
+    enabled: true
+  metrics:
+    enabled: true
+  tracing:
+    enabled: true
+    service-name: flyquery
+
+  actuator:
+    enabled: true
+    metrics:
+      enabled: true
+
+  admin:
+    enabled: true
+    path: /admin
+    title: "flyquery -- PyFly Admin"
+    theme: auto
+    require-auth: false
+    refresh-interval: 5000
+
+  aop:
+    enabled: true
+  resilience:
+    enabled: true
+  cqrs:
+    enabled: true
+  cache:
+    enabled: true
+
+  eda:
+    enabled: true
+    provider: ${FLYQUERY_EDA_ADAPTER:postgres}
+    destinations: ${FLYQUERY_EDA_DESTINATIONS:flyquery.ingest,flyquery.schema,flyquery.audit}
+    group: ${FLYQUERY_EDA_GROUP:flyquery-workers}
+    postgres:
+      dsn: ${FLYQUERY_DATABASE_URL:postgresql+asyncpg://flyquery:flyquery@localhost:5432/flyquery}
+      channel: flyquery_eda
+    redis:
+      url: ${FLYQUERY_REDIS_URL:redis://localhost:6379/0}
+    kafka:
+      bootstrap-servers: ${FLYQUERY_KAFKA_BOOTSTRAP:localhost:9092}
+
+  data:
+    relational:
+      enabled: true
+      url: ${FLYQUERY_DATABASE_URL:postgresql+asyncpg://flyquery:flyquery@localhost:5432/flyquery}
