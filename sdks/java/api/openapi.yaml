@@ -69,6 +69,10 @@ paths:
         Returns the summary shape only -- the secret is never
         round-tripped on this endpoint.
       operationId: list_tokens
+      parameters:
+      - $ref: "#/components/parameters/TenantIdHeader"
+      - $ref: "#/components/parameters/WorkspaceIdHeader"
+      - $ref: "#/components/parameters/CorrelationIdHeader"
       responses:
         "200":
           content:
@@ -78,6 +82,9 @@ paths:
                   $ref: "#/components/schemas/AgentTokenSummaryDto"
                 type: array
           description: Successful response
+      security:
+      - TenantContext: []
+        WorkspaceContext: []
       summary: List tokens for the current tenant (newest first).
       tags:
       - agent-tokens
@@ -90,6 +97,11 @@ paths:
         ``prefix``. Refuses agent-tier callers with
         ``403 agent_cannot_mint``.
       operationId: mint
+      parameters:
+      - $ref: "#/components/parameters/TenantIdHeader"
+      - $ref: "#/components/parameters/WorkspaceIdHeader"
+      - $ref: "#/components/parameters/CorrelationIdHeader"
+      - $ref: "#/components/parameters/IdempotencyKeyHeader"
       requestBody:
         content:
           application/json:
@@ -109,6 +121,9 @@ paths:
               schema:
                 $ref: "#/components/schemas/HTTPValidationError"
           description: Validation Error
+      security:
+      - TenantContext: []
+        WorkspaceContext: []
       summary: Mint a new agent token.
       tags:
       - agent-tokens
@@ -128,9 +143,16 @@ paths:
           nullable: true
           type: string
         style: simple
+      - $ref: "#/components/parameters/TenantIdHeader"
+      - $ref: "#/components/parameters/WorkspaceIdHeader"
+      - $ref: "#/components/parameters/CorrelationIdHeader"
+      - $ref: "#/components/parameters/IdempotencyKeyHeader"
       responses:
         "204":
           description: No Content
+      security:
+      - TenantContext: []
+        WorkspaceContext: []
       summary: Revoke a token. Idempotent -- already-revoked is a no-op (204).
       tags:
       - agent-tokens
@@ -161,9 +183,13 @@ paths:
           nullable: true
           type: string
         style: form
+      - $ref: "#/components/parameters/AgentTokenHeader"
+      - $ref: "#/components/parameters/CorrelationIdHeader"
       responses:
         "200":
           description: Successful response
+      security:
+      - AgentToken: []
       summary: List examples for the caller's workspace (agent-tier).
       tags:
       - agent-examples
@@ -175,6 +201,10 @@ paths:
         :param body: validated ExampleCreate
         :return: ExampleRead with created fields
       operationId: create
+      parameters:
+      - $ref: "#/components/parameters/AgentTokenHeader"
+      - $ref: "#/components/parameters/CorrelationIdHeader"
+      - $ref: "#/components/parameters/IdempotencyKeyHeader"
       requestBody:
         content:
           application/json:
@@ -194,6 +224,8 @@ paths:
               schema:
                 $ref: "#/components/schemas/HTTPValidationError"
           description: Validation Error
+      security:
+      - AgentToken: []
       summary: "Create an example (agent-tier — source=AGENT_LEARNED, quality=PROPOSED)."
       tags:
       - agent-examples
@@ -207,6 +239,10 @@ paths:
         :param body: validated QueryRequest
         :return: AnswerResponse
       operationId: query
+      parameters:
+      - $ref: "#/components/parameters/AgentTokenHeader"
+      - $ref: "#/components/parameters/CorrelationIdHeader"
+      - $ref: "#/components/parameters/IdempotencyKeyHeader"
       requestBody:
         content:
           application/json:
@@ -226,6 +262,8 @@ paths:
               schema:
                 $ref: "#/components/schemas/HTTPValidationError"
           description: Validation Error
+      security:
+      - AgentToken: []
       summary: Run the full NL → SQL → result pipeline (agent-tier).
       tags:
       - agent-query
@@ -239,6 +277,10 @@ paths:
         :param body: validated QueryRequest
         :return: StreamingResponse with text/event-stream
       operationId: stream
+      parameters:
+      - $ref: "#/components/parameters/AgentTokenHeader"
+      - $ref: "#/components/parameters/CorrelationIdHeader"
+      - $ref: "#/components/parameters/IdempotencyKeyHeader"
       requestBody:
         content:
           application/json:
@@ -254,6 +296,8 @@ paths:
               schema:
                 $ref: "#/components/schemas/HTTPValidationError"
           description: Validation Error
+      security:
+      - AgentToken: []
       summary: Run the pipeline as SSE stream (agent-tier).
       tags:
       - agent-query
@@ -267,6 +311,10 @@ paths:
         :param body: validated QueryRequest
         :return: ExplainResponse with candidate SQL and reasoning
       operationId: explain
+      parameters:
+      - $ref: "#/components/parameters/AgentTokenHeader"
+      - $ref: "#/components/parameters/CorrelationIdHeader"
+      - $ref: "#/components/parameters/IdempotencyKeyHeader"
       requestBody:
         content:
           application/json:
@@ -286,6 +334,8 @@ paths:
               schema:
                 $ref: "#/components/schemas/HTTPValidationError"
           description: Validation Error
+      security:
+      - AgentToken: []
       summary: Run Grounding + Generation only (agent-tier).
       tags:
       - agent-query
@@ -299,6 +349,10 @@ paths:
         :param body: validated QueryRequest
         :return: ValidateResponse
       operationId: validate
+      parameters:
+      - $ref: "#/components/parameters/AgentTokenHeader"
+      - $ref: "#/components/parameters/CorrelationIdHeader"
+      - $ref: "#/components/parameters/IdempotencyKeyHeader"
       requestBody:
         content:
           application/json:
@@ -318,6 +372,8 @@ paths:
               schema:
                 $ref: "#/components/schemas/HTTPValidationError"
           description: Validation Error
+      security:
+      - AgentToken: []
       summary: Run Grounding + Generation + AST + ScopeGuard (agent-tier).
       tags:
       - agent-query
@@ -331,6 +387,10 @@ paths:
         :param body: validated SqlExecuteRequest
         :return: SqlExecuteResponse
       operationId: execute
+      parameters:
+      - $ref: "#/components/parameters/AgentTokenHeader"
+      - $ref: "#/components/parameters/CorrelationIdHeader"
+      - $ref: "#/components/parameters/IdempotencyKeyHeader"
       requestBody:
         content:
           application/json:
@@ -350,6 +410,8 @@ paths:
               schema:
                 $ref: "#/components/schemas/HTTPValidationError"
           description: Validation Error
+      security:
+      - AgentToken: []
       summary: Execute SQL directly (agent-tier).
       tags:
       - agent-sql
@@ -363,6 +425,10 @@ paths:
         :param body: validated SqlExecuteRequest
         :return: StreamingResponse with text/event-stream
       operationId: execute_stream
+      parameters:
+      - $ref: "#/components/parameters/AgentTokenHeader"
+      - $ref: "#/components/parameters/CorrelationIdHeader"
+      - $ref: "#/components/parameters/IdempotencyKeyHeader"
       requestBody:
         content:
           application/json:
@@ -378,6 +444,8 @@ paths:
               schema:
                 $ref: "#/components/schemas/HTTPValidationError"
           description: Validation Error
+      security:
+      - AgentToken: []
       summary: Execute SQL as SSE stream (agent-tier).
       tags:
       - agent-sql
@@ -390,9 +458,14 @@ paths:
         Requires a valid ``X-Agent-Token`` with ``flyquery.audit:read`` scope.
         Missing or invalid tokens return 401 / 403 respectively.
       operationId: version
+      parameters:
+      - $ref: "#/components/parameters/AgentTokenHeader"
+      - $ref: "#/components/parameters/CorrelationIdHeader"
       responses:
         "200":
           description: Successful response
+      security:
+      - AgentToken: []
       summary: Return service name + CalVer version tag.
       tags:
       - meta
@@ -404,9 +477,16 @@ paths:
         :param http_request: Starlette request
         :return: ``{"items": [...]}``
       operationId: list_conversations
+      parameters:
+      - $ref: "#/components/parameters/TenantIdHeader"
+      - $ref: "#/components/parameters/WorkspaceIdHeader"
+      - $ref: "#/components/parameters/CorrelationIdHeader"
       responses:
         "200":
           description: Successful response
+      security:
+      - TenantContext: []
+        WorkspaceContext: []
       summary: "List conversations for the caller's workspace, newest first."
       tags:
       - conversations
@@ -418,6 +498,11 @@ paths:
         :param body: optional title
         :return: the new ConversationRead (no turns yet)
       operationId: create
+      parameters:
+      - $ref: "#/components/parameters/TenantIdHeader"
+      - $ref: "#/components/parameters/WorkspaceIdHeader"
+      - $ref: "#/components/parameters/CorrelationIdHeader"
+      - $ref: "#/components/parameters/IdempotencyKeyHeader"
       requestBody:
         content:
           application/json:
@@ -437,6 +522,9 @@ paths:
               schema:
                 $ref: "#/components/schemas/HTTPValidationError"
           description: Validation Error
+      security:
+      - TenantContext: []
+        WorkspaceContext: []
       summary: Create a new conversation.
       tags:
       - conversations
@@ -459,6 +547,9 @@ paths:
           nullable: true
           type: string
         style: simple
+      - $ref: "#/components/parameters/TenantIdHeader"
+      - $ref: "#/components/parameters/WorkspaceIdHeader"
+      - $ref: "#/components/parameters/CorrelationIdHeader"
       responses:
         "200":
           content:
@@ -466,6 +557,9 @@ paths:
               schema:
                 $ref: "#/components/schemas/ConversationRead"
           description: Successful response
+      security:
+      - TenantContext: []
+        WorkspaceContext: []
       summary: Fetch a conversation with all its turns.
       tags:
       - conversations
@@ -490,6 +584,10 @@ paths:
         schema:
           type: string
         style: simple
+      - $ref: "#/components/parameters/TenantIdHeader"
+      - $ref: "#/components/parameters/WorkspaceIdHeader"
+      - $ref: "#/components/parameters/CorrelationIdHeader"
+      - $ref: "#/components/parameters/IdempotencyKeyHeader"
       requestBody:
         content:
           application/json:
@@ -509,6 +607,9 @@ paths:
               schema:
                 $ref: "#/components/schemas/HTTPValidationError"
           description: Validation Error
+      security:
+      - TenantContext: []
+        WorkspaceContext: []
       summary: Ask a follow-up question inside an existing conversation.
       tags:
       - conversations
@@ -517,17 +618,92 @@ paths:
       - application/json
   /api/v1/datasets:
     get:
+      description: |-
+        Query parameters
+        ----------------
+        * ``q``            -- free-text substring against ``name`` or
+        ``description`` (case-insensitive ``ILIKE``).
+        * ``name``         -- exact match -- gives you name-based lookup
+        with zero extra round-trips.
+        * ``status``       -- ``ACTIVE`` / ``ARCHIVED`` / ``PURGING``.
+        * ``workspace_id`` -- restrict to a single workspace; defaults to
+        ``X-Workspace-Id`` header. Pass another UUID
+        explicitly to override the header.
+        * ``limit``        -- page size, clamped to [1, 1000]. Default 100.
+        * ``offset``       -- starting offset. Default 0.
+
+        Response envelope: ``{items, total, limit, offset, has_more}``.
       operationId: list_datasets
+      parameters:
+      - explode: true
+        in: query
+        name: q
+        required: false
+        schema:
+          nullable: true
+          type: string
+        style: form
+      - explode: true
+        in: query
+        name: name
+        required: false
+        schema:
+          nullable: true
+          type: string
+        style: form
+      - explode: true
+        in: query
+        name: status
+        required: false
+        schema:
+          nullable: true
+          type: string
+        style: form
+      - explode: true
+        in: query
+        name: workspace_id
+        required: false
+        schema:
+          nullable: true
+          type: string
+        style: form
+      - explode: true
+        in: query
+        name: limit
+        required: false
+        schema:
+          default: 100
+          type: integer
+        style: form
+      - explode: true
+        in: query
+        name: offset
+        required: false
+        schema:
+          default: 0
+          type: integer
+        style: form
+      - $ref: "#/components/parameters/TenantIdHeader"
+      - $ref: "#/components/parameters/WorkspaceIdHeader"
+      - $ref: "#/components/parameters/CorrelationIdHeader"
       responses:
         "200":
           description: Successful response
-      summary: Return all datasets for the caller's tenant+workspace.
+      security:
+      - TenantContext: []
+        WorkspaceContext: []
+      summary: Search/filter datasets for the caller's tenant.
       tags:
       - datasets
       x-accepts:
       - application/json
     post:
       operationId: create
+      parameters:
+      - $ref: "#/components/parameters/TenantIdHeader"
+      - $ref: "#/components/parameters/WorkspaceIdHeader"
+      - $ref: "#/components/parameters/CorrelationIdHeader"
+      - $ref: "#/components/parameters/IdempotencyKeyHeader"
       requestBody:
         content:
           application/json:
@@ -547,10 +723,46 @@ paths:
               schema:
                 $ref: "#/components/schemas/HTTPValidationError"
           description: Validation Error
+      security:
+      - TenantContext: []
+        WorkspaceContext: []
       summary: Create a dataset; tenant + workspace come from request headers.
       tags:
       - datasets
       x-content-type: application/json
+      x-accepts:
+      - application/json
+  /api/v1/datasets/by-name/{name}:
+    get:
+      description: |-
+        Reads the workspace scope from ``X-Workspace-Id``. Datasets enforce
+        ``UNIQUE(workspace_id, name)`` so the lookup always returns 0 or 1.
+      operationId: read_by_name
+      parameters:
+      - explode: false
+        in: path
+        name: name
+        required: true
+        schema:
+          nullable: true
+          type: string
+        style: simple
+      - $ref: "#/components/parameters/TenantIdHeader"
+      - $ref: "#/components/parameters/WorkspaceIdHeader"
+      - $ref: "#/components/parameters/CorrelationIdHeader"
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DatasetRead"
+          description: Successful response
+      security:
+      - TenantContext: []
+        WorkspaceContext: []
+      summary: "Resolve a dataset by ``(tenant_id, workspace_id, name)``."
+      tags:
+      - datasets
       x-accepts:
       - application/json
   /api/v1/datasets/{dataset_id}:
@@ -564,6 +776,10 @@ paths:
         schema:
           type: string
         style: simple
+      - $ref: "#/components/parameters/TenantIdHeader"
+      - $ref: "#/components/parameters/WorkspaceIdHeader"
+      - $ref: "#/components/parameters/CorrelationIdHeader"
+      - $ref: "#/components/parameters/IdempotencyKeyHeader"
       responses:
         "200":
           content:
@@ -571,6 +787,9 @@ paths:
               schema:
                 $ref: "#/components/schemas/DatasetRead"
           description: Successful response
+      security:
+      - TenantContext: []
+        WorkspaceContext: []
       summary: Archive a dataset (set status=ARCHIVED).
       tags:
       - datasets
@@ -587,6 +806,9 @@ paths:
           nullable: true
           type: string
         style: simple
+      - $ref: "#/components/parameters/TenantIdHeader"
+      - $ref: "#/components/parameters/WorkspaceIdHeader"
+      - $ref: "#/components/parameters/CorrelationIdHeader"
       responses:
         "200":
           content:
@@ -594,6 +816,9 @@ paths:
               schema:
                 $ref: "#/components/schemas/DatasetRead"
           description: Successful response
+      security:
+      - TenantContext: []
+        WorkspaceContext: []
       summary: Fetch a single dataset by id. Returns 404 if not found.
       tags:
       - datasets
@@ -609,6 +834,10 @@ paths:
         schema:
           type: string
         style: simple
+      - $ref: "#/components/parameters/TenantIdHeader"
+      - $ref: "#/components/parameters/WorkspaceIdHeader"
+      - $ref: "#/components/parameters/CorrelationIdHeader"
+      - $ref: "#/components/parameters/IdempotencyKeyHeader"
       requestBody:
         content:
           application/json:
@@ -628,6 +857,9 @@ paths:
               schema:
                 $ref: "#/components/schemas/HTTPValidationError"
           description: Validation Error
+      security:
+      - TenantContext: []
+        WorkspaceContext: []
       summary: Sparse-update a dataset. Only fields present in body are changed.
       tags:
       - datasets
@@ -645,6 +877,10 @@ paths:
         schema:
           type: string
         style: simple
+      - $ref: "#/components/parameters/TenantIdHeader"
+      - $ref: "#/components/parameters/WorkspaceIdHeader"
+      - $ref: "#/components/parameters/CorrelationIdHeader"
+      - $ref: "#/components/parameters/IdempotencyKeyHeader"
       responses:
         "201":
           content:
@@ -652,6 +888,9 @@ paths:
               schema:
                 $ref: "#/components/schemas/FileUploadResponse"
           description: Successful response
+      security:
+      - TenantContext: []
+        WorkspaceContext: []
       summary: Accept a multipart file upload and run the synchronous ingestion pipeline.
       tags:
       - files
@@ -668,9 +907,15 @@ paths:
         schema:
           type: string
         style: simple
+      - $ref: "#/components/parameters/TenantIdHeader"
+      - $ref: "#/components/parameters/WorkspaceIdHeader"
+      - $ref: "#/components/parameters/CorrelationIdHeader"
       responses:
         "200":
           description: Successful response
+      security:
+      - TenantContext: []
+        WorkspaceContext: []
       summary: List relations for a dataset (all statuses by default).
       tags:
       - relations
@@ -687,9 +932,15 @@ paths:
         schema:
           type: string
         style: simple
+      - $ref: "#/components/parameters/TenantIdHeader"
+      - $ref: "#/components/parameters/WorkspaceIdHeader"
+      - $ref: "#/components/parameters/CorrelationIdHeader"
       responses:
         "200":
           description: Successful response
+      security:
+      - TenantContext: []
+        WorkspaceContext: []
       tags:
       - tables
       x-accepts:
@@ -713,6 +964,10 @@ paths:
           nullable: true
           type: string
         style: simple
+      - $ref: "#/components/parameters/TenantIdHeader"
+      - $ref: "#/components/parameters/WorkspaceIdHeader"
+      - $ref: "#/components/parameters/CorrelationIdHeader"
+      - $ref: "#/components/parameters/IdempotencyKeyHeader"
       responses:
         "201":
           content:
@@ -720,6 +975,9 @@ paths:
               schema:
                 $ref: "#/components/schemas/ReuploadResponse"
           description: Successful response
+      security:
+      - TenantContext: []
+        WorkspaceContext: []
       summary: Re-upload into an existing table slot; creates a new snapshot.
       tags:
       - files
@@ -744,9 +1002,15 @@ paths:
         schema:
           type: string
         style: form
+      - $ref: "#/components/parameters/TenantIdHeader"
+      - $ref: "#/components/parameters/WorkspaceIdHeader"
+      - $ref: "#/components/parameters/CorrelationIdHeader"
       responses:
         "200":
           description: Successful response
+      security:
+      - TenantContext: []
+        WorkspaceContext: []
       summary: "List examples for the caller's workspace, with optional filters."
       tags:
       - examples
@@ -754,6 +1018,11 @@ paths:
       - application/json
     post:
       operationId: create
+      parameters:
+      - $ref: "#/components/parameters/TenantIdHeader"
+      - $ref: "#/components/parameters/WorkspaceIdHeader"
+      - $ref: "#/components/parameters/CorrelationIdHeader"
+      - $ref: "#/components/parameters/IdempotencyKeyHeader"
       requestBody:
         content:
           application/json:
@@ -773,6 +1042,9 @@ paths:
               schema:
                 $ref: "#/components/schemas/HTTPValidationError"
           description: Validation Error
+      security:
+      - TenantContext: []
+        WorkspaceContext: []
       summary: "Create an example; defaults to source=USER_CURATED, quality=PROPOSED."
       tags:
       - examples
@@ -791,6 +1063,10 @@ paths:
           nullable: true
           type: string
         style: simple
+      - $ref: "#/components/parameters/TenantIdHeader"
+      - $ref: "#/components/parameters/WorkspaceIdHeader"
+      - $ref: "#/components/parameters/CorrelationIdHeader"
+      - $ref: "#/components/parameters/IdempotencyKeyHeader"
       responses:
         "200":
           content:
@@ -798,6 +1074,9 @@ paths:
               schema:
                 $ref: "#/components/schemas/ExampleRead"
           description: Successful response
+      security:
+      - TenantContext: []
+        WorkspaceContext: []
       summary: Approve an example (quality → APPROVED).
       tags:
       - examples
@@ -814,6 +1093,10 @@ paths:
         schema:
           type: string
         style: simple
+      - $ref: "#/components/parameters/TenantIdHeader"
+      - $ref: "#/components/parameters/WorkspaceIdHeader"
+      - $ref: "#/components/parameters/CorrelationIdHeader"
+      - $ref: "#/components/parameters/IdempotencyKeyHeader"
       responses:
         "200":
           content:
@@ -821,6 +1104,9 @@ paths:
               schema:
                 $ref: "#/components/schemas/ExampleRead"
           description: Successful response
+      security:
+      - TenantContext: []
+        WorkspaceContext: []
       summary: Reject an example (quality → REJECTED).
       tags:
       - examples
@@ -846,9 +1132,15 @@ paths:
           default: 0
           type: integer
         style: form
+      - $ref: "#/components/parameters/TenantIdHeader"
+      - $ref: "#/components/parameters/WorkspaceIdHeader"
+      - $ref: "#/components/parameters/CorrelationIdHeader"
       responses:
         "200":
           description: Successful response
+      security:
+      - TenantContext: []
+        WorkspaceContext: []
       summary: Return paginated glossary terms for the caller's workspace.
       tags:
       - glossary
@@ -856,6 +1148,11 @@ paths:
       - application/json
     post:
       operationId: create
+      parameters:
+      - $ref: "#/components/parameters/TenantIdHeader"
+      - $ref: "#/components/parameters/WorkspaceIdHeader"
+      - $ref: "#/components/parameters/CorrelationIdHeader"
+      - $ref: "#/components/parameters/IdempotencyKeyHeader"
       requestBody:
         content:
           application/json:
@@ -875,6 +1172,9 @@ paths:
               schema:
                 $ref: "#/components/schemas/HTTPValidationError"
           description: Validation Error
+      security:
+      - TenantContext: []
+        WorkspaceContext: []
       summary: "Create a glossary term; (workspace_id, term) must be unique."
       tags:
       - glossary
@@ -892,9 +1192,16 @@ paths:
         schema:
           type: string
         style: simple
+      - $ref: "#/components/parameters/TenantIdHeader"
+      - $ref: "#/components/parameters/WorkspaceIdHeader"
+      - $ref: "#/components/parameters/CorrelationIdHeader"
+      - $ref: "#/components/parameters/IdempotencyKeyHeader"
       responses:
         "204":
           description: No Content
+      security:
+      - TenantContext: []
+        WorkspaceContext: []
       summary: Hard-delete a glossary term.
       tags:
       - glossary
@@ -911,6 +1218,10 @@ paths:
           nullable: true
           type: string
         style: simple
+      - $ref: "#/components/parameters/TenantIdHeader"
+      - $ref: "#/components/parameters/WorkspaceIdHeader"
+      - $ref: "#/components/parameters/CorrelationIdHeader"
+      - $ref: "#/components/parameters/IdempotencyKeyHeader"
       requestBody:
         content:
           application/json:
@@ -930,6 +1241,9 @@ paths:
               schema:
                 $ref: "#/components/schemas/HTTPValidationError"
           description: Validation Error
+      security:
+      - TenantContext: []
+        WorkspaceContext: []
       summary: Sparse-update a glossary term.
       tags:
       - glossary
@@ -939,6 +1253,10 @@ paths:
   /api/v1/ingest-jobs:
     get:
       operationId: list_jobs
+      parameters:
+      - $ref: "#/components/parameters/TenantIdHeader"
+      - $ref: "#/components/parameters/WorkspaceIdHeader"
+      - $ref: "#/components/parameters/CorrelationIdHeader"
       responses:
         "200":
           content:
@@ -946,6 +1264,9 @@ paths:
               schema:
                 $ref: "#/components/schemas/IngestJobListResponse"
           description: Successful response
+      security:
+      - TenantContext: []
+        WorkspaceContext: []
       summary: List ingest jobs with optional filters.
       tags:
       - ingest
@@ -953,6 +1274,11 @@ paths:
       - application/json
     post:
       operationId: create_job
+      parameters:
+      - $ref: "#/components/parameters/TenantIdHeader"
+      - $ref: "#/components/parameters/WorkspaceIdHeader"
+      - $ref: "#/components/parameters/CorrelationIdHeader"
+      - $ref: "#/components/parameters/IdempotencyKeyHeader"
       responses:
         "201":
           content:
@@ -960,6 +1286,9 @@ paths:
               schema:
                 $ref: "#/components/schemas/IngestJobRead"
           description: Successful response
+      security:
+      - TenantContext: []
+        WorkspaceContext: []
       summary: Start a background ingestion job (REPARSE/SAMPLE_REFRESH/DESCRIBE_PASS/RELATION_PASS).
       tags:
       - ingest
@@ -977,6 +1306,9 @@ paths:
           nullable: true
           type: string
         style: simple
+      - $ref: "#/components/parameters/TenantIdHeader"
+      - $ref: "#/components/parameters/WorkspaceIdHeader"
+      - $ref: "#/components/parameters/CorrelationIdHeader"
       responses:
         "200":
           content:
@@ -984,6 +1316,9 @@ paths:
               schema:
                 $ref: "#/components/schemas/IngestJobRead"
           description: Successful response
+      security:
+      - TenantContext: []
+        WorkspaceContext: []
       summary: Get a single ingest job.
       tags:
       - ingest
@@ -1000,6 +1335,9 @@ paths:
         schema:
           type: string
         style: simple
+      - $ref: "#/components/parameters/TenantIdHeader"
+      - $ref: "#/components/parameters/WorkspaceIdHeader"
+      - $ref: "#/components/parameters/CorrelationIdHeader"
       responses:
         "200":
           content:
@@ -1007,6 +1345,9 @@ paths:
               schema:
                 $ref: "#/components/schemas/IngestEventListResponse"
           description: Successful response
+      security:
+      - TenantContext: []
+        WorkspaceContext: []
       summary: Paginated event ledger for a job.
       tags:
       - ingest
@@ -1029,9 +1370,15 @@ paths:
         schema:
           type: string
         style: simple
+      - $ref: "#/components/parameters/TenantIdHeader"
+      - $ref: "#/components/parameters/WorkspaceIdHeader"
+      - $ref: "#/components/parameters/CorrelationIdHeader"
       responses:
         "200":
           description: Successful response
+      security:
+      - TenantContext: []
+        WorkspaceContext: []
       summary: SSE stream for real-time job progress.
       tags:
       - ingest
@@ -1048,6 +1395,10 @@ paths:
         schema:
           type: string
         style: simple
+      - $ref: "#/components/parameters/TenantIdHeader"
+      - $ref: "#/components/parameters/WorkspaceIdHeader"
+      - $ref: "#/components/parameters/CorrelationIdHeader"
+      - $ref: "#/components/parameters/IdempotencyKeyHeader"
       responses:
         "200":
           content:
@@ -1055,6 +1406,9 @@ paths:
               schema:
                 $ref: "#/components/schemas/CancelResponse"
           description: Successful response
+      security:
+      - TenantContext: []
+        WorkspaceContext: []
       summary: Cooperatively cancel a job (idempotent for terminal jobs).
       tags:
       - ingest
@@ -1067,6 +1421,11 @@ paths:
         :param body: validated QueryRequest
         :return: AnswerResponse with SQL, preview rows, chart hint, and explanation
       operationId: query
+      parameters:
+      - $ref: "#/components/parameters/TenantIdHeader"
+      - $ref: "#/components/parameters/WorkspaceIdHeader"
+      - $ref: "#/components/parameters/CorrelationIdHeader"
+      - $ref: "#/components/parameters/IdempotencyKeyHeader"
       requestBody:
         content:
           application/json:
@@ -1086,6 +1445,9 @@ paths:
               schema:
                 $ref: "#/components/schemas/HTTPValidationError"
           description: Validation Error
+      security:
+      - TenantContext: []
+        WorkspaceContext: []
       summary: Run the full NL → SQL → result pipeline and return a synchronous answer.
       tags:
       - query
@@ -1107,6 +1469,11 @@ paths:
         :param body: validated QueryRequest (body already consumed by pyfly)
         :return: StreamingResponse with ``text/event-stream`` content type
       operationId: stream
+      parameters:
+      - $ref: "#/components/parameters/TenantIdHeader"
+      - $ref: "#/components/parameters/WorkspaceIdHeader"
+      - $ref: "#/components/parameters/CorrelationIdHeader"
+      - $ref: "#/components/parameters/IdempotencyKeyHeader"
       requestBody:
         content:
           application/json:
@@ -1122,6 +1489,9 @@ paths:
               schema:
                 $ref: "#/components/schemas/HTTPValidationError"
           description: Validation Error
+      security:
+      - TenantContext: []
+        WorkspaceContext: []
       summary: Run the full pipeline as a Server-Sent Events stream.
       tags:
       - query
@@ -1137,6 +1507,11 @@ paths:
         :param body: validated QueryRequest
         :return: ExplainResponse with candidate SQL and reasoning
       operationId: explain
+      parameters:
+      - $ref: "#/components/parameters/TenantIdHeader"
+      - $ref: "#/components/parameters/WorkspaceIdHeader"
+      - $ref: "#/components/parameters/CorrelationIdHeader"
+      - $ref: "#/components/parameters/IdempotencyKeyHeader"
       requestBody:
         content:
           application/json:
@@ -1156,6 +1531,9 @@ paths:
               schema:
                 $ref: "#/components/schemas/HTTPValidationError"
           description: Validation Error
+      security:
+      - TenantContext: []
+        WorkspaceContext: []
       summary: Run Grounding + Generation but stop before AST/execution.
       tags:
       - query
@@ -1171,6 +1549,11 @@ paths:
         :param body: validated QueryRequest
         :return: ValidateResponse with AST classification and optional scope_error
       operationId: validate
+      parameters:
+      - $ref: "#/components/parameters/TenantIdHeader"
+      - $ref: "#/components/parameters/WorkspaceIdHeader"
+      - $ref: "#/components/parameters/CorrelationIdHeader"
+      - $ref: "#/components/parameters/IdempotencyKeyHeader"
       requestBody:
         content:
           application/json:
@@ -1190,6 +1573,9 @@ paths:
               schema:
                 $ref: "#/components/schemas/HTTPValidationError"
           description: Validation Error
+      security:
+      - TenantContext: []
+        WorkspaceContext: []
       summary: Run Grounding + Generation + AST classification + ScopeGuard check.
       tags:
       - query
@@ -1208,9 +1594,16 @@ paths:
           nullable: true
           type: string
         style: simple
+      - $ref: "#/components/parameters/TenantIdHeader"
+      - $ref: "#/components/parameters/WorkspaceIdHeader"
+      - $ref: "#/components/parameters/CorrelationIdHeader"
+      - $ref: "#/components/parameters/IdempotencyKeyHeader"
       responses:
         "200":
           description: Successful response
+      security:
+      - TenantContext: []
+        WorkspaceContext: []
       summary: Approve a PROPOSED relation.
       tags:
       - relations
@@ -1227,9 +1620,16 @@ paths:
         schema:
           type: string
         style: simple
+      - $ref: "#/components/parameters/TenantIdHeader"
+      - $ref: "#/components/parameters/WorkspaceIdHeader"
+      - $ref: "#/components/parameters/CorrelationIdHeader"
+      - $ref: "#/components/parameters/IdempotencyKeyHeader"
       responses:
         "200":
           description: Successful response
+      security:
+      - TenantContext: []
+        WorkspaceContext: []
       summary: Reject a PROPOSED relation.
       tags:
       - relations
@@ -1252,6 +1652,10 @@ paths:
           nullable: true
           type: string
         style: simple
+      - $ref: "#/components/parameters/TenantIdHeader"
+      - $ref: "#/components/parameters/WorkspaceIdHeader"
+      - $ref: "#/components/parameters/CorrelationIdHeader"
+      - $ref: "#/components/parameters/IdempotencyKeyHeader"
       responses:
         "200":
           content:
@@ -1259,6 +1663,9 @@ paths:
               schema:
                 $ref: "#/components/schemas/SchemaChangeRead"
           description: Successful response
+      security:
+      - TenantContext: []
+        WorkspaceContext: []
       summary: Flip a RENAMED_CANDIDATE row to RENAMED.
       tags:
       - schema
@@ -1276,6 +1683,9 @@ paths:
           nullable: true
           type: string
         style: simple
+      - $ref: "#/components/parameters/TenantIdHeader"
+      - $ref: "#/components/parameters/WorkspaceIdHeader"
+      - $ref: "#/components/parameters/CorrelationIdHeader"
       responses:
         "200":
           content:
@@ -1283,6 +1693,9 @@ paths:
               schema:
                 $ref: "#/components/schemas/SchemaObjectRead"
           description: Successful response
+      security:
+      - TenantContext: []
+        WorkspaceContext: []
       summary: Get a single schema object by ID.
       tags:
       - schema
@@ -1301,6 +1714,10 @@ paths:
         schema:
           type: string
         style: simple
+      - $ref: "#/components/parameters/TenantIdHeader"
+      - $ref: "#/components/parameters/WorkspaceIdHeader"
+      - $ref: "#/components/parameters/CorrelationIdHeader"
+      - $ref: "#/components/parameters/IdempotencyKeyHeader"
       requestBody:
         content:
           application/json:
@@ -1320,6 +1737,9 @@ paths:
               schema:
                 $ref: "#/components/schemas/HTTPValidationError"
           description: Validation Error
+      security:
+      - TenantContext: []
+        WorkspaceContext: []
       summary: Update human-set fields on a schema object.
       tags:
       - schema
@@ -1337,9 +1757,15 @@ paths:
         schema:
           type: string
         style: form
+      - $ref: "#/components/parameters/TenantIdHeader"
+      - $ref: "#/components/parameters/WorkspaceIdHeader"
+      - $ref: "#/components/parameters/CorrelationIdHeader"
       responses:
         "200":
           description: Successful response
+      security:
+      - TenantContext: []
+        WorkspaceContext: []
       summary: List all semantic dimensions for the caller's workspace.
       tags:
       - semantic
@@ -1347,6 +1773,11 @@ paths:
       - application/json
     post:
       operationId: create
+      parameters:
+      - $ref: "#/components/parameters/TenantIdHeader"
+      - $ref: "#/components/parameters/WorkspaceIdHeader"
+      - $ref: "#/components/parameters/CorrelationIdHeader"
+      - $ref: "#/components/parameters/IdempotencyKeyHeader"
       requestBody:
         content:
           application/json:
@@ -1366,6 +1797,9 @@ paths:
               schema:
                 $ref: "#/components/schemas/HTTPValidationError"
           description: Validation Error
+      security:
+      - TenantContext: []
+        WorkspaceContext: []
       summary: Create a new semantic dimension in DRAFT status.
       tags:
       - semantic
@@ -1384,6 +1818,9 @@ paths:
           nullable: true
           type: string
         style: simple
+      - $ref: "#/components/parameters/TenantIdHeader"
+      - $ref: "#/components/parameters/WorkspaceIdHeader"
+      - $ref: "#/components/parameters/CorrelationIdHeader"
       responses:
         "200":
           content:
@@ -1391,6 +1828,9 @@ paths:
               schema:
                 $ref: "#/components/schemas/SemanticDimensionRead"
           description: Successful response
+      security:
+      - TenantContext: []
+        WorkspaceContext: []
       summary: Fetch a single semantic dimension by id.
       tags:
       - semantic
@@ -1406,6 +1846,10 @@ paths:
         schema:
           type: string
         style: simple
+      - $ref: "#/components/parameters/TenantIdHeader"
+      - $ref: "#/components/parameters/WorkspaceIdHeader"
+      - $ref: "#/components/parameters/CorrelationIdHeader"
+      - $ref: "#/components/parameters/IdempotencyKeyHeader"
       requestBody:
         content:
           application/json:
@@ -1425,6 +1869,9 @@ paths:
               schema:
                 $ref: "#/components/schemas/HTTPValidationError"
           description: Validation Error
+      security:
+      - TenantContext: []
+        WorkspaceContext: []
       summary: Sparse-update a dimension; re-validates YAML if definition changes.
       tags:
       - semantic
@@ -1442,9 +1889,15 @@ paths:
         schema:
           type: string
         style: simple
+      - $ref: "#/components/parameters/TenantIdHeader"
+      - $ref: "#/components/parameters/WorkspaceIdHeader"
+      - $ref: "#/components/parameters/CorrelationIdHeader"
       responses:
         "200":
           description: Successful response
+      security:
+      - TenantContext: []
+        WorkspaceContext: []
       summary: "Return version history for a dimension, oldest first."
       tags:
       - semantic
@@ -1461,6 +1914,10 @@ paths:
         schema:
           type: string
         style: simple
+      - $ref: "#/components/parameters/TenantIdHeader"
+      - $ref: "#/components/parameters/WorkspaceIdHeader"
+      - $ref: "#/components/parameters/CorrelationIdHeader"
+      - $ref: "#/components/parameters/IdempotencyKeyHeader"
       responses:
         "200":
           content:
@@ -1468,6 +1925,9 @@ paths:
               schema:
                 $ref: "#/components/schemas/SemanticDimensionRead"
           description: Successful response
+      security:
+      - TenantContext: []
+        WorkspaceContext: []
       summary: "Validate, compile, and publish a dimension (status → PUBLISHED)."
       tags:
       - semantic
@@ -1484,6 +1944,10 @@ paths:
         schema:
           type: string
         style: simple
+      - $ref: "#/components/parameters/TenantIdHeader"
+      - $ref: "#/components/parameters/WorkspaceIdHeader"
+      - $ref: "#/components/parameters/CorrelationIdHeader"
+      - $ref: "#/components/parameters/IdempotencyKeyHeader"
       responses:
         "200":
           content:
@@ -1491,6 +1955,9 @@ paths:
               schema:
                 $ref: "#/components/schemas/SemanticDimensionRead"
           description: Successful response
+      security:
+      - TenantContext: []
+        WorkspaceContext: []
       summary: Retire a dimension (status → RETIRED).
       tags:
       - semantic
@@ -1507,9 +1974,15 @@ paths:
         schema:
           type: string
         style: form
+      - $ref: "#/components/parameters/TenantIdHeader"
+      - $ref: "#/components/parameters/WorkspaceIdHeader"
+      - $ref: "#/components/parameters/CorrelationIdHeader"
       responses:
         "200":
           description: Successful response
+      security:
+      - TenantContext: []
+        WorkspaceContext: []
       summary: List all semantic metrics for the caller's workspace.
       tags:
       - semantic
@@ -1517,6 +1990,11 @@ paths:
       - application/json
     post:
       operationId: create
+      parameters:
+      - $ref: "#/components/parameters/TenantIdHeader"
+      - $ref: "#/components/parameters/WorkspaceIdHeader"
+      - $ref: "#/components/parameters/CorrelationIdHeader"
+      - $ref: "#/components/parameters/IdempotencyKeyHeader"
       requestBody:
         content:
           application/json:
@@ -1536,6 +2014,9 @@ paths:
               schema:
                 $ref: "#/components/schemas/HTTPValidationError"
           description: Validation Error
+      security:
+      - TenantContext: []
+        WorkspaceContext: []
       summary: Create a new semantic metric in DRAFT status.
       tags:
       - semantic
@@ -1554,6 +2035,9 @@ paths:
           nullable: true
           type: string
         style: simple
+      - $ref: "#/components/parameters/TenantIdHeader"
+      - $ref: "#/components/parameters/WorkspaceIdHeader"
+      - $ref: "#/components/parameters/CorrelationIdHeader"
       responses:
         "200":
           content:
@@ -1561,6 +2045,9 @@ paths:
               schema:
                 $ref: "#/components/schemas/SemanticMetricRead"
           description: Successful response
+      security:
+      - TenantContext: []
+        WorkspaceContext: []
       summary: Fetch a single semantic metric by id.
       tags:
       - semantic
@@ -1576,6 +2063,10 @@ paths:
         schema:
           type: string
         style: simple
+      - $ref: "#/components/parameters/TenantIdHeader"
+      - $ref: "#/components/parameters/WorkspaceIdHeader"
+      - $ref: "#/components/parameters/CorrelationIdHeader"
+      - $ref: "#/components/parameters/IdempotencyKeyHeader"
       requestBody:
         content:
           application/json:
@@ -1595,6 +2086,9 @@ paths:
               schema:
                 $ref: "#/components/schemas/HTTPValidationError"
           description: Validation Error
+      security:
+      - TenantContext: []
+        WorkspaceContext: []
       summary: Sparse-update a metric; re-validates YAML if definition changes.
       tags:
       - semantic
@@ -1612,9 +2106,15 @@ paths:
         schema:
           type: string
         style: simple
+      - $ref: "#/components/parameters/TenantIdHeader"
+      - $ref: "#/components/parameters/WorkspaceIdHeader"
+      - $ref: "#/components/parameters/CorrelationIdHeader"
       responses:
         "200":
           description: Successful response
+      security:
+      - TenantContext: []
+        WorkspaceContext: []
       summary: "Return version history for a metric, oldest first."
       tags:
       - semantic
@@ -1631,6 +2131,10 @@ paths:
         schema:
           type: string
         style: simple
+      - $ref: "#/components/parameters/TenantIdHeader"
+      - $ref: "#/components/parameters/WorkspaceIdHeader"
+      - $ref: "#/components/parameters/CorrelationIdHeader"
+      - $ref: "#/components/parameters/IdempotencyKeyHeader"
       responses:
         "200":
           content:
@@ -1638,6 +2142,9 @@ paths:
               schema:
                 $ref: "#/components/schemas/SemanticMetricRead"
           description: Successful response
+      security:
+      - TenantContext: []
+        WorkspaceContext: []
       summary: "Validate, compile, and publish a metric (status → PUBLISHED)."
       tags:
       - semantic
@@ -1654,6 +2161,10 @@ paths:
         schema:
           type: string
         style: simple
+      - $ref: "#/components/parameters/TenantIdHeader"
+      - $ref: "#/components/parameters/WorkspaceIdHeader"
+      - $ref: "#/components/parameters/CorrelationIdHeader"
+      - $ref: "#/components/parameters/IdempotencyKeyHeader"
       responses:
         "200":
           content:
@@ -1661,6 +2172,9 @@ paths:
               schema:
                 $ref: "#/components/schemas/SemanticMetricRead"
           description: Successful response
+      security:
+      - TenantContext: []
+        WorkspaceContext: []
       summary: Retire a metric (status → RETIRED).
       tags:
       - semantic
@@ -1677,6 +2191,11 @@ paths:
         :return: SqlExecuteResponse with preview rows and execution metadata
         :raises DirectSqlForbidden: when workspace.allow_direct_sql is False
       operationId: execute
+      parameters:
+      - $ref: "#/components/parameters/TenantIdHeader"
+      - $ref: "#/components/parameters/WorkspaceIdHeader"
+      - $ref: "#/components/parameters/CorrelationIdHeader"
+      - $ref: "#/components/parameters/IdempotencyKeyHeader"
       requestBody:
         content:
           application/json:
@@ -1696,6 +2215,9 @@ paths:
               schema:
                 $ref: "#/components/schemas/HTTPValidationError"
           description: Validation Error
+      security:
+      - TenantContext: []
+        WorkspaceContext: []
       summary: Execute a SQL statement directly against the workspace's dataset Parquet.
       tags:
       - sql
@@ -1714,6 +2236,11 @@ paths:
         :param body: validated SqlExecuteRequest
         :return: StreamingResponse with ``text/event-stream``
       operationId: execute_stream
+      parameters:
+      - $ref: "#/components/parameters/TenantIdHeader"
+      - $ref: "#/components/parameters/WorkspaceIdHeader"
+      - $ref: "#/components/parameters/CorrelationIdHeader"
+      - $ref: "#/components/parameters/IdempotencyKeyHeader"
       requestBody:
         content:
           application/json:
@@ -1729,10 +2256,138 @@ paths:
               schema:
                 $ref: "#/components/schemas/HTTPValidationError"
           description: Validation Error
+      security:
+      - TenantContext: []
+        WorkspaceContext: []
       summary: Execute SQL and stream progress as Server-Sent Events.
       tags:
       - sql
       x-content-type: application/json
+      x-accepts:
+      - application/json
+  /api/v1/tables:
+    get:
+      description: |-
+        Query parameters
+        ----------------
+        * ``q``          -- substring match on ``name`` or ``qualified_name``
+        (case-insensitive ``ILIKE``).
+        * ``name``       -- exact match on ``name``.
+        * ``dataset_id`` -- restrict to a single dataset.
+        * ``kind``       -- ``UPLOADED`` / ``VIEW`` / ``DERIVED``.
+        * ``is_active``  -- default ``true``; pass ``false`` to include
+        archived tables.
+        * ``limit``      -- page size, clamped to [1, 1000]. Default 100.
+        * ``offset``     -- starting offset. Default 0.
+
+        Response envelope: ``{items, total, limit, offset, has_more}``.
+      operationId: search_tables
+      parameters:
+      - explode: true
+        in: query
+        name: q
+        required: false
+        schema:
+          type: string
+        style: form
+      - explode: true
+        in: query
+        name: name
+        required: false
+        schema:
+          type: string
+        style: form
+      - explode: true
+        in: query
+        name: dataset_id
+        required: false
+        schema:
+          type: string
+        style: form
+      - explode: true
+        in: query
+        name: kind
+        required: false
+        schema:
+          nullable: true
+          type: string
+        style: form
+      - explode: true
+        in: query
+        name: is_active
+        required: false
+        schema:
+          nullable: true
+          type: string
+        style: form
+      - explode: true
+        in: query
+        name: limit
+        required: false
+        schema:
+          default: 100
+          type: integer
+        style: form
+      - explode: true
+        in: query
+        name: offset
+        required: false
+        schema:
+          default: 0
+          type: integer
+        style: form
+      - $ref: "#/components/parameters/TenantIdHeader"
+      - $ref: "#/components/parameters/WorkspaceIdHeader"
+      - $ref: "#/components/parameters/CorrelationIdHeader"
+      responses:
+        "200":
+          description: Successful response
+      security:
+      - TenantContext: []
+        WorkspaceContext: []
+      summary: Search/filter tables across the caller's workspace.
+      tags:
+      - tables
+      x-accepts:
+      - application/json
+  /api/v1/tables/by-name/{name}:
+    get:
+      description: |-
+        Pass ``?dataset_id=...`` to scope the lookup to a single dataset.
+        Returns 404 if the name is not unique within the scope or no
+        match is found.
+      operationId: get_table_by_name
+      parameters:
+      - explode: false
+        in: path
+        name: name
+        required: true
+        schema:
+          type: string
+        style: simple
+      - explode: true
+        in: query
+        name: dataset_id
+        required: false
+        schema:
+          type: string
+        style: form
+      - $ref: "#/components/parameters/TenantIdHeader"
+      - $ref: "#/components/parameters/WorkspaceIdHeader"
+      - $ref: "#/components/parameters/CorrelationIdHeader"
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TableRead"
+          description: Successful response
+      security:
+      - TenantContext: []
+        WorkspaceContext: []
+      summary: Resolve a table by ``name`` within the caller's workspace.
+      tags:
+      - tables
       x-accepts:
       - application/json
   /api/v1/tables/{table_id}:
@@ -1746,6 +2401,9 @@ paths:
         schema:
           type: string
         style: simple
+      - $ref: "#/components/parameters/TenantIdHeader"
+      - $ref: "#/components/parameters/WorkspaceIdHeader"
+      - $ref: "#/components/parameters/CorrelationIdHeader"
       responses:
         "200":
           content:
@@ -1753,6 +2411,9 @@ paths:
               schema:
                 $ref: "#/components/schemas/TableRead"
           description: Successful response
+      security:
+      - TenantContext: []
+        WorkspaceContext: []
       tags:
       - tables
       x-accepts:
@@ -1768,9 +2429,15 @@ paths:
         schema:
           type: string
         style: simple
+      - $ref: "#/components/parameters/TenantIdHeader"
+      - $ref: "#/components/parameters/WorkspaceIdHeader"
+      - $ref: "#/components/parameters/CorrelationIdHeader"
       responses:
         "200":
           description: Successful response
+      security:
+      - TenantContext: []
+        WorkspaceContext: []
       tags:
       - tables
       x-accepts:
@@ -1786,9 +2453,15 @@ paths:
         schema:
           type: string
         style: simple
+      - $ref: "#/components/parameters/TenantIdHeader"
+      - $ref: "#/components/parameters/WorkspaceIdHeader"
+      - $ref: "#/components/parameters/CorrelationIdHeader"
       responses:
         "200":
           description: Successful response
+      security:
+      - TenantContext: []
+        WorkspaceContext: []
       summary: List schema_objects for the table's current snapshot.
       tags:
       - tables
@@ -1805,9 +2478,15 @@ paths:
         schema:
           type: string
         style: simple
+      - $ref: "#/components/parameters/TenantIdHeader"
+      - $ref: "#/components/parameters/WorkspaceIdHeader"
+      - $ref: "#/components/parameters/CorrelationIdHeader"
       responses:
         "200":
           description: Successful response
+      security:
+      - TenantContext: []
+        WorkspaceContext: []
       tags:
       - tables
       x-accepts:
@@ -1821,6 +2500,11 @@ paths:
         :raises DeriveTableForbidden: when sql is not a SELECT
         :raises DeriveTableError: when DuckDB execution fails
       operationId: derive
+      parameters:
+      - $ref: "#/components/parameters/TenantIdHeader"
+      - $ref: "#/components/parameters/WorkspaceIdHeader"
+      - $ref: "#/components/parameters/CorrelationIdHeader"
+      - $ref: "#/components/parameters/IdempotencyKeyHeader"
       requestBody:
         content:
           application/json:
@@ -1840,6 +2524,9 @@ paths:
               schema:
                 $ref: "#/components/schemas/HTTPValidationError"
           description: Validation Error
+      security:
+      - TenantContext: []
+        WorkspaceContext: []
       summary: Materialise a SELECT result as a new DERIVED table.
       tags:
       - tables
@@ -1849,9 +2536,16 @@ paths:
   /api/v1/version:
     get:
       operationId: version
+      parameters:
+      - $ref: "#/components/parameters/TenantIdHeader"
+      - $ref: "#/components/parameters/WorkspaceIdHeader"
+      - $ref: "#/components/parameters/CorrelationIdHeader"
       responses:
         "200":
           description: Successful response
+      security:
+      - TenantContext: []
+        WorkspaceContext: []
       summary: Return service name + CalVer version tag.
       tags:
       - meta
@@ -1859,17 +2553,80 @@ paths:
       - application/json
   /api/v1/workspaces:
     get:
+      description: |-
+        Query parameters
+        ----------------
+        * ``q``      -- free-text substring match against ``slug`` or ``name``
+        (case-insensitive ``ILIKE``).
+        * ``slug``   -- exact match on ``slug`` -- gives you slug-based lookup
+        with zero extra round trips.
+        * ``status`` -- exact match (``ACTIVE``, ``ARCHIVED``, ``PURGING``).
+        * ``limit``  -- page size, clamped to [1, 1000]. Default 100.
+        * ``offset`` -- starting offset. Default 0.
+
+        Response envelope: ``{items, total, limit, offset, has_more}``
+        where ``total`` is the un-paginated match count.
       operationId: list_workspaces
+      parameters:
+      - explode: true
+        in: query
+        name: q
+        required: false
+        schema:
+          type: string
+        style: form
+      - explode: true
+        in: query
+        name: slug
+        required: false
+        schema:
+          nullable: true
+          type: string
+        style: form
+      - explode: true
+        in: query
+        name: status
+        required: false
+        schema:
+          type: string
+        style: form
+      - explode: true
+        in: query
+        name: limit
+        required: false
+        schema:
+          default: 100
+          type: integer
+        style: form
+      - explode: true
+        in: query
+        name: offset
+        required: false
+        schema:
+          default: 0
+          type: integer
+        style: form
+      - $ref: "#/components/parameters/TenantIdHeader"
+      - $ref: "#/components/parameters/WorkspaceIdHeader"
+      - $ref: "#/components/parameters/CorrelationIdHeader"
       responses:
         "200":
           description: Successful response
-      summary: Return all workspaces for the caller's tenant.
+      security:
+      - TenantContext: []
+        WorkspaceContext: []
+      summary: Search/filter workspaces for the caller's tenant.
       tags:
       - workspaces
       x-accepts:
       - application/json
     post:
       operationId: create
+      parameters:
+      - $ref: "#/components/parameters/TenantIdHeader"
+      - $ref: "#/components/parameters/WorkspaceIdHeader"
+      - $ref: "#/components/parameters/CorrelationIdHeader"
+      - $ref: "#/components/parameters/IdempotencyKeyHeader"
       requestBody:
         content:
           application/json:
@@ -1889,10 +2646,46 @@ paths:
               schema:
                 $ref: "#/components/schemas/HTTPValidationError"
           description: Validation Error
+      security:
+      - TenantContext: []
+        WorkspaceContext: []
       summary: Create a workspace; tenant comes from ``X-Tenant-Id`` header.
       tags:
       - workspaces
       x-content-type: application/json
+      x-accepts:
+      - application/json
+  /api/v1/workspaces/by-slug/{slug}:
+    get:
+      description: |-
+        Lets SDKs and CLIs resolve a workspace from a memorable identifier
+        instead of carrying around a UUID. Returns 404 if no match.
+      operationId: read_by_slug
+      parameters:
+      - explode: false
+        in: path
+        name: slug
+        required: true
+        schema:
+          nullable: true
+          type: string
+        style: simple
+      - $ref: "#/components/parameters/TenantIdHeader"
+      - $ref: "#/components/parameters/WorkspaceIdHeader"
+      - $ref: "#/components/parameters/CorrelationIdHeader"
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WorkspaceRead"
+          description: Successful response
+      security:
+      - TenantContext: []
+        WorkspaceContext: []
+      summary: "Fetch a workspace by its ``(tenant_id, slug)`` natural key."
+      tags:
+      - workspaces
       x-accepts:
       - application/json
   /api/v1/workspaces/{workspace_id}:
@@ -1907,6 +2700,9 @@ paths:
           nullable: true
           type: string
         style: simple
+      - $ref: "#/components/parameters/TenantIdHeader"
+      - $ref: "#/components/parameters/WorkspaceIdHeader"
+      - $ref: "#/components/parameters/CorrelationIdHeader"
       responses:
         "200":
           content:
@@ -1914,6 +2710,9 @@ paths:
               schema:
                 $ref: "#/components/schemas/WorkspaceRead"
           description: Successful response
+      security:
+      - TenantContext: []
+        WorkspaceContext: []
       summary: Fetch a single workspace by id. Returns 404 if not found.
       tags:
       - workspaces
@@ -1929,6 +2728,10 @@ paths:
         schema:
           type: string
         style: simple
+      - $ref: "#/components/parameters/TenantIdHeader"
+      - $ref: "#/components/parameters/WorkspaceIdHeader"
+      - $ref: "#/components/parameters/CorrelationIdHeader"
+      - $ref: "#/components/parameters/IdempotencyKeyHeader"
       requestBody:
         content:
           application/json:
@@ -1948,6 +2751,9 @@ paths:
               schema:
                 $ref: "#/components/schemas/HTTPValidationError"
           description: Validation Error
+      security:
+      - TenantContext: []
+        WorkspaceContext: []
       summary: Sparse-update a workspace. Only fields present in body are changed.
       tags:
       - workspaces
@@ -1966,15 +2772,91 @@ paths:
         schema:
           type: string
         style: simple
+      - $ref: "#/components/parameters/TenantIdHeader"
+      - $ref: "#/components/parameters/WorkspaceIdHeader"
+      - $ref: "#/components/parameters/CorrelationIdHeader"
+      - $ref: "#/components/parameters/IdempotencyKeyHeader"
       responses:
         "202":
           description: Successful response
+      security:
+      - TenantContext: []
+        WorkspaceContext: []
       summary: "Purge a workspace: mark PURGING + walk + delete all blobs."
       tags:
       - workspaces
       x-accepts:
       - application/json
 components:
+  parameters:
+    AgentTokenHeader:
+      description: Machine-to-machine bearer token. Replaces X-Tenant-Id and X-Workspace-Id
+        on agent-tier endpoints -- the token's claims encode the tenant + workspace
+        + scopes. Issue via ``POST /api/v1/agent-tokens``.
+      example: fqt_live_aBcDeF1234567890aBcDeF1234567890
+      explode: false
+      in: header
+      name: X-Agent-Token
+      required: true
+      schema:
+        minLength: 32
+        type: string
+      style: simple
+    CorrelationIdHeader:
+      description: Optional client-supplied correlation id. The service uses this
+        in every log line and downstream call. If absent the service mints a new UUID
+        and echoes it in the response header.
+      example: 550e8400-e29b-41d4-a716-446655440000
+      explode: false
+      in: header
+      name: X-Correlation-Id
+      required: false
+      schema:
+        format: uuid
+        type: string
+      style: simple
+    IdempotencyKeyHeader:
+      description: Optional client-supplied idempotency key for mutating operations.
+        The first request with a key persists its result; subsequent requests with
+        the same key + same tenant return the cached response. Keys expire after 24h.
+      example: ingest-2026-05-23-abc123
+      explode: false
+      in: header
+      name: Idempotency-Key
+      required: false
+      schema:
+        maxLength: 256
+        minLength: 1
+        type: string
+      style: simple
+    TenantIdHeader:
+      description: Tenant slug. Required on every non-agent endpoint -- bounds the
+        row-level security policy and appears in every audit event. Must match the
+        JWT tenant claim if Authorization is also present.
+      example: acme-corp
+      explode: false
+      in: header
+      name: X-Tenant-Id
+      required: true
+      schema:
+        maxLength: 128
+        minLength: 1
+        type: string
+      style: simple
+    WorkspaceIdHeader:
+      description: "Workspace identifier. Accepts either the workspace UUID or its\
+        \ slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope\
+        \ every query, ingest, and schema KB operation."
+      example: 00000000-0000-0000-0000-000000000001
+      explode: false
+      in: header
+      name: X-Workspace-Id
+      required: true
+      schema:
+        maxLength: 128
+        minLength: 1
+        type: string
+      style: simple
   schemas:
     AgentTokenCreated:
       description: |-
@@ -4372,4 +5254,24 @@ components:
       - loc
       - msg
       - type
+  securitySchemes:
+    AgentToken:
+      description: Bearer token for the agent tier. Required on every ``/api/v1/agent/*``
+        operation. Replaces tenant + workspace headers -- the token's claims carry
+        both.
+      in: header
+      name: X-Agent-Token
+      type: apiKey
+    TenantContext:
+      description: Non-agent operations require ``X-Tenant-Id`` + ``X-Workspace-Id``
+        headers. Treated as an apiKey scheme so Swagger UI's `Authorize` dialog can
+        prefill them across all requests.
+      in: header
+      name: X-Tenant-Id
+      type: apiKey
+    WorkspaceContext:
+      description: Companion header to TenantContext (accepts UUID or slug).
+      in: header
+      name: X-Workspace-Id
+      type: apiKey
 

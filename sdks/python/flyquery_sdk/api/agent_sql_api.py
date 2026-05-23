@@ -15,6 +15,10 @@ from pydantic import validate_call, Field, StrictFloat, StrictStr, StrictInt
 from typing import Any, Dict, List, Optional, Tuple, Union
 from typing_extensions import Annotated
 
+from pydantic import Field
+from typing import Optional
+from typing_extensions import Annotated
+from uuid import UUID
 from flyquery_sdk.models.sql_execute_request import SqlExecuteRequest
 from flyquery_sdk.models.sql_execute_response import SqlExecuteResponse
 
@@ -39,7 +43,10 @@ class AgentSqlApi:
     @validate_call
     async def execute(
         self,
+        x_agent_token: Annotated[str, Field(min_length=32, strict=True, description="Machine-to-machine bearer token. Replaces X-Tenant-Id and X-Workspace-Id on agent-tier endpoints -- the token's claims encode the tenant + workspace + scopes. Issue via ``POST /api/v1/agent-tokens``.")],
         sql_execute_request: SqlExecuteRequest,
+        x_correlation_id: Annotated[Optional[UUID], Field(description="Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.")] = None,
+        idempotency_key: Annotated[Optional[Annotated[str, Field(min_length=1, strict=True, max_length=256)]], Field(description="Optional client-supplied idempotency key for mutating operations. The first request with a key persists its result; subsequent requests with the same key + same tenant return the cached response. Keys expire after 24h.")] = None,
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -57,8 +64,14 @@ class AgentSqlApi:
 
         :param http_request: Starlette request :param body: validated SqlExecuteRequest :return: SqlExecuteResponse
 
+        :param x_agent_token: Machine-to-machine bearer token. Replaces X-Tenant-Id and X-Workspace-Id on agent-tier endpoints -- the token's claims encode the tenant + workspace + scopes. Issue via ``POST /api/v1/agent-tokens``. (required)
+        :type x_agent_token: str
         :param sql_execute_request: (required)
         :type sql_execute_request: SqlExecuteRequest
+        :param x_correlation_id: Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.
+        :type x_correlation_id: UUID
+        :param idempotency_key: Optional client-supplied idempotency key for mutating operations. The first request with a key persists its result; subsequent requests with the same key + same tenant return the cached response. Keys expire after 24h.
+        :type idempotency_key: str
         :param _request_timeout: timeout setting for this request. If one
                                  number provided, it will be total request
                                  timeout. It can also be a pair (tuple) of
@@ -82,7 +95,10 @@ class AgentSqlApi:
         """ # noqa: E501
 
         _param = self._execute_serialize(
+            x_agent_token=x_agent_token,
             sql_execute_request=sql_execute_request,
+            x_correlation_id=x_correlation_id,
+            idempotency_key=idempotency_key,
             _request_auth=_request_auth,
             _content_type=_content_type,
             _headers=_headers,
@@ -107,7 +123,10 @@ class AgentSqlApi:
     @validate_call
     async def execute_with_http_info(
         self,
+        x_agent_token: Annotated[str, Field(min_length=32, strict=True, description="Machine-to-machine bearer token. Replaces X-Tenant-Id and X-Workspace-Id on agent-tier endpoints -- the token's claims encode the tenant + workspace + scopes. Issue via ``POST /api/v1/agent-tokens``.")],
         sql_execute_request: SqlExecuteRequest,
+        x_correlation_id: Annotated[Optional[UUID], Field(description="Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.")] = None,
+        idempotency_key: Annotated[Optional[Annotated[str, Field(min_length=1, strict=True, max_length=256)]], Field(description="Optional client-supplied idempotency key for mutating operations. The first request with a key persists its result; subsequent requests with the same key + same tenant return the cached response. Keys expire after 24h.")] = None,
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -125,8 +144,14 @@ class AgentSqlApi:
 
         :param http_request: Starlette request :param body: validated SqlExecuteRequest :return: SqlExecuteResponse
 
+        :param x_agent_token: Machine-to-machine bearer token. Replaces X-Tenant-Id and X-Workspace-Id on agent-tier endpoints -- the token's claims encode the tenant + workspace + scopes. Issue via ``POST /api/v1/agent-tokens``. (required)
+        :type x_agent_token: str
         :param sql_execute_request: (required)
         :type sql_execute_request: SqlExecuteRequest
+        :param x_correlation_id: Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.
+        :type x_correlation_id: UUID
+        :param idempotency_key: Optional client-supplied idempotency key for mutating operations. The first request with a key persists its result; subsequent requests with the same key + same tenant return the cached response. Keys expire after 24h.
+        :type idempotency_key: str
         :param _request_timeout: timeout setting for this request. If one
                                  number provided, it will be total request
                                  timeout. It can also be a pair (tuple) of
@@ -150,7 +175,10 @@ class AgentSqlApi:
         """ # noqa: E501
 
         _param = self._execute_serialize(
+            x_agent_token=x_agent_token,
             sql_execute_request=sql_execute_request,
+            x_correlation_id=x_correlation_id,
+            idempotency_key=idempotency_key,
             _request_auth=_request_auth,
             _content_type=_content_type,
             _headers=_headers,
@@ -175,7 +203,10 @@ class AgentSqlApi:
     @validate_call
     async def execute_without_preload_content(
         self,
+        x_agent_token: Annotated[str, Field(min_length=32, strict=True, description="Machine-to-machine bearer token. Replaces X-Tenant-Id and X-Workspace-Id on agent-tier endpoints -- the token's claims encode the tenant + workspace + scopes. Issue via ``POST /api/v1/agent-tokens``.")],
         sql_execute_request: SqlExecuteRequest,
+        x_correlation_id: Annotated[Optional[UUID], Field(description="Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.")] = None,
+        idempotency_key: Annotated[Optional[Annotated[str, Field(min_length=1, strict=True, max_length=256)]], Field(description="Optional client-supplied idempotency key for mutating operations. The first request with a key persists its result; subsequent requests with the same key + same tenant return the cached response. Keys expire after 24h.")] = None,
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -193,8 +224,14 @@ class AgentSqlApi:
 
         :param http_request: Starlette request :param body: validated SqlExecuteRequest :return: SqlExecuteResponse
 
+        :param x_agent_token: Machine-to-machine bearer token. Replaces X-Tenant-Id and X-Workspace-Id on agent-tier endpoints -- the token's claims encode the tenant + workspace + scopes. Issue via ``POST /api/v1/agent-tokens``. (required)
+        :type x_agent_token: str
         :param sql_execute_request: (required)
         :type sql_execute_request: SqlExecuteRequest
+        :param x_correlation_id: Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.
+        :type x_correlation_id: UUID
+        :param idempotency_key: Optional client-supplied idempotency key for mutating operations. The first request with a key persists its result; subsequent requests with the same key + same tenant return the cached response. Keys expire after 24h.
+        :type idempotency_key: str
         :param _request_timeout: timeout setting for this request. If one
                                  number provided, it will be total request
                                  timeout. It can also be a pair (tuple) of
@@ -218,7 +255,10 @@ class AgentSqlApi:
         """ # noqa: E501
 
         _param = self._execute_serialize(
+            x_agent_token=x_agent_token,
             sql_execute_request=sql_execute_request,
+            x_correlation_id=x_correlation_id,
+            idempotency_key=idempotency_key,
             _request_auth=_request_auth,
             _content_type=_content_type,
             _headers=_headers,
@@ -238,7 +278,10 @@ class AgentSqlApi:
 
     def _execute_serialize(
         self,
+        x_agent_token,
         sql_execute_request,
+        x_correlation_id,
+        idempotency_key,
         _request_auth,
         _content_type,
         _headers,
@@ -262,6 +305,12 @@ class AgentSqlApi:
         # process the path parameters
         # process the query parameters
         # process the header parameters
+        if x_agent_token is not None:
+            _header_params['X-Agent-Token'] = x_agent_token
+        if x_correlation_id is not None:
+            _header_params['X-Correlation-Id'] = x_correlation_id
+        if idempotency_key is not None:
+            _header_params['Idempotency-Key'] = idempotency_key
         # process the form parameters
         # process the body parameter
         if sql_execute_request is not None:
@@ -292,6 +341,7 @@ class AgentSqlApi:
 
         # authentication setting
         _auth_settings: List[str] = [
+            'AgentToken'
         ]
 
         return self.api_client.param_serialize(
@@ -315,7 +365,10 @@ class AgentSqlApi:
     @validate_call
     async def execute_stream(
         self,
+        x_agent_token: Annotated[str, Field(min_length=32, strict=True, description="Machine-to-machine bearer token. Replaces X-Tenant-Id and X-Workspace-Id on agent-tier endpoints -- the token's claims encode the tenant + workspace + scopes. Issue via ``POST /api/v1/agent-tokens``.")],
         sql_execute_request: SqlExecuteRequest,
+        x_correlation_id: Annotated[Optional[UUID], Field(description="Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.")] = None,
+        idempotency_key: Annotated[Optional[Annotated[str, Field(min_length=1, strict=True, max_length=256)]], Field(description="Optional client-supplied idempotency key for mutating operations. The first request with a key persists its result; subsequent requests with the same key + same tenant return the cached response. Keys expire after 24h.")] = None,
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -333,8 +386,14 @@ class AgentSqlApi:
 
         :param http_request: Starlette request :param body: validated SqlExecuteRequest :return: StreamingResponse with text/event-stream
 
+        :param x_agent_token: Machine-to-machine bearer token. Replaces X-Tenant-Id and X-Workspace-Id on agent-tier endpoints -- the token's claims encode the tenant + workspace + scopes. Issue via ``POST /api/v1/agent-tokens``. (required)
+        :type x_agent_token: str
         :param sql_execute_request: (required)
         :type sql_execute_request: SqlExecuteRequest
+        :param x_correlation_id: Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.
+        :type x_correlation_id: UUID
+        :param idempotency_key: Optional client-supplied idempotency key for mutating operations. The first request with a key persists its result; subsequent requests with the same key + same tenant return the cached response. Keys expire after 24h.
+        :type idempotency_key: str
         :param _request_timeout: timeout setting for this request. If one
                                  number provided, it will be total request
                                  timeout. It can also be a pair (tuple) of
@@ -358,7 +417,10 @@ class AgentSqlApi:
         """ # noqa: E501
 
         _param = self._execute_stream_serialize(
+            x_agent_token=x_agent_token,
             sql_execute_request=sql_execute_request,
+            x_correlation_id=x_correlation_id,
+            idempotency_key=idempotency_key,
             _request_auth=_request_auth,
             _content_type=_content_type,
             _headers=_headers,
@@ -383,7 +445,10 @@ class AgentSqlApi:
     @validate_call
     async def execute_stream_with_http_info(
         self,
+        x_agent_token: Annotated[str, Field(min_length=32, strict=True, description="Machine-to-machine bearer token. Replaces X-Tenant-Id and X-Workspace-Id on agent-tier endpoints -- the token's claims encode the tenant + workspace + scopes. Issue via ``POST /api/v1/agent-tokens``.")],
         sql_execute_request: SqlExecuteRequest,
+        x_correlation_id: Annotated[Optional[UUID], Field(description="Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.")] = None,
+        idempotency_key: Annotated[Optional[Annotated[str, Field(min_length=1, strict=True, max_length=256)]], Field(description="Optional client-supplied idempotency key for mutating operations. The first request with a key persists its result; subsequent requests with the same key + same tenant return the cached response. Keys expire after 24h.")] = None,
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -401,8 +466,14 @@ class AgentSqlApi:
 
         :param http_request: Starlette request :param body: validated SqlExecuteRequest :return: StreamingResponse with text/event-stream
 
+        :param x_agent_token: Machine-to-machine bearer token. Replaces X-Tenant-Id and X-Workspace-Id on agent-tier endpoints -- the token's claims encode the tenant + workspace + scopes. Issue via ``POST /api/v1/agent-tokens``. (required)
+        :type x_agent_token: str
         :param sql_execute_request: (required)
         :type sql_execute_request: SqlExecuteRequest
+        :param x_correlation_id: Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.
+        :type x_correlation_id: UUID
+        :param idempotency_key: Optional client-supplied idempotency key for mutating operations. The first request with a key persists its result; subsequent requests with the same key + same tenant return the cached response. Keys expire after 24h.
+        :type idempotency_key: str
         :param _request_timeout: timeout setting for this request. If one
                                  number provided, it will be total request
                                  timeout. It can also be a pair (tuple) of
@@ -426,7 +497,10 @@ class AgentSqlApi:
         """ # noqa: E501
 
         _param = self._execute_stream_serialize(
+            x_agent_token=x_agent_token,
             sql_execute_request=sql_execute_request,
+            x_correlation_id=x_correlation_id,
+            idempotency_key=idempotency_key,
             _request_auth=_request_auth,
             _content_type=_content_type,
             _headers=_headers,
@@ -451,7 +525,10 @@ class AgentSqlApi:
     @validate_call
     async def execute_stream_without_preload_content(
         self,
+        x_agent_token: Annotated[str, Field(min_length=32, strict=True, description="Machine-to-machine bearer token. Replaces X-Tenant-Id and X-Workspace-Id on agent-tier endpoints -- the token's claims encode the tenant + workspace + scopes. Issue via ``POST /api/v1/agent-tokens``.")],
         sql_execute_request: SqlExecuteRequest,
+        x_correlation_id: Annotated[Optional[UUID], Field(description="Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.")] = None,
+        idempotency_key: Annotated[Optional[Annotated[str, Field(min_length=1, strict=True, max_length=256)]], Field(description="Optional client-supplied idempotency key for mutating operations. The first request with a key persists its result; subsequent requests with the same key + same tenant return the cached response. Keys expire after 24h.")] = None,
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -469,8 +546,14 @@ class AgentSqlApi:
 
         :param http_request: Starlette request :param body: validated SqlExecuteRequest :return: StreamingResponse with text/event-stream
 
+        :param x_agent_token: Machine-to-machine bearer token. Replaces X-Tenant-Id and X-Workspace-Id on agent-tier endpoints -- the token's claims encode the tenant + workspace + scopes. Issue via ``POST /api/v1/agent-tokens``. (required)
+        :type x_agent_token: str
         :param sql_execute_request: (required)
         :type sql_execute_request: SqlExecuteRequest
+        :param x_correlation_id: Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.
+        :type x_correlation_id: UUID
+        :param idempotency_key: Optional client-supplied idempotency key for mutating operations. The first request with a key persists its result; subsequent requests with the same key + same tenant return the cached response. Keys expire after 24h.
+        :type idempotency_key: str
         :param _request_timeout: timeout setting for this request. If one
                                  number provided, it will be total request
                                  timeout. It can also be a pair (tuple) of
@@ -494,7 +577,10 @@ class AgentSqlApi:
         """ # noqa: E501
 
         _param = self._execute_stream_serialize(
+            x_agent_token=x_agent_token,
             sql_execute_request=sql_execute_request,
+            x_correlation_id=x_correlation_id,
+            idempotency_key=idempotency_key,
             _request_auth=_request_auth,
             _content_type=_content_type,
             _headers=_headers,
@@ -514,7 +600,10 @@ class AgentSqlApi:
 
     def _execute_stream_serialize(
         self,
+        x_agent_token,
         sql_execute_request,
+        x_correlation_id,
+        idempotency_key,
         _request_auth,
         _content_type,
         _headers,
@@ -538,6 +627,12 @@ class AgentSqlApi:
         # process the path parameters
         # process the query parameters
         # process the header parameters
+        if x_agent_token is not None:
+            _header_params['X-Agent-Token'] = x_agent_token
+        if x_correlation_id is not None:
+            _header_params['X-Correlation-Id'] = x_correlation_id
+        if idempotency_key is not None:
+            _header_params['Idempotency-Key'] = idempotency_key
         # process the form parameters
         # process the body parameter
         if sql_execute_request is not None:
@@ -568,6 +663,7 @@ class AgentSqlApi:
 
         # authentication setting
         _auth_settings: List[str] = [
+            'AgentToken'
         ]
 
         return self.api_client.param_serialize(

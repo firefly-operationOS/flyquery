@@ -1,5 +1,65 @@
 {
   "components": {
+    "parameters": {
+      "AgentTokenHeader": {
+        "description": "Machine-to-machine bearer token. Replaces X-Tenant-Id and X-Workspace-Id on agent-tier endpoints -- the token's claims encode the tenant + workspace + scopes. Issue via ``POST /api/v1/agent-tokens``.",
+        "example": "fqt_live_aBcDeF1234567890aBcDeF1234567890",
+        "in": "header",
+        "name": "X-Agent-Token",
+        "required": true,
+        "schema": {
+          "minLength": 32,
+          "type": "string"
+        }
+      },
+      "CorrelationIdHeader": {
+        "description": "Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.",
+        "example": "550e8400-e29b-41d4-a716-446655440000",
+        "in": "header",
+        "name": "X-Correlation-Id",
+        "required": false,
+        "schema": {
+          "format": "uuid",
+          "type": "string"
+        }
+      },
+      "IdempotencyKeyHeader": {
+        "description": "Optional client-supplied idempotency key for mutating operations. The first request with a key persists its result; subsequent requests with the same key + same tenant return the cached response. Keys expire after 24h.",
+        "example": "ingest-2026-05-23-abc123",
+        "in": "header",
+        "name": "Idempotency-Key",
+        "required": false,
+        "schema": {
+          "maxLength": 256,
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "TenantIdHeader": {
+        "description": "Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present.",
+        "example": "acme-corp",
+        "in": "header",
+        "name": "X-Tenant-Id",
+        "required": true,
+        "schema": {
+          "maxLength": 128,
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "WorkspaceIdHeader": {
+        "description": "Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation.",
+        "example": "00000000-0000-0000-0000-000000000001",
+        "in": "header",
+        "name": "X-Workspace-Id",
+        "required": true,
+        "schema": {
+          "maxLength": 128,
+          "minLength": 1,
+          "type": "string"
+        }
+      }
+    },
     "schemas": {
       "AgentTokenCreated": {
         "description": "Mint response: includes the full ``token`` ONCE.\n\nSubsequent reads only ever expose ``prefix`` -- the secret hash\nis stored server-side and never returned. Callers MUST\ncapture the token at mint time; there is no recovery path.",
@@ -3267,6 +3327,26 @@
         "title": "WorkspaceUpdate",
         "type": "object"
       }
+    },
+    "securitySchemes": {
+      "AgentToken": {
+        "description": "Bearer token for the agent tier. Required on every ``/api/v1/agent/*`` operation. Replaces tenant + workspace headers -- the token's claims carry both.",
+        "in": "header",
+        "name": "X-Agent-Token",
+        "type": "apiKey"
+      },
+      "TenantContext": {
+        "description": "Non-agent operations require ``X-Tenant-Id`` + ``X-Workspace-Id`` headers. Treated as an apiKey scheme so Swagger UI's `Authorize` dialog can prefill them across all requests.",
+        "in": "header",
+        "name": "X-Tenant-Id",
+        "type": "apiKey"
+      },
+      "WorkspaceContext": {
+        "description": "Companion header to TenantContext (accepts UUID or slug).",
+        "in": "header",
+        "name": "X-Workspace-Id",
+        "type": "apiKey"
+      }
     }
   },
   "info": {
@@ -3287,6 +3367,17 @@
       "get": {
         "description": "Returns the summary shape only -- the secret is never\nround-tripped on this endpoint.",
         "operationId": "list_tokens",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/TenantIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/WorkspaceIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/CorrelationIdHeader"
+          }
+        ],
         "responses": {
           "200": {
             "content": {
@@ -3302,6 +3393,12 @@
             "description": "Successful response"
           }
         },
+        "security": [
+          {
+            "TenantContext": [],
+            "WorkspaceContext": []
+          }
+        ],
         "summary": "List tokens for the current tenant (newest first).",
         "tags": [
           "agent-tokens"
@@ -3310,6 +3407,20 @@
       "post": {
         "description": "Returns 201 with the full ``token`` populated. The token is\nonly returned this once -- subsequent reads expose only\n``prefix``. Refuses agent-tier callers with\n``403 agent_cannot_mint``.",
         "operationId": "mint",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/TenantIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/WorkspaceIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/CorrelationIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/IdempotencyKeyHeader"
+          }
+        ],
         "requestBody": {
           "content": {
             "application/json": {
@@ -3342,6 +3453,12 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "TenantContext": [],
+            "WorkspaceContext": []
+          }
+        ],
         "summary": "Mint a new agent token.",
         "tags": [
           "agent-tokens"
@@ -3360,6 +3477,18 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "$ref": "#/components/parameters/TenantIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/WorkspaceIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/CorrelationIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/IdempotencyKeyHeader"
           }
         ],
         "responses": {
@@ -3367,6 +3496,12 @@
             "description": "No Content"
           }
         },
+        "security": [
+          {
+            "TenantContext": [],
+            "WorkspaceContext": []
+          }
+        ],
         "summary": "Revoke a token. Idempotent -- already-revoked is a no-op (204).",
         "tags": [
           "agent-tokens"
@@ -3395,6 +3530,12 @@
               "default": null,
               "type": "string"
             }
+          },
+          {
+            "$ref": "#/components/parameters/AgentTokenHeader"
+          },
+          {
+            "$ref": "#/components/parameters/CorrelationIdHeader"
           }
         ],
         "responses": {
@@ -3402,6 +3543,11 @@
             "description": "Successful response"
           }
         },
+        "security": [
+          {
+            "AgentToken": []
+          }
+        ],
         "summary": "List examples for the caller's workspace (agent-tier).",
         "tags": [
           "agent-examples"
@@ -3410,6 +3556,17 @@
       "post": {
         "description": ":param http_request: Starlette request\n:param body: validated ExampleCreate\n:return: ExampleRead with created fields",
         "operationId": "create",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/AgentTokenHeader"
+          },
+          {
+            "$ref": "#/components/parameters/CorrelationIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/IdempotencyKeyHeader"
+          }
+        ],
         "requestBody": {
           "content": {
             "application/json": {
@@ -3442,6 +3599,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "AgentToken": []
+          }
+        ],
         "summary": "Create an example (agent-tier \u2014 source=AGENT_LEARNED, quality=PROPOSED).",
         "tags": [
           "agent-examples"
@@ -3452,6 +3614,17 @@
       "post": {
         "description": ":param http_request: Starlette request (provides tenant context + agent token)\n:param body: validated QueryRequest\n:return: AnswerResponse",
         "operationId": "query",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/AgentTokenHeader"
+          },
+          {
+            "$ref": "#/components/parameters/CorrelationIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/IdempotencyKeyHeader"
+          }
+        ],
         "requestBody": {
           "content": {
             "application/json": {
@@ -3484,6 +3657,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "AgentToken": []
+          }
+        ],
         "summary": "Run the full NL \u2192 SQL \u2192 result pipeline (agent-tier).",
         "tags": [
           "agent-query"
@@ -3494,6 +3672,17 @@
       "post": {
         "description": ":param http_request: Starlette request\n:param body: validated QueryRequest\n:return: StreamingResponse with text/event-stream",
         "operationId": "stream",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/AgentTokenHeader"
+          },
+          {
+            "$ref": "#/components/parameters/CorrelationIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/IdempotencyKeyHeader"
+          }
+        ],
         "requestBody": {
           "content": {
             "application/json": {
@@ -3519,6 +3708,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "AgentToken": []
+          }
+        ],
         "summary": "Run the pipeline as SSE stream (agent-tier).",
         "tags": [
           "agent-query"
@@ -3529,6 +3723,17 @@
       "post": {
         "description": ":param http_request: Starlette request\n:param body: validated QueryRequest\n:return: ExplainResponse with candidate SQL and reasoning",
         "operationId": "explain",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/AgentTokenHeader"
+          },
+          {
+            "$ref": "#/components/parameters/CorrelationIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/IdempotencyKeyHeader"
+          }
+        ],
         "requestBody": {
           "content": {
             "application/json": {
@@ -3561,6 +3766,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "AgentToken": []
+          }
+        ],
         "summary": "Run Grounding + Generation only (agent-tier).",
         "tags": [
           "agent-query"
@@ -3571,6 +3781,17 @@
       "post": {
         "description": ":param http_request: Starlette request\n:param body: validated QueryRequest\n:return: ValidateResponse",
         "operationId": "validate",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/AgentTokenHeader"
+          },
+          {
+            "$ref": "#/components/parameters/CorrelationIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/IdempotencyKeyHeader"
+          }
+        ],
         "requestBody": {
           "content": {
             "application/json": {
@@ -3603,6 +3824,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "AgentToken": []
+          }
+        ],
         "summary": "Run Grounding + Generation + AST + ScopeGuard (agent-tier).",
         "tags": [
           "agent-query"
@@ -3613,6 +3839,17 @@
       "post": {
         "description": ":param http_request: Starlette request\n:param body: validated SqlExecuteRequest\n:return: SqlExecuteResponse",
         "operationId": "execute",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/AgentTokenHeader"
+          },
+          {
+            "$ref": "#/components/parameters/CorrelationIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/IdempotencyKeyHeader"
+          }
+        ],
         "requestBody": {
           "content": {
             "application/json": {
@@ -3645,6 +3882,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "AgentToken": []
+          }
+        ],
         "summary": "Execute SQL directly (agent-tier).",
         "tags": [
           "agent-sql"
@@ -3655,6 +3897,17 @@
       "post": {
         "description": ":param http_request: Starlette request\n:param body: validated SqlExecuteRequest\n:return: StreamingResponse with text/event-stream",
         "operationId": "execute_stream",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/AgentTokenHeader"
+          },
+          {
+            "$ref": "#/components/parameters/CorrelationIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/IdempotencyKeyHeader"
+          }
+        ],
         "requestBody": {
           "content": {
             "application/json": {
@@ -3680,6 +3933,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "AgentToken": []
+          }
+        ],
         "summary": "Execute SQL as SSE stream (agent-tier).",
         "tags": [
           "agent-sql"
@@ -3690,11 +3948,24 @@
       "get": {
         "description": "Requires a valid ``X-Agent-Token`` with ``flyquery.audit:read`` scope.\nMissing or invalid tokens return 401 / 403 respectively.",
         "operationId": "version",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/AgentTokenHeader"
+          },
+          {
+            "$ref": "#/components/parameters/CorrelationIdHeader"
+          }
+        ],
         "responses": {
           "200": {
             "description": "Successful response"
           }
         },
+        "security": [
+          {
+            "AgentToken": []
+          }
+        ],
         "summary": "Return service name + CalVer version tag.",
         "tags": [
           "meta"
@@ -3705,11 +3976,28 @@
       "get": {
         "description": ":param http_request: Starlette request\n:return: ``{\"items\": [...]}``",
         "operationId": "list_conversations",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/TenantIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/WorkspaceIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/CorrelationIdHeader"
+          }
+        ],
         "responses": {
           "200": {
             "description": "Successful response"
           }
         },
+        "security": [
+          {
+            "TenantContext": [],
+            "WorkspaceContext": []
+          }
+        ],
         "summary": "List conversations for the caller's workspace, newest first.",
         "tags": [
           "conversations"
@@ -3718,6 +4006,20 @@
       "post": {
         "description": ":param http_request: Starlette request (tenant context headers)\n:param body: optional title\n:return: the new ConversationRead (no turns yet)",
         "operationId": "create",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/TenantIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/WorkspaceIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/CorrelationIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/IdempotencyKeyHeader"
+          }
+        ],
         "requestBody": {
           "content": {
             "application/json": {
@@ -3750,6 +4052,12 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "TenantContext": [],
+            "WorkspaceContext": []
+          }
+        ],
         "summary": "Create a new conversation.",
         "tags": [
           "conversations"
@@ -3768,6 +4076,15 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "$ref": "#/components/parameters/TenantIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/WorkspaceIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/CorrelationIdHeader"
           }
         ],
         "responses": {
@@ -3782,6 +4099,12 @@
             "description": "Successful response"
           }
         },
+        "security": [
+          {
+            "TenantContext": [],
+            "WorkspaceContext": []
+          }
+        ],
         "summary": "Fetch a conversation with all its turns.",
         "tags": [
           "conversations"
@@ -3800,6 +4123,18 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "$ref": "#/components/parameters/TenantIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/WorkspaceIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/CorrelationIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/IdempotencyKeyHeader"
           }
         ],
         "requestBody": {
@@ -3834,6 +4169,12 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "TenantContext": [],
+            "WorkspaceContext": []
+          }
+        ],
         "summary": "Ask a follow-up question inside an existing conversation.",
         "tags": [
           "conversations"
@@ -3842,19 +4183,105 @@
     },
     "/api/v1/datasets": {
       "get": {
+        "description": "Query parameters\n----------------\n* ``q``            -- free-text substring against ``name`` or\n``description`` (case-insensitive ``ILIKE``).\n* ``name``         -- exact match -- gives you name-based lookup\nwith zero extra round-trips.\n* ``status``       -- ``ACTIVE`` / ``ARCHIVED`` / ``PURGING``.\n* ``workspace_id`` -- restrict to a single workspace; defaults to\n``X-Workspace-Id`` header. Pass another UUID\nexplicitly to override the header.\n* ``limit``        -- page size, clamped to [1, 1000]. Default 100.\n* ``offset``       -- starting offset. Default 0.\n\nResponse envelope: ``{items, total, limit, offset, has_more}``.",
         "operationId": "list_datasets",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "default": null,
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "name",
+            "required": false,
+            "schema": {
+              "default": null,
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "default": null,
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "workspace_id",
+            "required": false,
+            "schema": {
+              "default": null,
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 100,
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "type": "integer"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/TenantIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/WorkspaceIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/CorrelationIdHeader"
+          }
+        ],
         "responses": {
           "200": {
             "description": "Successful response"
           }
         },
-        "summary": "Return all datasets for the caller's tenant+workspace.",
+        "security": [
+          {
+            "TenantContext": [],
+            "WorkspaceContext": []
+          }
+        ],
+        "summary": "Search/filter datasets for the caller's tenant.",
         "tags": [
           "datasets"
         ]
       },
       "post": {
         "operationId": "create",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/TenantIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/WorkspaceIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/CorrelationIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/IdempotencyKeyHeader"
+          }
+        ],
         "requestBody": {
           "content": {
             "application/json": {
@@ -3887,7 +4314,60 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "TenantContext": [],
+            "WorkspaceContext": []
+          }
+        ],
         "summary": "Create a dataset; tenant + workspace come from request headers.",
+        "tags": [
+          "datasets"
+        ]
+      }
+    },
+    "/api/v1/datasets/by-name/{name}": {
+      "get": {
+        "description": "Reads the workspace scope from ``X-Workspace-Id``. Datasets enforce\n``UNIQUE(workspace_id, name)`` so the lookup always returns 0 or 1.",
+        "operationId": "read_by_name",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/TenantIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/WorkspaceIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/CorrelationIdHeader"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DatasetRead"
+                }
+              }
+            },
+            "description": "Successful response"
+          }
+        },
+        "security": [
+          {
+            "TenantContext": [],
+            "WorkspaceContext": []
+          }
+        ],
+        "summary": "Resolve a dataset by ``(tenant_id, workspace_id, name)``.",
         "tags": [
           "datasets"
         ]
@@ -3904,6 +4384,18 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "$ref": "#/components/parameters/TenantIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/WorkspaceIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/CorrelationIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/IdempotencyKeyHeader"
           }
         ],
         "responses": {
@@ -3918,6 +4410,12 @@
             "description": "Successful response"
           }
         },
+        "security": [
+          {
+            "TenantContext": [],
+            "WorkspaceContext": []
+          }
+        ],
         "summary": "Archive a dataset (set status=ARCHIVED).",
         "tags": [
           "datasets"
@@ -3933,6 +4431,15 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "$ref": "#/components/parameters/TenantIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/WorkspaceIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/CorrelationIdHeader"
           }
         ],
         "responses": {
@@ -3947,6 +4454,12 @@
             "description": "Successful response"
           }
         },
+        "security": [
+          {
+            "TenantContext": [],
+            "WorkspaceContext": []
+          }
+        ],
         "summary": "Fetch a single dataset by id. Returns 404 if not found.",
         "tags": [
           "datasets"
@@ -3962,6 +4475,18 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "$ref": "#/components/parameters/TenantIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/WorkspaceIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/CorrelationIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/IdempotencyKeyHeader"
           }
         ],
         "requestBody": {
@@ -3996,6 +4521,12 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "TenantContext": [],
+            "WorkspaceContext": []
+          }
+        ],
         "summary": "Sparse-update a dataset. Only fields present in body are changed.",
         "tags": [
           "datasets"
@@ -4013,6 +4544,18 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "$ref": "#/components/parameters/TenantIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/WorkspaceIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/CorrelationIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/IdempotencyKeyHeader"
           }
         ],
         "responses": {
@@ -4027,6 +4570,12 @@
             "description": "Successful response"
           }
         },
+        "security": [
+          {
+            "TenantContext": [],
+            "WorkspaceContext": []
+          }
+        ],
         "summary": "Accept a multipart file upload and run the synchronous ingestion pipeline.",
         "tags": [
           "files"
@@ -4044,6 +4593,15 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "$ref": "#/components/parameters/TenantIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/WorkspaceIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/CorrelationIdHeader"
           }
         ],
         "responses": {
@@ -4051,6 +4609,12 @@
             "description": "Successful response"
           }
         },
+        "security": [
+          {
+            "TenantContext": [],
+            "WorkspaceContext": []
+          }
+        ],
         "summary": "List relations for a dataset (all statuses by default).",
         "tags": [
           "relations"
@@ -4068,6 +4632,15 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "$ref": "#/components/parameters/TenantIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/WorkspaceIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/CorrelationIdHeader"
           }
         ],
         "responses": {
@@ -4075,6 +4648,12 @@
             "description": "Successful response"
           }
         },
+        "security": [
+          {
+            "TenantContext": [],
+            "WorkspaceContext": []
+          }
+        ],
         "tags": [
           "tables"
         ]
@@ -4099,6 +4678,18 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "$ref": "#/components/parameters/TenantIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/WorkspaceIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/CorrelationIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/IdempotencyKeyHeader"
           }
         ],
         "responses": {
@@ -4113,6 +4704,12 @@
             "description": "Successful response"
           }
         },
+        "security": [
+          {
+            "TenantContext": [],
+            "WorkspaceContext": []
+          }
+        ],
         "summary": "Re-upload into an existing table slot; creates a new snapshot.",
         "tags": [
           "files"
@@ -4140,6 +4737,15 @@
               "default": null,
               "type": "string"
             }
+          },
+          {
+            "$ref": "#/components/parameters/TenantIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/WorkspaceIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/CorrelationIdHeader"
           }
         ],
         "responses": {
@@ -4147,6 +4753,12 @@
             "description": "Successful response"
           }
         },
+        "security": [
+          {
+            "TenantContext": [],
+            "WorkspaceContext": []
+          }
+        ],
         "summary": "List examples for the caller's workspace, with optional filters.",
         "tags": [
           "examples"
@@ -4154,6 +4766,20 @@
       },
       "post": {
         "operationId": "create",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/TenantIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/WorkspaceIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/CorrelationIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/IdempotencyKeyHeader"
+          }
+        ],
         "requestBody": {
           "content": {
             "application/json": {
@@ -4186,6 +4812,12 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "TenantContext": [],
+            "WorkspaceContext": []
+          }
+        ],
         "summary": "Create an example; defaults to source=USER_CURATED, quality=PROPOSED.",
         "tags": [
           "examples"
@@ -4203,6 +4835,18 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "$ref": "#/components/parameters/TenantIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/WorkspaceIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/CorrelationIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/IdempotencyKeyHeader"
           }
         ],
         "responses": {
@@ -4217,6 +4861,12 @@
             "description": "Successful response"
           }
         },
+        "security": [
+          {
+            "TenantContext": [],
+            "WorkspaceContext": []
+          }
+        ],
         "summary": "Approve an example (quality \u2192 APPROVED).",
         "tags": [
           "examples"
@@ -4234,6 +4884,18 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "$ref": "#/components/parameters/TenantIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/WorkspaceIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/CorrelationIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/IdempotencyKeyHeader"
           }
         ],
         "responses": {
@@ -4248,6 +4910,12 @@
             "description": "Successful response"
           }
         },
+        "security": [
+          {
+            "TenantContext": [],
+            "WorkspaceContext": []
+          }
+        ],
         "summary": "Reject an example (quality \u2192 REJECTED).",
         "tags": [
           "examples"
@@ -4275,6 +4943,15 @@
               "default": 0,
               "type": "integer"
             }
+          },
+          {
+            "$ref": "#/components/parameters/TenantIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/WorkspaceIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/CorrelationIdHeader"
           }
         ],
         "responses": {
@@ -4282,6 +4959,12 @@
             "description": "Successful response"
           }
         },
+        "security": [
+          {
+            "TenantContext": [],
+            "WorkspaceContext": []
+          }
+        ],
         "summary": "Return paginated glossary terms for the caller's workspace.",
         "tags": [
           "glossary"
@@ -4289,6 +4972,20 @@
       },
       "post": {
         "operationId": "create",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/TenantIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/WorkspaceIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/CorrelationIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/IdempotencyKeyHeader"
+          }
+        ],
         "requestBody": {
           "content": {
             "application/json": {
@@ -4321,6 +5018,12 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "TenantContext": [],
+            "WorkspaceContext": []
+          }
+        ],
         "summary": "Create a glossary term; (workspace_id, term) must be unique.",
         "tags": [
           "glossary"
@@ -4338,6 +5041,18 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "$ref": "#/components/parameters/TenantIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/WorkspaceIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/CorrelationIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/IdempotencyKeyHeader"
           }
         ],
         "responses": {
@@ -4345,6 +5060,12 @@
             "description": "No Content"
           }
         },
+        "security": [
+          {
+            "TenantContext": [],
+            "WorkspaceContext": []
+          }
+        ],
         "summary": "Hard-delete a glossary term.",
         "tags": [
           "glossary"
@@ -4360,6 +5081,18 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "$ref": "#/components/parameters/TenantIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/WorkspaceIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/CorrelationIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/IdempotencyKeyHeader"
           }
         ],
         "requestBody": {
@@ -4394,6 +5127,12 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "TenantContext": [],
+            "WorkspaceContext": []
+          }
+        ],
         "summary": "Sparse-update a glossary term.",
         "tags": [
           "glossary"
@@ -4403,6 +5142,17 @@
     "/api/v1/ingest-jobs": {
       "get": {
         "operationId": "list_jobs",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/TenantIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/WorkspaceIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/CorrelationIdHeader"
+          }
+        ],
         "responses": {
           "200": {
             "content": {
@@ -4415,6 +5165,12 @@
             "description": "Successful response"
           }
         },
+        "security": [
+          {
+            "TenantContext": [],
+            "WorkspaceContext": []
+          }
+        ],
         "summary": "List ingest jobs with optional filters.",
         "tags": [
           "ingest"
@@ -4422,6 +5178,20 @@
       },
       "post": {
         "operationId": "create_job",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/TenantIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/WorkspaceIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/CorrelationIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/IdempotencyKeyHeader"
+          }
+        ],
         "responses": {
           "201": {
             "content": {
@@ -4434,6 +5204,12 @@
             "description": "Successful response"
           }
         },
+        "security": [
+          {
+            "TenantContext": [],
+            "WorkspaceContext": []
+          }
+        ],
         "summary": "Start a background ingestion job (REPARSE/SAMPLE_REFRESH/DESCRIBE_PASS/RELATION_PASS).",
         "tags": [
           "ingest"
@@ -4451,6 +5227,15 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "$ref": "#/components/parameters/TenantIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/WorkspaceIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/CorrelationIdHeader"
           }
         ],
         "responses": {
@@ -4465,6 +5250,12 @@
             "description": "Successful response"
           }
         },
+        "security": [
+          {
+            "TenantContext": [],
+            "WorkspaceContext": []
+          }
+        ],
         "summary": "Get a single ingest job.",
         "tags": [
           "ingest"
@@ -4482,6 +5273,15 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "$ref": "#/components/parameters/TenantIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/WorkspaceIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/CorrelationIdHeader"
           }
         ],
         "responses": {
@@ -4496,6 +5296,12 @@
             "description": "Successful response"
           }
         },
+        "security": [
+          {
+            "TenantContext": [],
+            "WorkspaceContext": []
+          }
+        ],
         "summary": "Paginated event ledger for a job.",
         "tags": [
           "ingest"
@@ -4514,6 +5320,15 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "$ref": "#/components/parameters/TenantIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/WorkspaceIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/CorrelationIdHeader"
           }
         ],
         "responses": {
@@ -4521,6 +5336,12 @@
             "description": "Successful response"
           }
         },
+        "security": [
+          {
+            "TenantContext": [],
+            "WorkspaceContext": []
+          }
+        ],
         "summary": "SSE stream for real-time job progress.",
         "tags": [
           "ingest"
@@ -4538,6 +5359,18 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "$ref": "#/components/parameters/TenantIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/WorkspaceIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/CorrelationIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/IdempotencyKeyHeader"
           }
         ],
         "responses": {
@@ -4552,6 +5385,12 @@
             "description": "Successful response"
           }
         },
+        "security": [
+          {
+            "TenantContext": [],
+            "WorkspaceContext": []
+          }
+        ],
         "summary": "Cooperatively cancel a job (idempotent for terminal jobs).",
         "tags": [
           "ingest"
@@ -4562,6 +5401,20 @@
       "post": {
         "description": ":param http_request: Starlette request (provides tenant context headers)\n:param body: validated QueryRequest\n:return: AnswerResponse with SQL, preview rows, chart hint, and explanation",
         "operationId": "query",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/TenantIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/WorkspaceIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/CorrelationIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/IdempotencyKeyHeader"
+          }
+        ],
         "requestBody": {
           "content": {
             "application/json": {
@@ -4594,6 +5447,12 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "TenantContext": [],
+            "WorkspaceContext": []
+          }
+        ],
         "summary": "Run the full NL \u2192 SQL \u2192 result pipeline and return a synchronous answer.",
         "tags": [
           "query"
@@ -4604,6 +5463,20 @@
       "post": {
         "description": "Event sequence:\n1. ``schema_linked``   \u2014 after grounding completes\n2. ``clarification``   \u2014 (optional) when confidence < threshold + missing_info\n3. ``sql_generated``   \u2014 after generation\n4. ``executed``        \u2014 after DuckDB execution\n5. ``explained``       \u2014 after ExplainerAgent\n6. ``final``           \u2014 full AnswerResponse JSON\n\n:param http_request: Starlette request\n:param body: validated QueryRequest (body already consumed by pyfly)\n:return: StreamingResponse with ``text/event-stream`` content type",
         "operationId": "stream",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/TenantIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/WorkspaceIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/CorrelationIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/IdempotencyKeyHeader"
+          }
+        ],
         "requestBody": {
           "content": {
             "application/json": {
@@ -4629,6 +5502,12 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "TenantContext": [],
+            "WorkspaceContext": []
+          }
+        ],
         "summary": "Run the full pipeline as a Server-Sent Events stream.",
         "tags": [
           "query"
@@ -4639,6 +5518,20 @@
       "post": {
         "description": "Useful for previewing the generated SQL without paying execution costs.\n\n:param http_request: Starlette request\n:param body: validated QueryRequest\n:return: ExplainResponse with candidate SQL and reasoning",
         "operationId": "explain",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/TenantIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/WorkspaceIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/CorrelationIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/IdempotencyKeyHeader"
+          }
+        ],
         "requestBody": {
           "content": {
             "application/json": {
@@ -4671,6 +5564,12 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "TenantContext": [],
+            "WorkspaceContext": []
+          }
+        ],
         "summary": "Run Grounding + Generation but stop before AST/execution.",
         "tags": [
           "query"
@@ -4681,6 +5580,20 @@
       "post": {
         "description": "Returns the classification and any scope error without executing the SQL.\n\n:param http_request: Starlette request\n:param body: validated QueryRequest\n:return: ValidateResponse with AST classification and optional scope_error",
         "operationId": "validate",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/TenantIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/WorkspaceIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/CorrelationIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/IdempotencyKeyHeader"
+          }
+        ],
         "requestBody": {
           "content": {
             "application/json": {
@@ -4713,6 +5626,12 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "TenantContext": [],
+            "WorkspaceContext": []
+          }
+        ],
         "summary": "Run Grounding + Generation + AST classification + ScopeGuard check.",
         "tags": [
           "query"
@@ -4730,6 +5649,18 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "$ref": "#/components/parameters/TenantIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/WorkspaceIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/CorrelationIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/IdempotencyKeyHeader"
           }
         ],
         "responses": {
@@ -4737,6 +5668,12 @@
             "description": "Successful response"
           }
         },
+        "security": [
+          {
+            "TenantContext": [],
+            "WorkspaceContext": []
+          }
+        ],
         "summary": "Approve a PROPOSED relation.",
         "tags": [
           "relations"
@@ -4754,6 +5691,18 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "$ref": "#/components/parameters/TenantIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/WorkspaceIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/CorrelationIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/IdempotencyKeyHeader"
           }
         ],
         "responses": {
@@ -4761,6 +5710,12 @@
             "description": "Successful response"
           }
         },
+        "security": [
+          {
+            "TenantContext": [],
+            "WorkspaceContext": []
+          }
+        ],
         "summary": "Reject a PROPOSED relation.",
         "tags": [
           "relations"
@@ -4779,6 +5734,18 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "$ref": "#/components/parameters/TenantIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/WorkspaceIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/CorrelationIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/IdempotencyKeyHeader"
           }
         ],
         "responses": {
@@ -4793,6 +5760,12 @@
             "description": "Successful response"
           }
         },
+        "security": [
+          {
+            "TenantContext": [],
+            "WorkspaceContext": []
+          }
+        ],
         "summary": "Flip a RENAMED_CANDIDATE row to RENAMED.",
         "tags": [
           "schema"
@@ -4810,6 +5783,15 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "$ref": "#/components/parameters/TenantIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/WorkspaceIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/CorrelationIdHeader"
           }
         ],
         "responses": {
@@ -4824,6 +5806,12 @@
             "description": "Successful response"
           }
         },
+        "security": [
+          {
+            "TenantContext": [],
+            "WorkspaceContext": []
+          }
+        ],
         "summary": "Get a single schema object by ID.",
         "tags": [
           "schema"
@@ -4840,6 +5828,18 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "$ref": "#/components/parameters/TenantIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/WorkspaceIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/CorrelationIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/IdempotencyKeyHeader"
           }
         ],
         "requestBody": {
@@ -4874,6 +5874,12 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "TenantContext": [],
+            "WorkspaceContext": []
+          }
+        ],
         "summary": "Update human-set fields on a schema object.",
         "tags": [
           "schema"
@@ -4892,6 +5898,15 @@
               "default": null,
               "type": "string"
             }
+          },
+          {
+            "$ref": "#/components/parameters/TenantIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/WorkspaceIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/CorrelationIdHeader"
           }
         ],
         "responses": {
@@ -4899,6 +5914,12 @@
             "description": "Successful response"
           }
         },
+        "security": [
+          {
+            "TenantContext": [],
+            "WorkspaceContext": []
+          }
+        ],
         "summary": "List all semantic dimensions for the caller's workspace.",
         "tags": [
           "semantic"
@@ -4906,6 +5927,20 @@
       },
       "post": {
         "operationId": "create",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/TenantIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/WorkspaceIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/CorrelationIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/IdempotencyKeyHeader"
+          }
+        ],
         "requestBody": {
           "content": {
             "application/json": {
@@ -4938,6 +5973,12 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "TenantContext": [],
+            "WorkspaceContext": []
+          }
+        ],
         "summary": "Create a new semantic dimension in DRAFT status.",
         "tags": [
           "semantic"
@@ -4955,6 +5996,15 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "$ref": "#/components/parameters/TenantIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/WorkspaceIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/CorrelationIdHeader"
           }
         ],
         "responses": {
@@ -4969,6 +6019,12 @@
             "description": "Successful response"
           }
         },
+        "security": [
+          {
+            "TenantContext": [],
+            "WorkspaceContext": []
+          }
+        ],
         "summary": "Fetch a single semantic dimension by id.",
         "tags": [
           "semantic"
@@ -4984,6 +6040,18 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "$ref": "#/components/parameters/TenantIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/WorkspaceIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/CorrelationIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/IdempotencyKeyHeader"
           }
         ],
         "requestBody": {
@@ -5018,6 +6086,12 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "TenantContext": [],
+            "WorkspaceContext": []
+          }
+        ],
         "summary": "Sparse-update a dimension; re-validates YAML if definition changes.",
         "tags": [
           "semantic"
@@ -5035,6 +6109,15 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "$ref": "#/components/parameters/TenantIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/WorkspaceIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/CorrelationIdHeader"
           }
         ],
         "responses": {
@@ -5042,6 +6125,12 @@
             "description": "Successful response"
           }
         },
+        "security": [
+          {
+            "TenantContext": [],
+            "WorkspaceContext": []
+          }
+        ],
         "summary": "Return version history for a dimension, oldest first.",
         "tags": [
           "semantic"
@@ -5059,6 +6148,18 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "$ref": "#/components/parameters/TenantIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/WorkspaceIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/CorrelationIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/IdempotencyKeyHeader"
           }
         ],
         "responses": {
@@ -5073,6 +6174,12 @@
             "description": "Successful response"
           }
         },
+        "security": [
+          {
+            "TenantContext": [],
+            "WorkspaceContext": []
+          }
+        ],
         "summary": "Validate, compile, and publish a dimension (status \u2192 PUBLISHED).",
         "tags": [
           "semantic"
@@ -5090,6 +6197,18 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "$ref": "#/components/parameters/TenantIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/WorkspaceIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/CorrelationIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/IdempotencyKeyHeader"
           }
         ],
         "responses": {
@@ -5104,6 +6223,12 @@
             "description": "Successful response"
           }
         },
+        "security": [
+          {
+            "TenantContext": [],
+            "WorkspaceContext": []
+          }
+        ],
         "summary": "Retire a dimension (status \u2192 RETIRED).",
         "tags": [
           "semantic"
@@ -5122,6 +6247,15 @@
               "default": null,
               "type": "string"
             }
+          },
+          {
+            "$ref": "#/components/parameters/TenantIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/WorkspaceIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/CorrelationIdHeader"
           }
         ],
         "responses": {
@@ -5129,6 +6263,12 @@
             "description": "Successful response"
           }
         },
+        "security": [
+          {
+            "TenantContext": [],
+            "WorkspaceContext": []
+          }
+        ],
         "summary": "List all semantic metrics for the caller's workspace.",
         "tags": [
           "semantic"
@@ -5136,6 +6276,20 @@
       },
       "post": {
         "operationId": "create",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/TenantIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/WorkspaceIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/CorrelationIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/IdempotencyKeyHeader"
+          }
+        ],
         "requestBody": {
           "content": {
             "application/json": {
@@ -5168,6 +6322,12 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "TenantContext": [],
+            "WorkspaceContext": []
+          }
+        ],
         "summary": "Create a new semantic metric in DRAFT status.",
         "tags": [
           "semantic"
@@ -5185,6 +6345,15 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "$ref": "#/components/parameters/TenantIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/WorkspaceIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/CorrelationIdHeader"
           }
         ],
         "responses": {
@@ -5199,6 +6368,12 @@
             "description": "Successful response"
           }
         },
+        "security": [
+          {
+            "TenantContext": [],
+            "WorkspaceContext": []
+          }
+        ],
         "summary": "Fetch a single semantic metric by id.",
         "tags": [
           "semantic"
@@ -5214,6 +6389,18 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "$ref": "#/components/parameters/TenantIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/WorkspaceIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/CorrelationIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/IdempotencyKeyHeader"
           }
         ],
         "requestBody": {
@@ -5248,6 +6435,12 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "TenantContext": [],
+            "WorkspaceContext": []
+          }
+        ],
         "summary": "Sparse-update a metric; re-validates YAML if definition changes.",
         "tags": [
           "semantic"
@@ -5265,6 +6458,15 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "$ref": "#/components/parameters/TenantIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/WorkspaceIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/CorrelationIdHeader"
           }
         ],
         "responses": {
@@ -5272,6 +6474,12 @@
             "description": "Successful response"
           }
         },
+        "security": [
+          {
+            "TenantContext": [],
+            "WorkspaceContext": []
+          }
+        ],
         "summary": "Return version history for a metric, oldest first.",
         "tags": [
           "semantic"
@@ -5289,6 +6497,18 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "$ref": "#/components/parameters/TenantIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/WorkspaceIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/CorrelationIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/IdempotencyKeyHeader"
           }
         ],
         "responses": {
@@ -5303,6 +6523,12 @@
             "description": "Successful response"
           }
         },
+        "security": [
+          {
+            "TenantContext": [],
+            "WorkspaceContext": []
+          }
+        ],
         "summary": "Validate, compile, and publish a metric (status \u2192 PUBLISHED).",
         "tags": [
           "semantic"
@@ -5320,6 +6546,18 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "$ref": "#/components/parameters/TenantIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/WorkspaceIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/CorrelationIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/IdempotencyKeyHeader"
           }
         ],
         "responses": {
@@ -5334,6 +6572,12 @@
             "description": "Successful response"
           }
         },
+        "security": [
+          {
+            "TenantContext": [],
+            "WorkspaceContext": []
+          }
+        ],
         "summary": "Retire a metric (status \u2192 RETIRED).",
         "tags": [
           "semantic"
@@ -5344,6 +6588,20 @@
       "post": {
         "description": "Requires the workspace flag ``allow_direct_sql=true``. The SQL is\nAST-classified and scope-checked; the agent pipeline is skipped.\n\n:param http_request: Starlette request\n:param body: validated SqlExecuteRequest\n:return: SqlExecuteResponse with preview rows and execution metadata\n:raises DirectSqlForbidden: when workspace.allow_direct_sql is False",
         "operationId": "execute",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/TenantIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/WorkspaceIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/CorrelationIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/IdempotencyKeyHeader"
+          }
+        ],
         "requestBody": {
           "content": {
             "application/json": {
@@ -5376,6 +6634,12 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "TenantContext": [],
+            "WorkspaceContext": []
+          }
+        ],
         "summary": "Execute a SQL statement directly against the workspace's dataset Parquet.",
         "tags": [
           "sql"
@@ -5386,6 +6650,20 @@
       "post": {
         "description": "Event sequence:\n1. ``ast_classified`` \u2014 AST result + scope check outcome\n2. ``executed``       \u2014 DuckDB result\n3. ``final``          \u2014 full SqlExecuteResponse JSON\n\n:param http_request: Starlette request\n:param body: validated SqlExecuteRequest\n:return: StreamingResponse with ``text/event-stream``",
         "operationId": "execute_stream",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/TenantIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/WorkspaceIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/CorrelationIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/IdempotencyKeyHeader"
+          }
+        ],
         "requestBody": {
           "content": {
             "application/json": {
@@ -5411,23 +6689,143 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "TenantContext": [],
+            "WorkspaceContext": []
+          }
+        ],
         "summary": "Execute SQL and stream progress as Server-Sent Events.",
         "tags": [
           "sql"
         ]
       }
     },
-    "/api/v1/tables/{table_id}": {
+    "/api/v1/tables": {
       "get": {
-        "operationId": "get_table",
+        "description": "Query parameters\n----------------\n* ``q``          -- substring match on ``name`` or ``qualified_name``\n(case-insensitive ``ILIKE``).\n* ``name``       -- exact match on ``name``.\n* ``dataset_id`` -- restrict to a single dataset.\n* ``kind``       -- ``UPLOADED`` / ``VIEW`` / ``DERIVED``.\n* ``is_active``  -- default ``true``; pass ``false`` to include\narchived tables.\n* ``limit``      -- page size, clamped to [1, 1000]. Default 100.\n* ``offset``     -- starting offset. Default 0.\n\nResponse envelope: ``{items, total, limit, offset, has_more}``.",
+        "operationId": "search_tables",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "default": null,
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "name",
+            "required": false,
+            "schema": {
+              "default": null,
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "dataset_id",
+            "required": false,
+            "schema": {
+              "default": null,
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "kind",
+            "required": false,
+            "schema": {
+              "default": null,
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "is_active",
+            "required": false,
+            "schema": {
+              "default": null,
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 100,
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "type": "integer"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/TenantIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/WorkspaceIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/CorrelationIdHeader"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response"
+          }
+        },
+        "security": [
+          {
+            "TenantContext": [],
+            "WorkspaceContext": []
+          }
+        ],
+        "summary": "Search/filter tables across the caller's workspace.",
+        "tags": [
+          "tables"
+        ]
+      }
+    },
+    "/api/v1/tables/by-name/{name}": {
+      "get": {
+        "description": "Pass ``?dataset_id=...`` to scope the lookup to a single dataset.\nReturns 404 if the name is not unique within the scope or no\nmatch is found.",
+        "operationId": "get_table_by_name",
         "parameters": [
           {
             "in": "path",
-            "name": "table_id",
+            "name": "name",
             "required": true,
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "in": "query",
+            "name": "dataset_id",
+            "required": false,
+            "schema": {
+              "default": null,
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/TenantIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/WorkspaceIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/CorrelationIdHeader"
           }
         ],
         "responses": {
@@ -5442,6 +6840,58 @@
             "description": "Successful response"
           }
         },
+        "security": [
+          {
+            "TenantContext": [],
+            "WorkspaceContext": []
+          }
+        ],
+        "summary": "Resolve a table by ``name`` within the caller's workspace.",
+        "tags": [
+          "tables"
+        ]
+      }
+    },
+    "/api/v1/tables/{table_id}": {
+      "get": {
+        "operationId": "get_table",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "table_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/TenantIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/WorkspaceIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/CorrelationIdHeader"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TableRead"
+                }
+              }
+            },
+            "description": "Successful response"
+          }
+        },
+        "security": [
+          {
+            "TenantContext": [],
+            "WorkspaceContext": []
+          }
+        ],
         "tags": [
           "tables"
         ]
@@ -5458,6 +6908,15 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "$ref": "#/components/parameters/TenantIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/WorkspaceIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/CorrelationIdHeader"
           }
         ],
         "responses": {
@@ -5465,6 +6924,12 @@
             "description": "Successful response"
           }
         },
+        "security": [
+          {
+            "TenantContext": [],
+            "WorkspaceContext": []
+          }
+        ],
         "tags": [
           "tables"
         ]
@@ -5481,6 +6946,15 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "$ref": "#/components/parameters/TenantIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/WorkspaceIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/CorrelationIdHeader"
           }
         ],
         "responses": {
@@ -5488,6 +6962,12 @@
             "description": "Successful response"
           }
         },
+        "security": [
+          {
+            "TenantContext": [],
+            "WorkspaceContext": []
+          }
+        ],
         "summary": "List schema_objects for the table's current snapshot.",
         "tags": [
           "tables"
@@ -5505,6 +6985,15 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "$ref": "#/components/parameters/TenantIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/WorkspaceIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/CorrelationIdHeader"
           }
         ],
         "responses": {
@@ -5512,6 +7001,12 @@
             "description": "Successful response"
           }
         },
+        "security": [
+          {
+            "TenantContext": [],
+            "WorkspaceContext": []
+          }
+        ],
         "tags": [
           "tables"
         ]
@@ -5521,6 +7016,20 @@
       "post": {
         "description": ":param http_request: Starlette request (tenant context headers)\n:param body: dataset_id + name + sql (must be a SELECT)\n:return: DeriveTableResponse with the new table_id\n:raises DeriveTableForbidden: when sql is not a SELECT\n:raises DeriveTableError: when DuckDB execution fails",
         "operationId": "derive",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/TenantIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/WorkspaceIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/CorrelationIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/IdempotencyKeyHeader"
+          }
+        ],
         "requestBody": {
           "content": {
             "application/json": {
@@ -5553,6 +7062,12 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "TenantContext": [],
+            "WorkspaceContext": []
+          }
+        ],
         "summary": "Materialise a SELECT result as a new DERIVED table.",
         "tags": [
           "tables"
@@ -5562,11 +7077,28 @@
     "/api/v1/version": {
       "get": {
         "operationId": "version",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/TenantIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/WorkspaceIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/CorrelationIdHeader"
+          }
+        ],
         "responses": {
           "200": {
             "description": "Successful response"
           }
         },
+        "security": [
+          {
+            "TenantContext": [],
+            "WorkspaceContext": []
+          }
+        ],
         "summary": "Return service name + CalVer version tag.",
         "tags": [
           "meta"
@@ -5575,19 +7107,96 @@
     },
     "/api/v1/workspaces": {
       "get": {
+        "description": "Query parameters\n----------------\n* ``q``      -- free-text substring match against ``slug`` or ``name``\n(case-insensitive ``ILIKE``).\n* ``slug``   -- exact match on ``slug`` -- gives you slug-based lookup\nwith zero extra round trips.\n* ``status`` -- exact match (``ACTIVE``, ``ARCHIVED``, ``PURGING``).\n* ``limit``  -- page size, clamped to [1, 1000]. Default 100.\n* ``offset`` -- starting offset. Default 0.\n\nResponse envelope: ``{items, total, limit, offset, has_more}``\nwhere ``total`` is the un-paginated match count.",
         "operationId": "list_workspaces",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "default": null,
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "slug",
+            "required": false,
+            "schema": {
+              "default": null,
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "default": null,
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 100,
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "type": "integer"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/TenantIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/WorkspaceIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/CorrelationIdHeader"
+          }
+        ],
         "responses": {
           "200": {
             "description": "Successful response"
           }
         },
-        "summary": "Return all workspaces for the caller's tenant.",
+        "security": [
+          {
+            "TenantContext": [],
+            "WorkspaceContext": []
+          }
+        ],
+        "summary": "Search/filter workspaces for the caller's tenant.",
         "tags": [
           "workspaces"
         ]
       },
       "post": {
         "operationId": "create",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/TenantIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/WorkspaceIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/CorrelationIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/IdempotencyKeyHeader"
+          }
+        ],
         "requestBody": {
           "content": {
             "application/json": {
@@ -5620,7 +7229,60 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "TenantContext": [],
+            "WorkspaceContext": []
+          }
+        ],
         "summary": "Create a workspace; tenant comes from ``X-Tenant-Id`` header.",
+        "tags": [
+          "workspaces"
+        ]
+      }
+    },
+    "/api/v1/workspaces/by-slug/{slug}": {
+      "get": {
+        "description": "Lets SDKs and CLIs resolve a workspace from a memorable identifier\ninstead of carrying around a UUID. Returns 404 if no match.",
+        "operationId": "read_by_slug",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "slug",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/TenantIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/WorkspaceIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/CorrelationIdHeader"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceRead"
+                }
+              }
+            },
+            "description": "Successful response"
+          }
+        },
+        "security": [
+          {
+            "TenantContext": [],
+            "WorkspaceContext": []
+          }
+        ],
+        "summary": "Fetch a workspace by its ``(tenant_id, slug)`` natural key.",
         "tags": [
           "workspaces"
         ]
@@ -5637,6 +7299,15 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "$ref": "#/components/parameters/TenantIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/WorkspaceIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/CorrelationIdHeader"
           }
         ],
         "responses": {
@@ -5651,6 +7322,12 @@
             "description": "Successful response"
           }
         },
+        "security": [
+          {
+            "TenantContext": [],
+            "WorkspaceContext": []
+          }
+        ],
         "summary": "Fetch a single workspace by id. Returns 404 if not found.",
         "tags": [
           "workspaces"
@@ -5666,6 +7343,18 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "$ref": "#/components/parameters/TenantIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/WorkspaceIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/CorrelationIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/IdempotencyKeyHeader"
           }
         ],
         "requestBody": {
@@ -5700,6 +7389,12 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "TenantContext": [],
+            "WorkspaceContext": []
+          }
+        ],
         "summary": "Sparse-update a workspace. Only fields present in body are changed.",
         "tags": [
           "workspaces"
@@ -5718,6 +7413,18 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "$ref": "#/components/parameters/TenantIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/WorkspaceIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/CorrelationIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/IdempotencyKeyHeader"
           }
         ],
         "responses": {
@@ -5725,6 +7432,12 @@
             "description": "Successful response"
           }
         },
+        "security": [
+          {
+            "TenantContext": [],
+            "WorkspaceContext": []
+          }
+        ],
         "summary": "Purge a workspace: mark PURGING + walk + delete all blobs.",
         "tags": [
           "workspaces"

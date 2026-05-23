@@ -40,7 +40,7 @@ import com.fasterxml.jackson.annotation.JsonTypeName;
   DatasetCreate.JSON_PROPERTY_METADATA_JSON,
   DatasetCreate.JSON_PROPERTY_NAME
 })
-@javax.annotation.Generated(value = "org.openapitools.codegen.languages.JavaClientCodegen", date = "2026-05-23T20:36:34.703085+02:00[Europe/Madrid]", comments = "Generator version: 7.22.0")
+@javax.annotation.Generated(value = "org.openapitools.codegen.languages.JavaClientCodegen", date = "2026-05-23T22:03:38.852419+02:00[Europe/Madrid]", comments = "Generator version: 7.22.0")
 public class DatasetCreate {
   public static final String JSON_PROPERTY_DEFAULT_LOCALE = "default_locale";
   @javax.annotation.Nullable

@@ -15,8 +15,10 @@ from pydantic import validate_call, Field, StrictFloat, StrictStr, StrictInt
 from typing import Any, Dict, List, Optional, Tuple, Union
 from typing_extensions import Annotated
 
-from pydantic import StrictStr
+from pydantic import Field, StrictStr
 from typing import Optional
+from typing_extensions import Annotated
+from uuid import UUID
 from flyquery_sdk.models.semantic_dimension_create import SemanticDimensionCreate
 from flyquery_sdk.models.semantic_dimension_read import SemanticDimensionRead
 from flyquery_sdk.models.semantic_dimension_update import SemanticDimensionUpdate
@@ -45,7 +47,11 @@ class SemanticApi:
     @validate_call
     async def create(
         self,
+        x_tenant_id: Annotated[str, Field(min_length=1, strict=True, max_length=128, description="Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present.")],
+        x_workspace_id: Annotated[str, Field(min_length=1, strict=True, max_length=128, description="Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation.")],
         semantic_dimension_create: SemanticDimensionCreate,
+        x_correlation_id: Annotated[Optional[UUID], Field(description="Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.")] = None,
+        idempotency_key: Annotated[Optional[Annotated[str, Field(min_length=1, strict=True, max_length=256)]], Field(description="Optional client-supplied idempotency key for mutating operations. The first request with a key persists its result; subsequent requests with the same key + same tenant return the cached response. Keys expire after 24h.")] = None,
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -62,8 +68,16 @@ class SemanticApi:
         """Create a new semantic dimension in DRAFT status.
 
 
+        :param x_tenant_id: Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present. (required)
+        :type x_tenant_id: str
+        :param x_workspace_id: Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation. (required)
+        :type x_workspace_id: str
         :param semantic_dimension_create: (required)
         :type semantic_dimension_create: SemanticDimensionCreate
+        :param x_correlation_id: Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.
+        :type x_correlation_id: UUID
+        :param idempotency_key: Optional client-supplied idempotency key for mutating operations. The first request with a key persists its result; subsequent requests with the same key + same tenant return the cached response. Keys expire after 24h.
+        :type idempotency_key: str
         :param _request_timeout: timeout setting for this request. If one
                                  number provided, it will be total request
                                  timeout. It can also be a pair (tuple) of
@@ -87,7 +101,11 @@ class SemanticApi:
         """ # noqa: E501
 
         _param = self._create_serialize(
+            x_tenant_id=x_tenant_id,
+            x_workspace_id=x_workspace_id,
             semantic_dimension_create=semantic_dimension_create,
+            x_correlation_id=x_correlation_id,
+            idempotency_key=idempotency_key,
             _request_auth=_request_auth,
             _content_type=_content_type,
             _headers=_headers,
@@ -112,7 +130,11 @@ class SemanticApi:
     @validate_call
     async def create_with_http_info(
         self,
+        x_tenant_id: Annotated[str, Field(min_length=1, strict=True, max_length=128, description="Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present.")],
+        x_workspace_id: Annotated[str, Field(min_length=1, strict=True, max_length=128, description="Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation.")],
         semantic_dimension_create: SemanticDimensionCreate,
+        x_correlation_id: Annotated[Optional[UUID], Field(description="Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.")] = None,
+        idempotency_key: Annotated[Optional[Annotated[str, Field(min_length=1, strict=True, max_length=256)]], Field(description="Optional client-supplied idempotency key for mutating operations. The first request with a key persists its result; subsequent requests with the same key + same tenant return the cached response. Keys expire after 24h.")] = None,
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -129,8 +151,16 @@ class SemanticApi:
         """Create a new semantic dimension in DRAFT status.
 
 
+        :param x_tenant_id: Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present. (required)
+        :type x_tenant_id: str
+        :param x_workspace_id: Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation. (required)
+        :type x_workspace_id: str
         :param semantic_dimension_create: (required)
         :type semantic_dimension_create: SemanticDimensionCreate
+        :param x_correlation_id: Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.
+        :type x_correlation_id: UUID
+        :param idempotency_key: Optional client-supplied idempotency key for mutating operations. The first request with a key persists its result; subsequent requests with the same key + same tenant return the cached response. Keys expire after 24h.
+        :type idempotency_key: str
         :param _request_timeout: timeout setting for this request. If one
                                  number provided, it will be total request
                                  timeout. It can also be a pair (tuple) of
@@ -154,7 +184,11 @@ class SemanticApi:
         """ # noqa: E501
 
         _param = self._create_serialize(
+            x_tenant_id=x_tenant_id,
+            x_workspace_id=x_workspace_id,
             semantic_dimension_create=semantic_dimension_create,
+            x_correlation_id=x_correlation_id,
+            idempotency_key=idempotency_key,
             _request_auth=_request_auth,
             _content_type=_content_type,
             _headers=_headers,
@@ -179,7 +213,11 @@ class SemanticApi:
     @validate_call
     async def create_without_preload_content(
         self,
+        x_tenant_id: Annotated[str, Field(min_length=1, strict=True, max_length=128, description="Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present.")],
+        x_workspace_id: Annotated[str, Field(min_length=1, strict=True, max_length=128, description="Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation.")],
         semantic_dimension_create: SemanticDimensionCreate,
+        x_correlation_id: Annotated[Optional[UUID], Field(description="Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.")] = None,
+        idempotency_key: Annotated[Optional[Annotated[str, Field(min_length=1, strict=True, max_length=256)]], Field(description="Optional client-supplied idempotency key for mutating operations. The first request with a key persists its result; subsequent requests with the same key + same tenant return the cached response. Keys expire after 24h.")] = None,
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -196,8 +234,16 @@ class SemanticApi:
         """Create a new semantic dimension in DRAFT status.
 
 
+        :param x_tenant_id: Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present. (required)
+        :type x_tenant_id: str
+        :param x_workspace_id: Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation. (required)
+        :type x_workspace_id: str
         :param semantic_dimension_create: (required)
         :type semantic_dimension_create: SemanticDimensionCreate
+        :param x_correlation_id: Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.
+        :type x_correlation_id: UUID
+        :param idempotency_key: Optional client-supplied idempotency key for mutating operations. The first request with a key persists its result; subsequent requests with the same key + same tenant return the cached response. Keys expire after 24h.
+        :type idempotency_key: str
         :param _request_timeout: timeout setting for this request. If one
                                  number provided, it will be total request
                                  timeout. It can also be a pair (tuple) of
@@ -221,7 +267,11 @@ class SemanticApi:
         """ # noqa: E501
 
         _param = self._create_serialize(
+            x_tenant_id=x_tenant_id,
+            x_workspace_id=x_workspace_id,
             semantic_dimension_create=semantic_dimension_create,
+            x_correlation_id=x_correlation_id,
+            idempotency_key=idempotency_key,
             _request_auth=_request_auth,
             _content_type=_content_type,
             _headers=_headers,
@@ -241,7 +291,11 @@ class SemanticApi:
 
     def _create_serialize(
         self,
+        x_tenant_id,
+        x_workspace_id,
         semantic_dimension_create,
+        x_correlation_id,
+        idempotency_key,
         _request_auth,
         _content_type,
         _headers,
@@ -265,6 +319,14 @@ class SemanticApi:
         # process the path parameters
         # process the query parameters
         # process the header parameters
+        if x_tenant_id is not None:
+            _header_params['X-Tenant-Id'] = x_tenant_id
+        if x_workspace_id is not None:
+            _header_params['X-Workspace-Id'] = x_workspace_id
+        if x_correlation_id is not None:
+            _header_params['X-Correlation-Id'] = x_correlation_id
+        if idempotency_key is not None:
+            _header_params['Idempotency-Key'] = idempotency_key
         # process the form parameters
         # process the body parameter
         if semantic_dimension_create is not None:
@@ -295,6 +357,8 @@ class SemanticApi:
 
         # authentication setting
         _auth_settings: List[str] = [
+            'WorkspaceContext', 
+            'TenantContext'
         ]
 
         return self.api_client.param_serialize(
@@ -318,7 +382,11 @@ class SemanticApi:
     @validate_call
     async def create_0(
         self,
+        x_tenant_id: Annotated[str, Field(min_length=1, strict=True, max_length=128, description="Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present.")],
+        x_workspace_id: Annotated[str, Field(min_length=1, strict=True, max_length=128, description="Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation.")],
         semantic_metric_create: SemanticMetricCreate,
+        x_correlation_id: Annotated[Optional[UUID], Field(description="Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.")] = None,
+        idempotency_key: Annotated[Optional[Annotated[str, Field(min_length=1, strict=True, max_length=256)]], Field(description="Optional client-supplied idempotency key for mutating operations. The first request with a key persists its result; subsequent requests with the same key + same tenant return the cached response. Keys expire after 24h.")] = None,
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -335,8 +403,16 @@ class SemanticApi:
         """Create a new semantic metric in DRAFT status.
 
 
+        :param x_tenant_id: Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present. (required)
+        :type x_tenant_id: str
+        :param x_workspace_id: Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation. (required)
+        :type x_workspace_id: str
         :param semantic_metric_create: (required)
         :type semantic_metric_create: SemanticMetricCreate
+        :param x_correlation_id: Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.
+        :type x_correlation_id: UUID
+        :param idempotency_key: Optional client-supplied idempotency key for mutating operations. The first request with a key persists its result; subsequent requests with the same key + same tenant return the cached response. Keys expire after 24h.
+        :type idempotency_key: str
         :param _request_timeout: timeout setting for this request. If one
                                  number provided, it will be total request
                                  timeout. It can also be a pair (tuple) of
@@ -360,7 +436,11 @@ class SemanticApi:
         """ # noqa: E501
 
         _param = self._create_0_serialize(
+            x_tenant_id=x_tenant_id,
+            x_workspace_id=x_workspace_id,
             semantic_metric_create=semantic_metric_create,
+            x_correlation_id=x_correlation_id,
+            idempotency_key=idempotency_key,
             _request_auth=_request_auth,
             _content_type=_content_type,
             _headers=_headers,
@@ -385,7 +465,11 @@ class SemanticApi:
     @validate_call
     async def create_0_with_http_info(
         self,
+        x_tenant_id: Annotated[str, Field(min_length=1, strict=True, max_length=128, description="Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present.")],
+        x_workspace_id: Annotated[str, Field(min_length=1, strict=True, max_length=128, description="Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation.")],
         semantic_metric_create: SemanticMetricCreate,
+        x_correlation_id: Annotated[Optional[UUID], Field(description="Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.")] = None,
+        idempotency_key: Annotated[Optional[Annotated[str, Field(min_length=1, strict=True, max_length=256)]], Field(description="Optional client-supplied idempotency key for mutating operations. The first request with a key persists its result; subsequent requests with the same key + same tenant return the cached response. Keys expire after 24h.")] = None,
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -402,8 +486,16 @@ class SemanticApi:
         """Create a new semantic metric in DRAFT status.
 
 
+        :param x_tenant_id: Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present. (required)
+        :type x_tenant_id: str
+        :param x_workspace_id: Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation. (required)
+        :type x_workspace_id: str
         :param semantic_metric_create: (required)
         :type semantic_metric_create: SemanticMetricCreate
+        :param x_correlation_id: Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.
+        :type x_correlation_id: UUID
+        :param idempotency_key: Optional client-supplied idempotency key for mutating operations. The first request with a key persists its result; subsequent requests with the same key + same tenant return the cached response. Keys expire after 24h.
+        :type idempotency_key: str
         :param _request_timeout: timeout setting for this request. If one
                                  number provided, it will be total request
                                  timeout. It can also be a pair (tuple) of
@@ -427,7 +519,11 @@ class SemanticApi:
         """ # noqa: E501
 
         _param = self._create_0_serialize(
+            x_tenant_id=x_tenant_id,
+            x_workspace_id=x_workspace_id,
             semantic_metric_create=semantic_metric_create,
+            x_correlation_id=x_correlation_id,
+            idempotency_key=idempotency_key,
             _request_auth=_request_auth,
             _content_type=_content_type,
             _headers=_headers,
@@ -452,7 +548,11 @@ class SemanticApi:
     @validate_call
     async def create_0_without_preload_content(
         self,
+        x_tenant_id: Annotated[str, Field(min_length=1, strict=True, max_length=128, description="Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present.")],
+        x_workspace_id: Annotated[str, Field(min_length=1, strict=True, max_length=128, description="Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation.")],
         semantic_metric_create: SemanticMetricCreate,
+        x_correlation_id: Annotated[Optional[UUID], Field(description="Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.")] = None,
+        idempotency_key: Annotated[Optional[Annotated[str, Field(min_length=1, strict=True, max_length=256)]], Field(description="Optional client-supplied idempotency key for mutating operations. The first request with a key persists its result; subsequent requests with the same key + same tenant return the cached response. Keys expire after 24h.")] = None,
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -469,8 +569,16 @@ class SemanticApi:
         """Create a new semantic metric in DRAFT status.
 
 
+        :param x_tenant_id: Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present. (required)
+        :type x_tenant_id: str
+        :param x_workspace_id: Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation. (required)
+        :type x_workspace_id: str
         :param semantic_metric_create: (required)
         :type semantic_metric_create: SemanticMetricCreate
+        :param x_correlation_id: Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.
+        :type x_correlation_id: UUID
+        :param idempotency_key: Optional client-supplied idempotency key for mutating operations. The first request with a key persists its result; subsequent requests with the same key + same tenant return the cached response. Keys expire after 24h.
+        :type idempotency_key: str
         :param _request_timeout: timeout setting for this request. If one
                                  number provided, it will be total request
                                  timeout. It can also be a pair (tuple) of
@@ -494,7 +602,11 @@ class SemanticApi:
         """ # noqa: E501
 
         _param = self._create_0_serialize(
+            x_tenant_id=x_tenant_id,
+            x_workspace_id=x_workspace_id,
             semantic_metric_create=semantic_metric_create,
+            x_correlation_id=x_correlation_id,
+            idempotency_key=idempotency_key,
             _request_auth=_request_auth,
             _content_type=_content_type,
             _headers=_headers,
@@ -514,7 +626,11 @@ class SemanticApi:
 
     def _create_0_serialize(
         self,
+        x_tenant_id,
+        x_workspace_id,
         semantic_metric_create,
+        x_correlation_id,
+        idempotency_key,
         _request_auth,
         _content_type,
         _headers,
@@ -538,6 +654,14 @@ class SemanticApi:
         # process the path parameters
         # process the query parameters
         # process the header parameters
+        if x_tenant_id is not None:
+            _header_params['X-Tenant-Id'] = x_tenant_id
+        if x_workspace_id is not None:
+            _header_params['X-Workspace-Id'] = x_workspace_id
+        if x_correlation_id is not None:
+            _header_params['X-Correlation-Id'] = x_correlation_id
+        if idempotency_key is not None:
+            _header_params['Idempotency-Key'] = idempotency_key
         # process the form parameters
         # process the body parameter
         if semantic_metric_create is not None:
@@ -568,6 +692,8 @@ class SemanticApi:
 
         # authentication setting
         _auth_settings: List[str] = [
+            'WorkspaceContext', 
+            'TenantContext'
         ]
 
         return self.api_client.param_serialize(
@@ -592,6 +718,9 @@ class SemanticApi:
     async def get_dimension(
         self,
         dimension_id: Optional[StrictStr],
+        x_tenant_id: Annotated[str, Field(min_length=1, strict=True, max_length=128, description="Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present.")],
+        x_workspace_id: Annotated[str, Field(min_length=1, strict=True, max_length=128, description="Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation.")],
+        x_correlation_id: Annotated[Optional[UUID], Field(description="Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.")] = None,
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -610,6 +739,12 @@ class SemanticApi:
 
         :param dimension_id: (required)
         :type dimension_id: str
+        :param x_tenant_id: Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present. (required)
+        :type x_tenant_id: str
+        :param x_workspace_id: Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation. (required)
+        :type x_workspace_id: str
+        :param x_correlation_id: Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.
+        :type x_correlation_id: UUID
         :param _request_timeout: timeout setting for this request. If one
                                  number provided, it will be total request
                                  timeout. It can also be a pair (tuple) of
@@ -634,6 +769,9 @@ class SemanticApi:
 
         _param = self._get_dimension_serialize(
             dimension_id=dimension_id,
+            x_tenant_id=x_tenant_id,
+            x_workspace_id=x_workspace_id,
+            x_correlation_id=x_correlation_id,
             _request_auth=_request_auth,
             _content_type=_content_type,
             _headers=_headers,
@@ -658,6 +796,9 @@ class SemanticApi:
     async def get_dimension_with_http_info(
         self,
         dimension_id: Optional[StrictStr],
+        x_tenant_id: Annotated[str, Field(min_length=1, strict=True, max_length=128, description="Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present.")],
+        x_workspace_id: Annotated[str, Field(min_length=1, strict=True, max_length=128, description="Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation.")],
+        x_correlation_id: Annotated[Optional[UUID], Field(description="Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.")] = None,
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -676,6 +817,12 @@ class SemanticApi:
 
         :param dimension_id: (required)
         :type dimension_id: str
+        :param x_tenant_id: Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present. (required)
+        :type x_tenant_id: str
+        :param x_workspace_id: Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation. (required)
+        :type x_workspace_id: str
+        :param x_correlation_id: Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.
+        :type x_correlation_id: UUID
         :param _request_timeout: timeout setting for this request. If one
                                  number provided, it will be total request
                                  timeout. It can also be a pair (tuple) of
@@ -700,6 +847,9 @@ class SemanticApi:
 
         _param = self._get_dimension_serialize(
             dimension_id=dimension_id,
+            x_tenant_id=x_tenant_id,
+            x_workspace_id=x_workspace_id,
+            x_correlation_id=x_correlation_id,
             _request_auth=_request_auth,
             _content_type=_content_type,
             _headers=_headers,
@@ -724,6 +874,9 @@ class SemanticApi:
     async def get_dimension_without_preload_content(
         self,
         dimension_id: Optional[StrictStr],
+        x_tenant_id: Annotated[str, Field(min_length=1, strict=True, max_length=128, description="Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present.")],
+        x_workspace_id: Annotated[str, Field(min_length=1, strict=True, max_length=128, description="Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation.")],
+        x_correlation_id: Annotated[Optional[UUID], Field(description="Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.")] = None,
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -742,6 +895,12 @@ class SemanticApi:
 
         :param dimension_id: (required)
         :type dimension_id: str
+        :param x_tenant_id: Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present. (required)
+        :type x_tenant_id: str
+        :param x_workspace_id: Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation. (required)
+        :type x_workspace_id: str
+        :param x_correlation_id: Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.
+        :type x_correlation_id: UUID
         :param _request_timeout: timeout setting for this request. If one
                                  number provided, it will be total request
                                  timeout. It can also be a pair (tuple) of
@@ -766,6 +925,9 @@ class SemanticApi:
 
         _param = self._get_dimension_serialize(
             dimension_id=dimension_id,
+            x_tenant_id=x_tenant_id,
+            x_workspace_id=x_workspace_id,
+            x_correlation_id=x_correlation_id,
             _request_auth=_request_auth,
             _content_type=_content_type,
             _headers=_headers,
@@ -785,6 +947,9 @@ class SemanticApi:
     def _get_dimension_serialize(
         self,
         dimension_id,
+        x_tenant_id,
+        x_workspace_id,
+        x_correlation_id,
         _request_auth,
         _content_type,
         _headers,
@@ -810,6 +975,12 @@ class SemanticApi:
             _path_params['dimension_id'] = dimension_id
         # process the query parameters
         # process the header parameters
+        if x_tenant_id is not None:
+            _header_params['X-Tenant-Id'] = x_tenant_id
+        if x_workspace_id is not None:
+            _header_params['X-Workspace-Id'] = x_workspace_id
+        if x_correlation_id is not None:
+            _header_params['X-Correlation-Id'] = x_correlation_id
         # process the form parameters
         # process the body parameter
 
@@ -825,6 +996,8 @@ class SemanticApi:
 
         # authentication setting
         _auth_settings: List[str] = [
+            'WorkspaceContext', 
+            'TenantContext'
         ]
 
         return self.api_client.param_serialize(
@@ -849,6 +1022,9 @@ class SemanticApi:
     async def get_metric(
         self,
         metric_id: Optional[StrictStr],
+        x_tenant_id: Annotated[str, Field(min_length=1, strict=True, max_length=128, description="Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present.")],
+        x_workspace_id: Annotated[str, Field(min_length=1, strict=True, max_length=128, description="Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation.")],
+        x_correlation_id: Annotated[Optional[UUID], Field(description="Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.")] = None,
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -867,6 +1043,12 @@ class SemanticApi:
 
         :param metric_id: (required)
         :type metric_id: str
+        :param x_tenant_id: Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present. (required)
+        :type x_tenant_id: str
+        :param x_workspace_id: Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation. (required)
+        :type x_workspace_id: str
+        :param x_correlation_id: Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.
+        :type x_correlation_id: UUID
         :param _request_timeout: timeout setting for this request. If one
                                  number provided, it will be total request
                                  timeout. It can also be a pair (tuple) of
@@ -891,6 +1073,9 @@ class SemanticApi:
 
         _param = self._get_metric_serialize(
             metric_id=metric_id,
+            x_tenant_id=x_tenant_id,
+            x_workspace_id=x_workspace_id,
+            x_correlation_id=x_correlation_id,
             _request_auth=_request_auth,
             _content_type=_content_type,
             _headers=_headers,
@@ -915,6 +1100,9 @@ class SemanticApi:
     async def get_metric_with_http_info(
         self,
         metric_id: Optional[StrictStr],
+        x_tenant_id: Annotated[str, Field(min_length=1, strict=True, max_length=128, description="Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present.")],
+        x_workspace_id: Annotated[str, Field(min_length=1, strict=True, max_length=128, description="Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation.")],
+        x_correlation_id: Annotated[Optional[UUID], Field(description="Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.")] = None,
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -933,6 +1121,12 @@ class SemanticApi:
 
         :param metric_id: (required)
         :type metric_id: str
+        :param x_tenant_id: Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present. (required)
+        :type x_tenant_id: str
+        :param x_workspace_id: Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation. (required)
+        :type x_workspace_id: str
+        :param x_correlation_id: Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.
+        :type x_correlation_id: UUID
         :param _request_timeout: timeout setting for this request. If one
                                  number provided, it will be total request
                                  timeout. It can also be a pair (tuple) of
@@ -957,6 +1151,9 @@ class SemanticApi:
 
         _param = self._get_metric_serialize(
             metric_id=metric_id,
+            x_tenant_id=x_tenant_id,
+            x_workspace_id=x_workspace_id,
+            x_correlation_id=x_correlation_id,
             _request_auth=_request_auth,
             _content_type=_content_type,
             _headers=_headers,
@@ -981,6 +1178,9 @@ class SemanticApi:
     async def get_metric_without_preload_content(
         self,
         metric_id: Optional[StrictStr],
+        x_tenant_id: Annotated[str, Field(min_length=1, strict=True, max_length=128, description="Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present.")],
+        x_workspace_id: Annotated[str, Field(min_length=1, strict=True, max_length=128, description="Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation.")],
+        x_correlation_id: Annotated[Optional[UUID], Field(description="Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.")] = None,
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -999,6 +1199,12 @@ class SemanticApi:
 
         :param metric_id: (required)
         :type metric_id: str
+        :param x_tenant_id: Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present. (required)
+        :type x_tenant_id: str
+        :param x_workspace_id: Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation. (required)
+        :type x_workspace_id: str
+        :param x_correlation_id: Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.
+        :type x_correlation_id: UUID
         :param _request_timeout: timeout setting for this request. If one
                                  number provided, it will be total request
                                  timeout. It can also be a pair (tuple) of
@@ -1023,6 +1229,9 @@ class SemanticApi:
 
         _param = self._get_metric_serialize(
             metric_id=metric_id,
+            x_tenant_id=x_tenant_id,
+            x_workspace_id=x_workspace_id,
+            x_correlation_id=x_correlation_id,
             _request_auth=_request_auth,
             _content_type=_content_type,
             _headers=_headers,
@@ -1042,6 +1251,9 @@ class SemanticApi:
     def _get_metric_serialize(
         self,
         metric_id,
+        x_tenant_id,
+        x_workspace_id,
+        x_correlation_id,
         _request_auth,
         _content_type,
         _headers,
@@ -1067,6 +1279,12 @@ class SemanticApi:
             _path_params['metric_id'] = metric_id
         # process the query parameters
         # process the header parameters
+        if x_tenant_id is not None:
+            _header_params['X-Tenant-Id'] = x_tenant_id
+        if x_workspace_id is not None:
+            _header_params['X-Workspace-Id'] = x_workspace_id
+        if x_correlation_id is not None:
+            _header_params['X-Correlation-Id'] = x_correlation_id
         # process the form parameters
         # process the body parameter
 
@@ -1082,6 +1300,8 @@ class SemanticApi:
 
         # authentication setting
         _auth_settings: List[str] = [
+            'WorkspaceContext', 
+            'TenantContext'
         ]
 
         return self.api_client.param_serialize(
@@ -1106,6 +1326,9 @@ class SemanticApi:
     async def history(
         self,
         dimension_id: StrictStr,
+        x_tenant_id: Annotated[str, Field(min_length=1, strict=True, max_length=128, description="Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present.")],
+        x_workspace_id: Annotated[str, Field(min_length=1, strict=True, max_length=128, description="Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation.")],
+        x_correlation_id: Annotated[Optional[UUID], Field(description="Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.")] = None,
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -1124,6 +1347,12 @@ class SemanticApi:
 
         :param dimension_id: (required)
         :type dimension_id: str
+        :param x_tenant_id: Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present. (required)
+        :type x_tenant_id: str
+        :param x_workspace_id: Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation. (required)
+        :type x_workspace_id: str
+        :param x_correlation_id: Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.
+        :type x_correlation_id: UUID
         :param _request_timeout: timeout setting for this request. If one
                                  number provided, it will be total request
                                  timeout. It can also be a pair (tuple) of
@@ -1148,6 +1377,9 @@ class SemanticApi:
 
         _param = self._history_serialize(
             dimension_id=dimension_id,
+            x_tenant_id=x_tenant_id,
+            x_workspace_id=x_workspace_id,
+            x_correlation_id=x_correlation_id,
             _request_auth=_request_auth,
             _content_type=_content_type,
             _headers=_headers,
@@ -1172,6 +1404,9 @@ class SemanticApi:
     async def history_with_http_info(
         self,
         dimension_id: StrictStr,
+        x_tenant_id: Annotated[str, Field(min_length=1, strict=True, max_length=128, description="Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present.")],
+        x_workspace_id: Annotated[str, Field(min_length=1, strict=True, max_length=128, description="Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation.")],
+        x_correlation_id: Annotated[Optional[UUID], Field(description="Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.")] = None,
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -1190,6 +1425,12 @@ class SemanticApi:
 
         :param dimension_id: (required)
         :type dimension_id: str
+        :param x_tenant_id: Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present. (required)
+        :type x_tenant_id: str
+        :param x_workspace_id: Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation. (required)
+        :type x_workspace_id: str
+        :param x_correlation_id: Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.
+        :type x_correlation_id: UUID
         :param _request_timeout: timeout setting for this request. If one
                                  number provided, it will be total request
                                  timeout. It can also be a pair (tuple) of
@@ -1214,6 +1455,9 @@ class SemanticApi:
 
         _param = self._history_serialize(
             dimension_id=dimension_id,
+            x_tenant_id=x_tenant_id,
+            x_workspace_id=x_workspace_id,
+            x_correlation_id=x_correlation_id,
             _request_auth=_request_auth,
             _content_type=_content_type,
             _headers=_headers,
@@ -1238,6 +1482,9 @@ class SemanticApi:
     async def history_without_preload_content(
         self,
         dimension_id: StrictStr,
+        x_tenant_id: Annotated[str, Field(min_length=1, strict=True, max_length=128, description="Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present.")],
+        x_workspace_id: Annotated[str, Field(min_length=1, strict=True, max_length=128, description="Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation.")],
+        x_correlation_id: Annotated[Optional[UUID], Field(description="Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.")] = None,
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -1256,6 +1503,12 @@ class SemanticApi:
 
         :param dimension_id: (required)
         :type dimension_id: str
+        :param x_tenant_id: Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present. (required)
+        :type x_tenant_id: str
+        :param x_workspace_id: Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation. (required)
+        :type x_workspace_id: str
+        :param x_correlation_id: Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.
+        :type x_correlation_id: UUID
         :param _request_timeout: timeout setting for this request. If one
                                  number provided, it will be total request
                                  timeout. It can also be a pair (tuple) of
@@ -1280,6 +1533,9 @@ class SemanticApi:
 
         _param = self._history_serialize(
             dimension_id=dimension_id,
+            x_tenant_id=x_tenant_id,
+            x_workspace_id=x_workspace_id,
+            x_correlation_id=x_correlation_id,
             _request_auth=_request_auth,
             _content_type=_content_type,
             _headers=_headers,
@@ -1299,6 +1555,9 @@ class SemanticApi:
     def _history_serialize(
         self,
         dimension_id,
+        x_tenant_id,
+        x_workspace_id,
+        x_correlation_id,
         _request_auth,
         _content_type,
         _headers,
@@ -1324,6 +1583,12 @@ class SemanticApi:
             _path_params['dimension_id'] = dimension_id
         # process the query parameters
         # process the header parameters
+        if x_tenant_id is not None:
+            _header_params['X-Tenant-Id'] = x_tenant_id
+        if x_workspace_id is not None:
+            _header_params['X-Workspace-Id'] = x_workspace_id
+        if x_correlation_id is not None:
+            _header_params['X-Correlation-Id'] = x_correlation_id
         # process the form parameters
         # process the body parameter
 
@@ -1332,6 +1597,8 @@ class SemanticApi:
 
         # authentication setting
         _auth_settings: List[str] = [
+            'WorkspaceContext', 
+            'TenantContext'
         ]
 
         return self.api_client.param_serialize(
@@ -1356,6 +1623,9 @@ class SemanticApi:
     async def history_0(
         self,
         metric_id: StrictStr,
+        x_tenant_id: Annotated[str, Field(min_length=1, strict=True, max_length=128, description="Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present.")],
+        x_workspace_id: Annotated[str, Field(min_length=1, strict=True, max_length=128, description="Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation.")],
+        x_correlation_id: Annotated[Optional[UUID], Field(description="Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.")] = None,
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -1374,6 +1644,12 @@ class SemanticApi:
 
         :param metric_id: (required)
         :type metric_id: str
+        :param x_tenant_id: Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present. (required)
+        :type x_tenant_id: str
+        :param x_workspace_id: Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation. (required)
+        :type x_workspace_id: str
+        :param x_correlation_id: Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.
+        :type x_correlation_id: UUID
         :param _request_timeout: timeout setting for this request. If one
                                  number provided, it will be total request
                                  timeout. It can also be a pair (tuple) of
@@ -1398,6 +1674,9 @@ class SemanticApi:
 
         _param = self._history_0_serialize(
             metric_id=metric_id,
+            x_tenant_id=x_tenant_id,
+            x_workspace_id=x_workspace_id,
+            x_correlation_id=x_correlation_id,
             _request_auth=_request_auth,
             _content_type=_content_type,
             _headers=_headers,
@@ -1422,6 +1701,9 @@ class SemanticApi:
     async def history_0_with_http_info(
         self,
         metric_id: StrictStr,
+        x_tenant_id: Annotated[str, Field(min_length=1, strict=True, max_length=128, description="Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present.")],
+        x_workspace_id: Annotated[str, Field(min_length=1, strict=True, max_length=128, description="Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation.")],
+        x_correlation_id: Annotated[Optional[UUID], Field(description="Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.")] = None,
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -1440,6 +1722,12 @@ class SemanticApi:
 
         :param metric_id: (required)
         :type metric_id: str
+        :param x_tenant_id: Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present. (required)
+        :type x_tenant_id: str
+        :param x_workspace_id: Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation. (required)
+        :type x_workspace_id: str
+        :param x_correlation_id: Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.
+        :type x_correlation_id: UUID
         :param _request_timeout: timeout setting for this request. If one
                                  number provided, it will be total request
                                  timeout. It can also be a pair (tuple) of
@@ -1464,6 +1752,9 @@ class SemanticApi:
 
         _param = self._history_0_serialize(
             metric_id=metric_id,
+            x_tenant_id=x_tenant_id,
+            x_workspace_id=x_workspace_id,
+            x_correlation_id=x_correlation_id,
             _request_auth=_request_auth,
             _content_type=_content_type,
             _headers=_headers,
@@ -1488,6 +1779,9 @@ class SemanticApi:
     async def history_0_without_preload_content(
         self,
         metric_id: StrictStr,
+        x_tenant_id: Annotated[str, Field(min_length=1, strict=True, max_length=128, description="Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present.")],
+        x_workspace_id: Annotated[str, Field(min_length=1, strict=True, max_length=128, description="Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation.")],
+        x_correlation_id: Annotated[Optional[UUID], Field(description="Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.")] = None,
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -1506,6 +1800,12 @@ class SemanticApi:
 
         :param metric_id: (required)
         :type metric_id: str
+        :param x_tenant_id: Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present. (required)
+        :type x_tenant_id: str
+        :param x_workspace_id: Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation. (required)
+        :type x_workspace_id: str
+        :param x_correlation_id: Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.
+        :type x_correlation_id: UUID
         :param _request_timeout: timeout setting for this request. If one
                                  number provided, it will be total request
                                  timeout. It can also be a pair (tuple) of
@@ -1530,6 +1830,9 @@ class SemanticApi:
 
         _param = self._history_0_serialize(
             metric_id=metric_id,
+            x_tenant_id=x_tenant_id,
+            x_workspace_id=x_workspace_id,
+            x_correlation_id=x_correlation_id,
             _request_auth=_request_auth,
             _content_type=_content_type,
             _headers=_headers,
@@ -1549,6 +1852,9 @@ class SemanticApi:
     def _history_0_serialize(
         self,
         metric_id,
+        x_tenant_id,
+        x_workspace_id,
+        x_correlation_id,
         _request_auth,
         _content_type,
         _headers,
@@ -1574,6 +1880,12 @@ class SemanticApi:
             _path_params['metric_id'] = metric_id
         # process the query parameters
         # process the header parameters
+        if x_tenant_id is not None:
+            _header_params['X-Tenant-Id'] = x_tenant_id
+        if x_workspace_id is not None:
+            _header_params['X-Workspace-Id'] = x_workspace_id
+        if x_correlation_id is not None:
+            _header_params['X-Correlation-Id'] = x_correlation_id
         # process the form parameters
         # process the body parameter
 
@@ -1582,6 +1894,8 @@ class SemanticApi:
 
         # authentication setting
         _auth_settings: List[str] = [
+            'WorkspaceContext', 
+            'TenantContext'
         ]
 
         return self.api_client.param_serialize(
@@ -1605,7 +1919,10 @@ class SemanticApi:
     @validate_call
     async def list_dimensions(
         self,
+        x_tenant_id: Annotated[str, Field(min_length=1, strict=True, max_length=128, description="Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present.")],
+        x_workspace_id: Annotated[str, Field(min_length=1, strict=True, max_length=128, description="Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation.")],
         dataset_id: Optional[StrictStr] = None,
+        x_correlation_id: Annotated[Optional[UUID], Field(description="Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.")] = None,
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -1622,8 +1939,14 @@ class SemanticApi:
         """List all semantic dimensions for the caller's workspace.
 
 
+        :param x_tenant_id: Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present. (required)
+        :type x_tenant_id: str
+        :param x_workspace_id: Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation. (required)
+        :type x_workspace_id: str
         :param dataset_id:
         :type dataset_id: str
+        :param x_correlation_id: Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.
+        :type x_correlation_id: UUID
         :param _request_timeout: timeout setting for this request. If one
                                  number provided, it will be total request
                                  timeout. It can also be a pair (tuple) of
@@ -1647,7 +1970,10 @@ class SemanticApi:
         """ # noqa: E501
 
         _param = self._list_dimensions_serialize(
+            x_tenant_id=x_tenant_id,
+            x_workspace_id=x_workspace_id,
             dataset_id=dataset_id,
+            x_correlation_id=x_correlation_id,
             _request_auth=_request_auth,
             _content_type=_content_type,
             _headers=_headers,
@@ -1671,7 +1997,10 @@ class SemanticApi:
     @validate_call
     async def list_dimensions_with_http_info(
         self,
+        x_tenant_id: Annotated[str, Field(min_length=1, strict=True, max_length=128, description="Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present.")],
+        x_workspace_id: Annotated[str, Field(min_length=1, strict=True, max_length=128, description="Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation.")],
         dataset_id: Optional[StrictStr] = None,
+        x_correlation_id: Annotated[Optional[UUID], Field(description="Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.")] = None,
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -1688,8 +2017,14 @@ class SemanticApi:
         """List all semantic dimensions for the caller's workspace.
 
 
+        :param x_tenant_id: Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present. (required)
+        :type x_tenant_id: str
+        :param x_workspace_id: Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation. (required)
+        :type x_workspace_id: str
         :param dataset_id:
         :type dataset_id: str
+        :param x_correlation_id: Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.
+        :type x_correlation_id: UUID
         :param _request_timeout: timeout setting for this request. If one
                                  number provided, it will be total request
                                  timeout. It can also be a pair (tuple) of
@@ -1713,7 +2048,10 @@ class SemanticApi:
         """ # noqa: E501
 
         _param = self._list_dimensions_serialize(
+            x_tenant_id=x_tenant_id,
+            x_workspace_id=x_workspace_id,
             dataset_id=dataset_id,
+            x_correlation_id=x_correlation_id,
             _request_auth=_request_auth,
             _content_type=_content_type,
             _headers=_headers,
@@ -1737,7 +2075,10 @@ class SemanticApi:
     @validate_call
     async def list_dimensions_without_preload_content(
         self,
+        x_tenant_id: Annotated[str, Field(min_length=1, strict=True, max_length=128, description="Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present.")],
+        x_workspace_id: Annotated[str, Field(min_length=1, strict=True, max_length=128, description="Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation.")],
         dataset_id: Optional[StrictStr] = None,
+        x_correlation_id: Annotated[Optional[UUID], Field(description="Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.")] = None,
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -1754,8 +2095,14 @@ class SemanticApi:
         """List all semantic dimensions for the caller's workspace.
 
 
+        :param x_tenant_id: Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present. (required)
+        :type x_tenant_id: str
+        :param x_workspace_id: Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation. (required)
+        :type x_workspace_id: str
         :param dataset_id:
         :type dataset_id: str
+        :param x_correlation_id: Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.
+        :type x_correlation_id: UUID
         :param _request_timeout: timeout setting for this request. If one
                                  number provided, it will be total request
                                  timeout. It can also be a pair (tuple) of
@@ -1779,7 +2126,10 @@ class SemanticApi:
         """ # noqa: E501
 
         _param = self._list_dimensions_serialize(
+            x_tenant_id=x_tenant_id,
+            x_workspace_id=x_workspace_id,
             dataset_id=dataset_id,
+            x_correlation_id=x_correlation_id,
             _request_auth=_request_auth,
             _content_type=_content_type,
             _headers=_headers,
@@ -1798,7 +2148,10 @@ class SemanticApi:
 
     def _list_dimensions_serialize(
         self,
+        x_tenant_id,
+        x_workspace_id,
         dataset_id,
+        x_correlation_id,
         _request_auth,
         _content_type,
         _headers,
@@ -1826,6 +2179,12 @@ class SemanticApi:
             _query_params.append(('dataset_id', dataset_id))
             
         # process the header parameters
+        if x_tenant_id is not None:
+            _header_params['X-Tenant-Id'] = x_tenant_id
+        if x_workspace_id is not None:
+            _header_params['X-Workspace-Id'] = x_workspace_id
+        if x_correlation_id is not None:
+            _header_params['X-Correlation-Id'] = x_correlation_id
         # process the form parameters
         # process the body parameter
 
@@ -1834,6 +2193,8 @@ class SemanticApi:
 
         # authentication setting
         _auth_settings: List[str] = [
+            'WorkspaceContext', 
+            'TenantContext'
         ]
 
         return self.api_client.param_serialize(
@@ -1857,7 +2218,10 @@ class SemanticApi:
     @validate_call
     async def list_metrics(
         self,
+        x_tenant_id: Annotated[str, Field(min_length=1, strict=True, max_length=128, description="Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present.")],
+        x_workspace_id: Annotated[str, Field(min_length=1, strict=True, max_length=128, description="Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation.")],
         dataset_id: Optional[StrictStr] = None,
+        x_correlation_id: Annotated[Optional[UUID], Field(description="Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.")] = None,
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -1874,8 +2238,14 @@ class SemanticApi:
         """List all semantic metrics for the caller's workspace.
 
 
+        :param x_tenant_id: Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present. (required)
+        :type x_tenant_id: str
+        :param x_workspace_id: Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation. (required)
+        :type x_workspace_id: str
         :param dataset_id:
         :type dataset_id: str
+        :param x_correlation_id: Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.
+        :type x_correlation_id: UUID
         :param _request_timeout: timeout setting for this request. If one
                                  number provided, it will be total request
                                  timeout. It can also be a pair (tuple) of
@@ -1899,7 +2269,10 @@ class SemanticApi:
         """ # noqa: E501
 
         _param = self._list_metrics_serialize(
+            x_tenant_id=x_tenant_id,
+            x_workspace_id=x_workspace_id,
             dataset_id=dataset_id,
+            x_correlation_id=x_correlation_id,
             _request_auth=_request_auth,
             _content_type=_content_type,
             _headers=_headers,
@@ -1923,7 +2296,10 @@ class SemanticApi:
     @validate_call
     async def list_metrics_with_http_info(
         self,
+        x_tenant_id: Annotated[str, Field(min_length=1, strict=True, max_length=128, description="Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present.")],
+        x_workspace_id: Annotated[str, Field(min_length=1, strict=True, max_length=128, description="Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation.")],
         dataset_id: Optional[StrictStr] = None,
+        x_correlation_id: Annotated[Optional[UUID], Field(description="Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.")] = None,
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -1940,8 +2316,14 @@ class SemanticApi:
         """List all semantic metrics for the caller's workspace.
 
 
+        :param x_tenant_id: Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present. (required)
+        :type x_tenant_id: str
+        :param x_workspace_id: Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation. (required)
+        :type x_workspace_id: str
         :param dataset_id:
         :type dataset_id: str
+        :param x_correlation_id: Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.
+        :type x_correlation_id: UUID
         :param _request_timeout: timeout setting for this request. If one
                                  number provided, it will be total request
                                  timeout. It can also be a pair (tuple) of
@@ -1965,7 +2347,10 @@ class SemanticApi:
         """ # noqa: E501
 
         _param = self._list_metrics_serialize(
+            x_tenant_id=x_tenant_id,
+            x_workspace_id=x_workspace_id,
             dataset_id=dataset_id,
+            x_correlation_id=x_correlation_id,
             _request_auth=_request_auth,
             _content_type=_content_type,
             _headers=_headers,
@@ -1989,7 +2374,10 @@ class SemanticApi:
     @validate_call
     async def list_metrics_without_preload_content(
         self,
+        x_tenant_id: Annotated[str, Field(min_length=1, strict=True, max_length=128, description="Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present.")],
+        x_workspace_id: Annotated[str, Field(min_length=1, strict=True, max_length=128, description="Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation.")],
         dataset_id: Optional[StrictStr] = None,
+        x_correlation_id: Annotated[Optional[UUID], Field(description="Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.")] = None,
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -2006,8 +2394,14 @@ class SemanticApi:
         """List all semantic metrics for the caller's workspace.
 
 
+        :param x_tenant_id: Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present. (required)
+        :type x_tenant_id: str
+        :param x_workspace_id: Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation. (required)
+        :type x_workspace_id: str
         :param dataset_id:
         :type dataset_id: str
+        :param x_correlation_id: Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.
+        :type x_correlation_id: UUID
         :param _request_timeout: timeout setting for this request. If one
                                  number provided, it will be total request
                                  timeout. It can also be a pair (tuple) of
@@ -2031,7 +2425,10 @@ class SemanticApi:
         """ # noqa: E501
 
         _param = self._list_metrics_serialize(
+            x_tenant_id=x_tenant_id,
+            x_workspace_id=x_workspace_id,
             dataset_id=dataset_id,
+            x_correlation_id=x_correlation_id,
             _request_auth=_request_auth,
             _content_type=_content_type,
             _headers=_headers,
@@ -2050,7 +2447,10 @@ class SemanticApi:
 
     def _list_metrics_serialize(
         self,
+        x_tenant_id,
+        x_workspace_id,
         dataset_id,
+        x_correlation_id,
         _request_auth,
         _content_type,
         _headers,
@@ -2078,6 +2478,12 @@ class SemanticApi:
             _query_params.append(('dataset_id', dataset_id))
             
         # process the header parameters
+        if x_tenant_id is not None:
+            _header_params['X-Tenant-Id'] = x_tenant_id
+        if x_workspace_id is not None:
+            _header_params['X-Workspace-Id'] = x_workspace_id
+        if x_correlation_id is not None:
+            _header_params['X-Correlation-Id'] = x_correlation_id
         # process the form parameters
         # process the body parameter
 
@@ -2086,6 +2492,8 @@ class SemanticApi:
 
         # authentication setting
         _auth_settings: List[str] = [
+            'WorkspaceContext', 
+            'TenantContext'
         ]
 
         return self.api_client.param_serialize(
@@ -2110,6 +2518,10 @@ class SemanticApi:
     async def publish(
         self,
         dimension_id: StrictStr,
+        x_tenant_id: Annotated[str, Field(min_length=1, strict=True, max_length=128, description="Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present.")],
+        x_workspace_id: Annotated[str, Field(min_length=1, strict=True, max_length=128, description="Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation.")],
+        x_correlation_id: Annotated[Optional[UUID], Field(description="Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.")] = None,
+        idempotency_key: Annotated[Optional[Annotated[str, Field(min_length=1, strict=True, max_length=256)]], Field(description="Optional client-supplied idempotency key for mutating operations. The first request with a key persists its result; subsequent requests with the same key + same tenant return the cached response. Keys expire after 24h.")] = None,
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -2128,6 +2540,14 @@ class SemanticApi:
 
         :param dimension_id: (required)
         :type dimension_id: str
+        :param x_tenant_id: Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present. (required)
+        :type x_tenant_id: str
+        :param x_workspace_id: Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation. (required)
+        :type x_workspace_id: str
+        :param x_correlation_id: Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.
+        :type x_correlation_id: UUID
+        :param idempotency_key: Optional client-supplied idempotency key for mutating operations. The first request with a key persists its result; subsequent requests with the same key + same tenant return the cached response. Keys expire after 24h.
+        :type idempotency_key: str
         :param _request_timeout: timeout setting for this request. If one
                                  number provided, it will be total request
                                  timeout. It can also be a pair (tuple) of
@@ -2152,6 +2572,10 @@ class SemanticApi:
 
         _param = self._publish_serialize(
             dimension_id=dimension_id,
+            x_tenant_id=x_tenant_id,
+            x_workspace_id=x_workspace_id,
+            x_correlation_id=x_correlation_id,
+            idempotency_key=idempotency_key,
             _request_auth=_request_auth,
             _content_type=_content_type,
             _headers=_headers,
@@ -2176,6 +2600,10 @@ class SemanticApi:
     async def publish_with_http_info(
         self,
         dimension_id: StrictStr,
+        x_tenant_id: Annotated[str, Field(min_length=1, strict=True, max_length=128, description="Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present.")],
+        x_workspace_id: Annotated[str, Field(min_length=1, strict=True, max_length=128, description="Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation.")],
+        x_correlation_id: Annotated[Optional[UUID], Field(description="Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.")] = None,
+        idempotency_key: Annotated[Optional[Annotated[str, Field(min_length=1, strict=True, max_length=256)]], Field(description="Optional client-supplied idempotency key for mutating operations. The first request with a key persists its result; subsequent requests with the same key + same tenant return the cached response. Keys expire after 24h.")] = None,
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -2194,6 +2622,14 @@ class SemanticApi:
 
         :param dimension_id: (required)
         :type dimension_id: str
+        :param x_tenant_id: Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present. (required)
+        :type x_tenant_id: str
+        :param x_workspace_id: Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation. (required)
+        :type x_workspace_id: str
+        :param x_correlation_id: Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.
+        :type x_correlation_id: UUID
+        :param idempotency_key: Optional client-supplied idempotency key for mutating operations. The first request with a key persists its result; subsequent requests with the same key + same tenant return the cached response. Keys expire after 24h.
+        :type idempotency_key: str
         :param _request_timeout: timeout setting for this request. If one
                                  number provided, it will be total request
                                  timeout. It can also be a pair (tuple) of
@@ -2218,6 +2654,10 @@ class SemanticApi:
 
         _param = self._publish_serialize(
             dimension_id=dimension_id,
+            x_tenant_id=x_tenant_id,
+            x_workspace_id=x_workspace_id,
+            x_correlation_id=x_correlation_id,
+            idempotency_key=idempotency_key,
             _request_auth=_request_auth,
             _content_type=_content_type,
             _headers=_headers,
@@ -2242,6 +2682,10 @@ class SemanticApi:
     async def publish_without_preload_content(
         self,
         dimension_id: StrictStr,
+        x_tenant_id: Annotated[str, Field(min_length=1, strict=True, max_length=128, description="Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present.")],
+        x_workspace_id: Annotated[str, Field(min_length=1, strict=True, max_length=128, description="Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation.")],
+        x_correlation_id: Annotated[Optional[UUID], Field(description="Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.")] = None,
+        idempotency_key: Annotated[Optional[Annotated[str, Field(min_length=1, strict=True, max_length=256)]], Field(description="Optional client-supplied idempotency key for mutating operations. The first request with a key persists its result; subsequent requests with the same key + same tenant return the cached response. Keys expire after 24h.")] = None,
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -2260,6 +2704,14 @@ class SemanticApi:
 
         :param dimension_id: (required)
         :type dimension_id: str
+        :param x_tenant_id: Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present. (required)
+        :type x_tenant_id: str
+        :param x_workspace_id: Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation. (required)
+        :type x_workspace_id: str
+        :param x_correlation_id: Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.
+        :type x_correlation_id: UUID
+        :param idempotency_key: Optional client-supplied idempotency key for mutating operations. The first request with a key persists its result; subsequent requests with the same key + same tenant return the cached response. Keys expire after 24h.
+        :type idempotency_key: str
         :param _request_timeout: timeout setting for this request. If one
                                  number provided, it will be total request
                                  timeout. It can also be a pair (tuple) of
@@ -2284,6 +2736,10 @@ class SemanticApi:
 
         _param = self._publish_serialize(
             dimension_id=dimension_id,
+            x_tenant_id=x_tenant_id,
+            x_workspace_id=x_workspace_id,
+            x_correlation_id=x_correlation_id,
+            idempotency_key=idempotency_key,
             _request_auth=_request_auth,
             _content_type=_content_type,
             _headers=_headers,
@@ -2303,6 +2759,10 @@ class SemanticApi:
     def _publish_serialize(
         self,
         dimension_id,
+        x_tenant_id,
+        x_workspace_id,
+        x_correlation_id,
+        idempotency_key,
         _request_auth,
         _content_type,
         _headers,
@@ -2328,6 +2788,14 @@ class SemanticApi:
             _path_params['dimension_id'] = dimension_id
         # process the query parameters
         # process the header parameters
+        if x_tenant_id is not None:
+            _header_params['X-Tenant-Id'] = x_tenant_id
+        if x_workspace_id is not None:
+            _header_params['X-Workspace-Id'] = x_workspace_id
+        if x_correlation_id is not None:
+            _header_params['X-Correlation-Id'] = x_correlation_id
+        if idempotency_key is not None:
+            _header_params['Idempotency-Key'] = idempotency_key
         # process the form parameters
         # process the body parameter
 
@@ -2343,6 +2811,8 @@ class SemanticApi:
 
         # authentication setting
         _auth_settings: List[str] = [
+            'WorkspaceContext', 
+            'TenantContext'
         ]
 
         return self.api_client.param_serialize(
@@ -2367,6 +2837,10 @@ class SemanticApi:
     async def publish_0(
         self,
         metric_id: StrictStr,
+        x_tenant_id: Annotated[str, Field(min_length=1, strict=True, max_length=128, description="Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present.")],
+        x_workspace_id: Annotated[str, Field(min_length=1, strict=True, max_length=128, description="Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation.")],
+        x_correlation_id: Annotated[Optional[UUID], Field(description="Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.")] = None,
+        idempotency_key: Annotated[Optional[Annotated[str, Field(min_length=1, strict=True, max_length=256)]], Field(description="Optional client-supplied idempotency key for mutating operations. The first request with a key persists its result; subsequent requests with the same key + same tenant return the cached response. Keys expire after 24h.")] = None,
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -2385,6 +2859,14 @@ class SemanticApi:
 
         :param metric_id: (required)
         :type metric_id: str
+        :param x_tenant_id: Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present. (required)
+        :type x_tenant_id: str
+        :param x_workspace_id: Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation. (required)
+        :type x_workspace_id: str
+        :param x_correlation_id: Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.
+        :type x_correlation_id: UUID
+        :param idempotency_key: Optional client-supplied idempotency key for mutating operations. The first request with a key persists its result; subsequent requests with the same key + same tenant return the cached response. Keys expire after 24h.
+        :type idempotency_key: str
         :param _request_timeout: timeout setting for this request. If one
                                  number provided, it will be total request
                                  timeout. It can also be a pair (tuple) of
@@ -2409,6 +2891,10 @@ class SemanticApi:
 
         _param = self._publish_0_serialize(
             metric_id=metric_id,
+            x_tenant_id=x_tenant_id,
+            x_workspace_id=x_workspace_id,
+            x_correlation_id=x_correlation_id,
+            idempotency_key=idempotency_key,
             _request_auth=_request_auth,
             _content_type=_content_type,
             _headers=_headers,
@@ -2433,6 +2919,10 @@ class SemanticApi:
     async def publish_0_with_http_info(
         self,
         metric_id: StrictStr,
+        x_tenant_id: Annotated[str, Field(min_length=1, strict=True, max_length=128, description="Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present.")],
+        x_workspace_id: Annotated[str, Field(min_length=1, strict=True, max_length=128, description="Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation.")],
+        x_correlation_id: Annotated[Optional[UUID], Field(description="Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.")] = None,
+        idempotency_key: Annotated[Optional[Annotated[str, Field(min_length=1, strict=True, max_length=256)]], Field(description="Optional client-supplied idempotency key for mutating operations. The first request with a key persists its result; subsequent requests with the same key + same tenant return the cached response. Keys expire after 24h.")] = None,
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -2451,6 +2941,14 @@ class SemanticApi:
 
         :param metric_id: (required)
         :type metric_id: str
+        :param x_tenant_id: Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present. (required)
+        :type x_tenant_id: str
+        :param x_workspace_id: Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation. (required)
+        :type x_workspace_id: str
+        :param x_correlation_id: Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.
+        :type x_correlation_id: UUID
+        :param idempotency_key: Optional client-supplied idempotency key for mutating operations. The first request with a key persists its result; subsequent requests with the same key + same tenant return the cached response. Keys expire after 24h.
+        :type idempotency_key: str
         :param _request_timeout: timeout setting for this request. If one
                                  number provided, it will be total request
                                  timeout. It can also be a pair (tuple) of
@@ -2475,6 +2973,10 @@ class SemanticApi:
 
         _param = self._publish_0_serialize(
             metric_id=metric_id,
+            x_tenant_id=x_tenant_id,
+            x_workspace_id=x_workspace_id,
+            x_correlation_id=x_correlation_id,
+            idempotency_key=idempotency_key,
             _request_auth=_request_auth,
             _content_type=_content_type,
             _headers=_headers,
@@ -2499,6 +3001,10 @@ class SemanticApi:
     async def publish_0_without_preload_content(
         self,
         metric_id: StrictStr,
+        x_tenant_id: Annotated[str, Field(min_length=1, strict=True, max_length=128, description="Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present.")],
+        x_workspace_id: Annotated[str, Field(min_length=1, strict=True, max_length=128, description="Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation.")],
+        x_correlation_id: Annotated[Optional[UUID], Field(description="Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.")] = None,
+        idempotency_key: Annotated[Optional[Annotated[str, Field(min_length=1, strict=True, max_length=256)]], Field(description="Optional client-supplied idempotency key for mutating operations. The first request with a key persists its result; subsequent requests with the same key + same tenant return the cached response. Keys expire after 24h.")] = None,
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -2517,6 +3023,14 @@ class SemanticApi:
 
         :param metric_id: (required)
         :type metric_id: str
+        :param x_tenant_id: Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present. (required)
+        :type x_tenant_id: str
+        :param x_workspace_id: Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation. (required)
+        :type x_workspace_id: str
+        :param x_correlation_id: Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.
+        :type x_correlation_id: UUID
+        :param idempotency_key: Optional client-supplied idempotency key for mutating operations. The first request with a key persists its result; subsequent requests with the same key + same tenant return the cached response. Keys expire after 24h.
+        :type idempotency_key: str
         :param _request_timeout: timeout setting for this request. If one
                                  number provided, it will be total request
                                  timeout. It can also be a pair (tuple) of
@@ -2541,6 +3055,10 @@ class SemanticApi:
 
         _param = self._publish_0_serialize(
             metric_id=metric_id,
+            x_tenant_id=x_tenant_id,
+            x_workspace_id=x_workspace_id,
+            x_correlation_id=x_correlation_id,
+            idempotency_key=idempotency_key,
             _request_auth=_request_auth,
             _content_type=_content_type,
             _headers=_headers,
@@ -2560,6 +3078,10 @@ class SemanticApi:
     def _publish_0_serialize(
         self,
         metric_id,
+        x_tenant_id,
+        x_workspace_id,
+        x_correlation_id,
+        idempotency_key,
         _request_auth,
         _content_type,
         _headers,
@@ -2585,6 +3107,14 @@ class SemanticApi:
             _path_params['metric_id'] = metric_id
         # process the query parameters
         # process the header parameters
+        if x_tenant_id is not None:
+            _header_params['X-Tenant-Id'] = x_tenant_id
+        if x_workspace_id is not None:
+            _header_params['X-Workspace-Id'] = x_workspace_id
+        if x_correlation_id is not None:
+            _header_params['X-Correlation-Id'] = x_correlation_id
+        if idempotency_key is not None:
+            _header_params['Idempotency-Key'] = idempotency_key
         # process the form parameters
         # process the body parameter
 
@@ -2600,6 +3130,8 @@ class SemanticApi:
 
         # authentication setting
         _auth_settings: List[str] = [
+            'WorkspaceContext', 
+            'TenantContext'
         ]
 
         return self.api_client.param_serialize(
@@ -2624,6 +3156,10 @@ class SemanticApi:
     async def retire(
         self,
         dimension_id: StrictStr,
+        x_tenant_id: Annotated[str, Field(min_length=1, strict=True, max_length=128, description="Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present.")],
+        x_workspace_id: Annotated[str, Field(min_length=1, strict=True, max_length=128, description="Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation.")],
+        x_correlation_id: Annotated[Optional[UUID], Field(description="Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.")] = None,
+        idempotency_key: Annotated[Optional[Annotated[str, Field(min_length=1, strict=True, max_length=256)]], Field(description="Optional client-supplied idempotency key for mutating operations. The first request with a key persists its result; subsequent requests with the same key + same tenant return the cached response. Keys expire after 24h.")] = None,
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -2642,6 +3178,14 @@ class SemanticApi:
 
         :param dimension_id: (required)
         :type dimension_id: str
+        :param x_tenant_id: Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present. (required)
+        :type x_tenant_id: str
+        :param x_workspace_id: Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation. (required)
+        :type x_workspace_id: str
+        :param x_correlation_id: Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.
+        :type x_correlation_id: UUID
+        :param idempotency_key: Optional client-supplied idempotency key for mutating operations. The first request with a key persists its result; subsequent requests with the same key + same tenant return the cached response. Keys expire after 24h.
+        :type idempotency_key: str
         :param _request_timeout: timeout setting for this request. If one
                                  number provided, it will be total request
                                  timeout. It can also be a pair (tuple) of
@@ -2666,6 +3210,10 @@ class SemanticApi:
 
         _param = self._retire_serialize(
             dimension_id=dimension_id,
+            x_tenant_id=x_tenant_id,
+            x_workspace_id=x_workspace_id,
+            x_correlation_id=x_correlation_id,
+            idempotency_key=idempotency_key,
             _request_auth=_request_auth,
             _content_type=_content_type,
             _headers=_headers,
@@ -2690,6 +3238,10 @@ class SemanticApi:
     async def retire_with_http_info(
         self,
         dimension_id: StrictStr,
+        x_tenant_id: Annotated[str, Field(min_length=1, strict=True, max_length=128, description="Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present.")],
+        x_workspace_id: Annotated[str, Field(min_length=1, strict=True, max_length=128, description="Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation.")],
+        x_correlation_id: Annotated[Optional[UUID], Field(description="Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.")] = None,
+        idempotency_key: Annotated[Optional[Annotated[str, Field(min_length=1, strict=True, max_length=256)]], Field(description="Optional client-supplied idempotency key for mutating operations. The first request with a key persists its result; subsequent requests with the same key + same tenant return the cached response. Keys expire after 24h.")] = None,
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -2708,6 +3260,14 @@ class SemanticApi:
 
         :param dimension_id: (required)
         :type dimension_id: str
+        :param x_tenant_id: Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present. (required)
+        :type x_tenant_id: str
+        :param x_workspace_id: Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation. (required)
+        :type x_workspace_id: str
+        :param x_correlation_id: Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.
+        :type x_correlation_id: UUID
+        :param idempotency_key: Optional client-supplied idempotency key for mutating operations. The first request with a key persists its result; subsequent requests with the same key + same tenant return the cached response. Keys expire after 24h.
+        :type idempotency_key: str
         :param _request_timeout: timeout setting for this request. If one
                                  number provided, it will be total request
                                  timeout. It can also be a pair (tuple) of
@@ -2732,6 +3292,10 @@ class SemanticApi:
 
         _param = self._retire_serialize(
             dimension_id=dimension_id,
+            x_tenant_id=x_tenant_id,
+            x_workspace_id=x_workspace_id,
+            x_correlation_id=x_correlation_id,
+            idempotency_key=idempotency_key,
             _request_auth=_request_auth,
             _content_type=_content_type,
             _headers=_headers,
@@ -2756,6 +3320,10 @@ class SemanticApi:
     async def retire_without_preload_content(
         self,
         dimension_id: StrictStr,
+        x_tenant_id: Annotated[str, Field(min_length=1, strict=True, max_length=128, description="Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present.")],
+        x_workspace_id: Annotated[str, Field(min_length=1, strict=True, max_length=128, description="Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation.")],
+        x_correlation_id: Annotated[Optional[UUID], Field(description="Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.")] = None,
+        idempotency_key: Annotated[Optional[Annotated[str, Field(min_length=1, strict=True, max_length=256)]], Field(description="Optional client-supplied idempotency key for mutating operations. The first request with a key persists its result; subsequent requests with the same key + same tenant return the cached response. Keys expire after 24h.")] = None,
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -2774,6 +3342,14 @@ class SemanticApi:
 
         :param dimension_id: (required)
         :type dimension_id: str
+        :param x_tenant_id: Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present. (required)
+        :type x_tenant_id: str
+        :param x_workspace_id: Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation. (required)
+        :type x_workspace_id: str
+        :param x_correlation_id: Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.
+        :type x_correlation_id: UUID
+        :param idempotency_key: Optional client-supplied idempotency key for mutating operations. The first request with a key persists its result; subsequent requests with the same key + same tenant return the cached response. Keys expire after 24h.
+        :type idempotency_key: str
         :param _request_timeout: timeout setting for this request. If one
                                  number provided, it will be total request
                                  timeout. It can also be a pair (tuple) of
@@ -2798,6 +3374,10 @@ class SemanticApi:
 
         _param = self._retire_serialize(
             dimension_id=dimension_id,
+            x_tenant_id=x_tenant_id,
+            x_workspace_id=x_workspace_id,
+            x_correlation_id=x_correlation_id,
+            idempotency_key=idempotency_key,
             _request_auth=_request_auth,
             _content_type=_content_type,
             _headers=_headers,
@@ -2817,6 +3397,10 @@ class SemanticApi:
     def _retire_serialize(
         self,
         dimension_id,
+        x_tenant_id,
+        x_workspace_id,
+        x_correlation_id,
+        idempotency_key,
         _request_auth,
         _content_type,
         _headers,
@@ -2842,6 +3426,14 @@ class SemanticApi:
             _path_params['dimension_id'] = dimension_id
         # process the query parameters
         # process the header parameters
+        if x_tenant_id is not None:
+            _header_params['X-Tenant-Id'] = x_tenant_id
+        if x_workspace_id is not None:
+            _header_params['X-Workspace-Id'] = x_workspace_id
+        if x_correlation_id is not None:
+            _header_params['X-Correlation-Id'] = x_correlation_id
+        if idempotency_key is not None:
+            _header_params['Idempotency-Key'] = idempotency_key
         # process the form parameters
         # process the body parameter
 
@@ -2857,6 +3449,8 @@ class SemanticApi:
 
         # authentication setting
         _auth_settings: List[str] = [
+            'WorkspaceContext', 
+            'TenantContext'
         ]
 
         return self.api_client.param_serialize(
@@ -2881,6 +3475,10 @@ class SemanticApi:
     async def retire_0(
         self,
         metric_id: StrictStr,
+        x_tenant_id: Annotated[str, Field(min_length=1, strict=True, max_length=128, description="Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present.")],
+        x_workspace_id: Annotated[str, Field(min_length=1, strict=True, max_length=128, description="Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation.")],
+        x_correlation_id: Annotated[Optional[UUID], Field(description="Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.")] = None,
+        idempotency_key: Annotated[Optional[Annotated[str, Field(min_length=1, strict=True, max_length=256)]], Field(description="Optional client-supplied idempotency key for mutating operations. The first request with a key persists its result; subsequent requests with the same key + same tenant return the cached response. Keys expire after 24h.")] = None,
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -2899,6 +3497,14 @@ class SemanticApi:
 
         :param metric_id: (required)
         :type metric_id: str
+        :param x_tenant_id: Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present. (required)
+        :type x_tenant_id: str
+        :param x_workspace_id: Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation. (required)
+        :type x_workspace_id: str
+        :param x_correlation_id: Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.
+        :type x_correlation_id: UUID
+        :param idempotency_key: Optional client-supplied idempotency key for mutating operations. The first request with a key persists its result; subsequent requests with the same key + same tenant return the cached response. Keys expire after 24h.
+        :type idempotency_key: str
         :param _request_timeout: timeout setting for this request. If one
                                  number provided, it will be total request
                                  timeout. It can also be a pair (tuple) of
@@ -2923,6 +3529,10 @@ class SemanticApi:
 
         _param = self._retire_0_serialize(
             metric_id=metric_id,
+            x_tenant_id=x_tenant_id,
+            x_workspace_id=x_workspace_id,
+            x_correlation_id=x_correlation_id,
+            idempotency_key=idempotency_key,
             _request_auth=_request_auth,
             _content_type=_content_type,
             _headers=_headers,
@@ -2947,6 +3557,10 @@ class SemanticApi:
     async def retire_0_with_http_info(
         self,
         metric_id: StrictStr,
+        x_tenant_id: Annotated[str, Field(min_length=1, strict=True, max_length=128, description="Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present.")],
+        x_workspace_id: Annotated[str, Field(min_length=1, strict=True, max_length=128, description="Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation.")],
+        x_correlation_id: Annotated[Optional[UUID], Field(description="Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.")] = None,
+        idempotency_key: Annotated[Optional[Annotated[str, Field(min_length=1, strict=True, max_length=256)]], Field(description="Optional client-supplied idempotency key for mutating operations. The first request with a key persists its result; subsequent requests with the same key + same tenant return the cached response. Keys expire after 24h.")] = None,
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -2965,6 +3579,14 @@ class SemanticApi:
 
         :param metric_id: (required)
         :type metric_id: str
+        :param x_tenant_id: Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present. (required)
+        :type x_tenant_id: str
+        :param x_workspace_id: Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation. (required)
+        :type x_workspace_id: str
+        :param x_correlation_id: Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.
+        :type x_correlation_id: UUID
+        :param idempotency_key: Optional client-supplied idempotency key for mutating operations. The first request with a key persists its result; subsequent requests with the same key + same tenant return the cached response. Keys expire after 24h.
+        :type idempotency_key: str
         :param _request_timeout: timeout setting for this request. If one
                                  number provided, it will be total request
                                  timeout. It can also be a pair (tuple) of
@@ -2989,6 +3611,10 @@ class SemanticApi:
 
         _param = self._retire_0_serialize(
             metric_id=metric_id,
+            x_tenant_id=x_tenant_id,
+            x_workspace_id=x_workspace_id,
+            x_correlation_id=x_correlation_id,
+            idempotency_key=idempotency_key,
             _request_auth=_request_auth,
             _content_type=_content_type,
             _headers=_headers,
@@ -3013,6 +3639,10 @@ class SemanticApi:
     async def retire_0_without_preload_content(
         self,
         metric_id: StrictStr,
+        x_tenant_id: Annotated[str, Field(min_length=1, strict=True, max_length=128, description="Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present.")],
+        x_workspace_id: Annotated[str, Field(min_length=1, strict=True, max_length=128, description="Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation.")],
+        x_correlation_id: Annotated[Optional[UUID], Field(description="Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.")] = None,
+        idempotency_key: Annotated[Optional[Annotated[str, Field(min_length=1, strict=True, max_length=256)]], Field(description="Optional client-supplied idempotency key for mutating operations. The first request with a key persists its result; subsequent requests with the same key + same tenant return the cached response. Keys expire after 24h.")] = None,
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -3031,6 +3661,14 @@ class SemanticApi:
 
         :param metric_id: (required)
         :type metric_id: str
+        :param x_tenant_id: Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present. (required)
+        :type x_tenant_id: str
+        :param x_workspace_id: Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation. (required)
+        :type x_workspace_id: str
+        :param x_correlation_id: Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.
+        :type x_correlation_id: UUID
+        :param idempotency_key: Optional client-supplied idempotency key for mutating operations. The first request with a key persists its result; subsequent requests with the same key + same tenant return the cached response. Keys expire after 24h.
+        :type idempotency_key: str
         :param _request_timeout: timeout setting for this request. If one
                                  number provided, it will be total request
                                  timeout. It can also be a pair (tuple) of
@@ -3055,6 +3693,10 @@ class SemanticApi:
 
         _param = self._retire_0_serialize(
             metric_id=metric_id,
+            x_tenant_id=x_tenant_id,
+            x_workspace_id=x_workspace_id,
+            x_correlation_id=x_correlation_id,
+            idempotency_key=idempotency_key,
             _request_auth=_request_auth,
             _content_type=_content_type,
             _headers=_headers,
@@ -3074,6 +3716,10 @@ class SemanticApi:
     def _retire_0_serialize(
         self,
         metric_id,
+        x_tenant_id,
+        x_workspace_id,
+        x_correlation_id,
+        idempotency_key,
         _request_auth,
         _content_type,
         _headers,
@@ -3099,6 +3745,14 @@ class SemanticApi:
             _path_params['metric_id'] = metric_id
         # process the query parameters
         # process the header parameters
+        if x_tenant_id is not None:
+            _header_params['X-Tenant-Id'] = x_tenant_id
+        if x_workspace_id is not None:
+            _header_params['X-Workspace-Id'] = x_workspace_id
+        if x_correlation_id is not None:
+            _header_params['X-Correlation-Id'] = x_correlation_id
+        if idempotency_key is not None:
+            _header_params['Idempotency-Key'] = idempotency_key
         # process the form parameters
         # process the body parameter
 
@@ -3114,6 +3768,8 @@ class SemanticApi:
 
         # authentication setting
         _auth_settings: List[str] = [
+            'WorkspaceContext', 
+            'TenantContext'
         ]
 
         return self.api_client.param_serialize(
@@ -3138,7 +3794,11 @@ class SemanticApi:
     async def update(
         self,
         dimension_id: StrictStr,
+        x_tenant_id: Annotated[str, Field(min_length=1, strict=True, max_length=128, description="Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present.")],
+        x_workspace_id: Annotated[str, Field(min_length=1, strict=True, max_length=128, description="Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation.")],
         semantic_dimension_update: SemanticDimensionUpdate,
+        x_correlation_id: Annotated[Optional[UUID], Field(description="Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.")] = None,
+        idempotency_key: Annotated[Optional[Annotated[str, Field(min_length=1, strict=True, max_length=256)]], Field(description="Optional client-supplied idempotency key for mutating operations. The first request with a key persists its result; subsequent requests with the same key + same tenant return the cached response. Keys expire after 24h.")] = None,
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -3157,8 +3817,16 @@ class SemanticApi:
 
         :param dimension_id: (required)
         :type dimension_id: str
+        :param x_tenant_id: Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present. (required)
+        :type x_tenant_id: str
+        :param x_workspace_id: Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation. (required)
+        :type x_workspace_id: str
         :param semantic_dimension_update: (required)
         :type semantic_dimension_update: SemanticDimensionUpdate
+        :param x_correlation_id: Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.
+        :type x_correlation_id: UUID
+        :param idempotency_key: Optional client-supplied idempotency key for mutating operations. The first request with a key persists its result; subsequent requests with the same key + same tenant return the cached response. Keys expire after 24h.
+        :type idempotency_key: str
         :param _request_timeout: timeout setting for this request. If one
                                  number provided, it will be total request
                                  timeout. It can also be a pair (tuple) of
@@ -3183,7 +3851,11 @@ class SemanticApi:
 
         _param = self._update_serialize(
             dimension_id=dimension_id,
+            x_tenant_id=x_tenant_id,
+            x_workspace_id=x_workspace_id,
             semantic_dimension_update=semantic_dimension_update,
+            x_correlation_id=x_correlation_id,
+            idempotency_key=idempotency_key,
             _request_auth=_request_auth,
             _content_type=_content_type,
             _headers=_headers,
@@ -3209,7 +3881,11 @@ class SemanticApi:
     async def update_with_http_info(
         self,
         dimension_id: StrictStr,
+        x_tenant_id: Annotated[str, Field(min_length=1, strict=True, max_length=128, description="Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present.")],
+        x_workspace_id: Annotated[str, Field(min_length=1, strict=True, max_length=128, description="Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation.")],
         semantic_dimension_update: SemanticDimensionUpdate,
+        x_correlation_id: Annotated[Optional[UUID], Field(description="Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.")] = None,
+        idempotency_key: Annotated[Optional[Annotated[str, Field(min_length=1, strict=True, max_length=256)]], Field(description="Optional client-supplied idempotency key for mutating operations. The first request with a key persists its result; subsequent requests with the same key + same tenant return the cached response. Keys expire after 24h.")] = None,
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -3228,8 +3904,16 @@ class SemanticApi:
 
         :param dimension_id: (required)
         :type dimension_id: str
+        :param x_tenant_id: Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present. (required)
+        :type x_tenant_id: str
+        :param x_workspace_id: Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation. (required)
+        :type x_workspace_id: str
         :param semantic_dimension_update: (required)
         :type semantic_dimension_update: SemanticDimensionUpdate
+        :param x_correlation_id: Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.
+        :type x_correlation_id: UUID
+        :param idempotency_key: Optional client-supplied idempotency key for mutating operations. The first request with a key persists its result; subsequent requests with the same key + same tenant return the cached response. Keys expire after 24h.
+        :type idempotency_key: str
         :param _request_timeout: timeout setting for this request. If one
                                  number provided, it will be total request
                                  timeout. It can also be a pair (tuple) of
@@ -3254,7 +3938,11 @@ class SemanticApi:
 
         _param = self._update_serialize(
             dimension_id=dimension_id,
+            x_tenant_id=x_tenant_id,
+            x_workspace_id=x_workspace_id,
             semantic_dimension_update=semantic_dimension_update,
+            x_correlation_id=x_correlation_id,
+            idempotency_key=idempotency_key,
             _request_auth=_request_auth,
             _content_type=_content_type,
             _headers=_headers,
@@ -3280,7 +3968,11 @@ class SemanticApi:
     async def update_without_preload_content(
         self,
         dimension_id: StrictStr,
+        x_tenant_id: Annotated[str, Field(min_length=1, strict=True, max_length=128, description="Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present.")],
+        x_workspace_id: Annotated[str, Field(min_length=1, strict=True, max_length=128, description="Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation.")],
         semantic_dimension_update: SemanticDimensionUpdate,
+        x_correlation_id: Annotated[Optional[UUID], Field(description="Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.")] = None,
+        idempotency_key: Annotated[Optional[Annotated[str, Field(min_length=1, strict=True, max_length=256)]], Field(description="Optional client-supplied idempotency key for mutating operations. The first request with a key persists its result; subsequent requests with the same key + same tenant return the cached response. Keys expire after 24h.")] = None,
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -3299,8 +3991,16 @@ class SemanticApi:
 
         :param dimension_id: (required)
         :type dimension_id: str
+        :param x_tenant_id: Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present. (required)
+        :type x_tenant_id: str
+        :param x_workspace_id: Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation. (required)
+        :type x_workspace_id: str
         :param semantic_dimension_update: (required)
         :type semantic_dimension_update: SemanticDimensionUpdate
+        :param x_correlation_id: Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.
+        :type x_correlation_id: UUID
+        :param idempotency_key: Optional client-supplied idempotency key for mutating operations. The first request with a key persists its result; subsequent requests with the same key + same tenant return the cached response. Keys expire after 24h.
+        :type idempotency_key: str
         :param _request_timeout: timeout setting for this request. If one
                                  number provided, it will be total request
                                  timeout. It can also be a pair (tuple) of
@@ -3325,7 +4025,11 @@ class SemanticApi:
 
         _param = self._update_serialize(
             dimension_id=dimension_id,
+            x_tenant_id=x_tenant_id,
+            x_workspace_id=x_workspace_id,
             semantic_dimension_update=semantic_dimension_update,
+            x_correlation_id=x_correlation_id,
+            idempotency_key=idempotency_key,
             _request_auth=_request_auth,
             _content_type=_content_type,
             _headers=_headers,
@@ -3346,7 +4050,11 @@ class SemanticApi:
     def _update_serialize(
         self,
         dimension_id,
+        x_tenant_id,
+        x_workspace_id,
         semantic_dimension_update,
+        x_correlation_id,
+        idempotency_key,
         _request_auth,
         _content_type,
         _headers,
@@ -3372,6 +4080,14 @@ class SemanticApi:
             _path_params['dimension_id'] = dimension_id
         # process the query parameters
         # process the header parameters
+        if x_tenant_id is not None:
+            _header_params['X-Tenant-Id'] = x_tenant_id
+        if x_workspace_id is not None:
+            _header_params['X-Workspace-Id'] = x_workspace_id
+        if x_correlation_id is not None:
+            _header_params['X-Correlation-Id'] = x_correlation_id
+        if idempotency_key is not None:
+            _header_params['Idempotency-Key'] = idempotency_key
         # process the form parameters
         # process the body parameter
         if semantic_dimension_update is not None:
@@ -3402,6 +4118,8 @@ class SemanticApi:
 
         # authentication setting
         _auth_settings: List[str] = [
+            'WorkspaceContext', 
+            'TenantContext'
         ]
 
         return self.api_client.param_serialize(
@@ -3426,7 +4144,11 @@ class SemanticApi:
     async def update_0(
         self,
         metric_id: StrictStr,
+        x_tenant_id: Annotated[str, Field(min_length=1, strict=True, max_length=128, description="Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present.")],
+        x_workspace_id: Annotated[str, Field(min_length=1, strict=True, max_length=128, description="Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation.")],
         semantic_metric_update: SemanticMetricUpdate,
+        x_correlation_id: Annotated[Optional[UUID], Field(description="Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.")] = None,
+        idempotency_key: Annotated[Optional[Annotated[str, Field(min_length=1, strict=True, max_length=256)]], Field(description="Optional client-supplied idempotency key for mutating operations. The first request with a key persists its result; subsequent requests with the same key + same tenant return the cached response. Keys expire after 24h.")] = None,
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -3445,8 +4167,16 @@ class SemanticApi:
 
         :param metric_id: (required)
         :type metric_id: str
+        :param x_tenant_id: Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present. (required)
+        :type x_tenant_id: str
+        :param x_workspace_id: Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation. (required)
+        :type x_workspace_id: str
         :param semantic_metric_update: (required)
         :type semantic_metric_update: SemanticMetricUpdate
+        :param x_correlation_id: Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.
+        :type x_correlation_id: UUID
+        :param idempotency_key: Optional client-supplied idempotency key for mutating operations. The first request with a key persists its result; subsequent requests with the same key + same tenant return the cached response. Keys expire after 24h.
+        :type idempotency_key: str
         :param _request_timeout: timeout setting for this request. If one
                                  number provided, it will be total request
                                  timeout. It can also be a pair (tuple) of
@@ -3471,7 +4201,11 @@ class SemanticApi:
 
         _param = self._update_0_serialize(
             metric_id=metric_id,
+            x_tenant_id=x_tenant_id,
+            x_workspace_id=x_workspace_id,
             semantic_metric_update=semantic_metric_update,
+            x_correlation_id=x_correlation_id,
+            idempotency_key=idempotency_key,
             _request_auth=_request_auth,
             _content_type=_content_type,
             _headers=_headers,
@@ -3497,7 +4231,11 @@ class SemanticApi:
     async def update_0_with_http_info(
         self,
         metric_id: StrictStr,
+        x_tenant_id: Annotated[str, Field(min_length=1, strict=True, max_length=128, description="Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present.")],
+        x_workspace_id: Annotated[str, Field(min_length=1, strict=True, max_length=128, description="Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation.")],
         semantic_metric_update: SemanticMetricUpdate,
+        x_correlation_id: Annotated[Optional[UUID], Field(description="Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.")] = None,
+        idempotency_key: Annotated[Optional[Annotated[str, Field(min_length=1, strict=True, max_length=256)]], Field(description="Optional client-supplied idempotency key for mutating operations. The first request with a key persists its result; subsequent requests with the same key + same tenant return the cached response. Keys expire after 24h.")] = None,
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -3516,8 +4254,16 @@ class SemanticApi:
 
         :param metric_id: (required)
         :type metric_id: str
+        :param x_tenant_id: Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present. (required)
+        :type x_tenant_id: str
+        :param x_workspace_id: Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation. (required)
+        :type x_workspace_id: str
         :param semantic_metric_update: (required)
         :type semantic_metric_update: SemanticMetricUpdate
+        :param x_correlation_id: Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.
+        :type x_correlation_id: UUID
+        :param idempotency_key: Optional client-supplied idempotency key for mutating operations. The first request with a key persists its result; subsequent requests with the same key + same tenant return the cached response. Keys expire after 24h.
+        :type idempotency_key: str
         :param _request_timeout: timeout setting for this request. If one
                                  number provided, it will be total request
                                  timeout. It can also be a pair (tuple) of
@@ -3542,7 +4288,11 @@ class SemanticApi:
 
         _param = self._update_0_serialize(
             metric_id=metric_id,
+            x_tenant_id=x_tenant_id,
+            x_workspace_id=x_workspace_id,
             semantic_metric_update=semantic_metric_update,
+            x_correlation_id=x_correlation_id,
+            idempotency_key=idempotency_key,
             _request_auth=_request_auth,
             _content_type=_content_type,
             _headers=_headers,
@@ -3568,7 +4318,11 @@ class SemanticApi:
     async def update_0_without_preload_content(
         self,
         metric_id: StrictStr,
+        x_tenant_id: Annotated[str, Field(min_length=1, strict=True, max_length=128, description="Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present.")],
+        x_workspace_id: Annotated[str, Field(min_length=1, strict=True, max_length=128, description="Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation.")],
         semantic_metric_update: SemanticMetricUpdate,
+        x_correlation_id: Annotated[Optional[UUID], Field(description="Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.")] = None,
+        idempotency_key: Annotated[Optional[Annotated[str, Field(min_length=1, strict=True, max_length=256)]], Field(description="Optional client-supplied idempotency key for mutating operations. The first request with a key persists its result; subsequent requests with the same key + same tenant return the cached response. Keys expire after 24h.")] = None,
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -3587,8 +4341,16 @@ class SemanticApi:
 
         :param metric_id: (required)
         :type metric_id: str
+        :param x_tenant_id: Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present. (required)
+        :type x_tenant_id: str
+        :param x_workspace_id: Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation. (required)
+        :type x_workspace_id: str
         :param semantic_metric_update: (required)
         :type semantic_metric_update: SemanticMetricUpdate
+        :param x_correlation_id: Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.
+        :type x_correlation_id: UUID
+        :param idempotency_key: Optional client-supplied idempotency key for mutating operations. The first request with a key persists its result; subsequent requests with the same key + same tenant return the cached response. Keys expire after 24h.
+        :type idempotency_key: str
         :param _request_timeout: timeout setting for this request. If one
                                  number provided, it will be total request
                                  timeout. It can also be a pair (tuple) of
@@ -3613,7 +4375,11 @@ class SemanticApi:
 
         _param = self._update_0_serialize(
             metric_id=metric_id,
+            x_tenant_id=x_tenant_id,
+            x_workspace_id=x_workspace_id,
             semantic_metric_update=semantic_metric_update,
+            x_correlation_id=x_correlation_id,
+            idempotency_key=idempotency_key,
             _request_auth=_request_auth,
             _content_type=_content_type,
             _headers=_headers,
@@ -3634,7 +4400,11 @@ class SemanticApi:
     def _update_0_serialize(
         self,
         metric_id,
+        x_tenant_id,
+        x_workspace_id,
         semantic_metric_update,
+        x_correlation_id,
+        idempotency_key,
         _request_auth,
         _content_type,
         _headers,
@@ -3660,6 +4430,14 @@ class SemanticApi:
             _path_params['metric_id'] = metric_id
         # process the query parameters
         # process the header parameters
+        if x_tenant_id is not None:
+            _header_params['X-Tenant-Id'] = x_tenant_id
+        if x_workspace_id is not None:
+            _header_params['X-Workspace-Id'] = x_workspace_id
+        if x_correlation_id is not None:
+            _header_params['X-Correlation-Id'] = x_correlation_id
+        if idempotency_key is not None:
+            _header_params['Idempotency-Key'] = idempotency_key
         # process the form parameters
         # process the body parameter
         if semantic_metric_update is not None:
@@ -3690,6 +4468,8 @@ class SemanticApi:
 
         # authentication setting
         _auth_settings: List[str] = [
+            'WorkspaceContext', 
+            'TenantContext'
         ]
 
         return self.api_client.param_serialize(

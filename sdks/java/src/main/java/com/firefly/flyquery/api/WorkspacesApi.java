@@ -3,6 +3,7 @@ package com.firefly.flyquery.api;
 import com.firefly.flyquery.ApiClient;
 
 import com.firefly.flyquery.model.HTTPValidationError;
+import java.util.UUID;
 import com.firefly.flyquery.model.WorkspaceCreate;
 import com.firefly.flyquery.model.WorkspaceRead;
 import com.firefly.flyquery.model.WorkspaceUpdate;
@@ -29,7 +30,7 @@ import org.springframework.web.reactive.function.client.WebClientResponseExcepti
 import reactor.core.publisher.Mono;
 import reactor.core.publisher.Flux;
 
-@javax.annotation.Generated(value = "org.openapitools.codegen.languages.JavaClientCodegen", date = "2026-05-23T20:36:34.703085+02:00[Europe/Madrid]", comments = "Generator version: 7.22.0")
+@javax.annotation.Generated(value = "org.openapitools.codegen.languages.JavaClientCodegen", date = "2026-05-23T22:03:38.852419+02:00[Europe/Madrid]", comments = "Generator version: 7.22.0")
 public class WorkspacesApi {
     private ApiClient apiClient;
 
@@ -54,12 +55,24 @@ public class WorkspacesApi {
      * 
      * <p><b>201</b> - Successful response
      * <p><b>422</b> - Validation Error
+     * @param xTenantId Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present.
+     * @param xWorkspaceId Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation.
      * @param workspaceCreate The workspaceCreate parameter
+     * @param xCorrelationId Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.
+     * @param idempotencyKey Optional client-supplied idempotency key for mutating operations. The first request with a key persists its result; subsequent requests with the same key + same tenant return the cached response. Keys expire after 24h.
      * @return WorkspaceRead
      * @throws WebClientResponseException if an error occurs while attempting to invoke the API
      */
-    private ResponseSpec createRequestCreation(@javax.annotation.Nonnull WorkspaceCreate workspaceCreate) throws WebClientResponseException {
+    private ResponseSpec createRequestCreation(@javax.annotation.Nonnull String xTenantId, @javax.annotation.Nonnull String xWorkspaceId, @javax.annotation.Nonnull WorkspaceCreate workspaceCreate, @javax.annotation.Nullable UUID xCorrelationId, @javax.annotation.Nullable String idempotencyKey) throws WebClientResponseException {
         Object postBody = workspaceCreate;
+        // verify the required parameter 'xTenantId' is set
+        if (xTenantId == null) {
+            throw new WebClientResponseException("Missing the required parameter 'xTenantId' when calling create", HttpStatus.BAD_REQUEST.value(), HttpStatus.BAD_REQUEST.getReasonPhrase(), null, null, null);
+        }
+        // verify the required parameter 'xWorkspaceId' is set
+        if (xWorkspaceId == null) {
+            throw new WebClientResponseException("Missing the required parameter 'xWorkspaceId' when calling create", HttpStatus.BAD_REQUEST.value(), HttpStatus.BAD_REQUEST.getReasonPhrase(), null, null, null);
+        }
         // verify the required parameter 'workspaceCreate' is set
         if (workspaceCreate == null) {
             throw new WebClientResponseException("Missing the required parameter 'workspaceCreate' when calling create", HttpStatus.BAD_REQUEST.value(), HttpStatus.BAD_REQUEST.getReasonPhrase(), null, null, null);
@@ -72,6 +85,14 @@ public class WorkspacesApi {
         final MultiValueMap<String, String> cookieParams = new LinkedMultiValueMap<String, String>();
         final MultiValueMap<String, Object> formParams = new LinkedMultiValueMap<String, Object>();
 
+        if (xTenantId != null)
+        headerParams.add("X-Tenant-Id", apiClient.parameterToString(xTenantId));
+        if (xWorkspaceId != null)
+        headerParams.add("X-Workspace-Id", apiClient.parameterToString(xWorkspaceId));
+        if (xCorrelationId != null)
+        headerParams.add("X-Correlation-Id", apiClient.parameterToString(xCorrelationId));
+        if (idempotencyKey != null)
+        headerParams.add("Idempotency-Key", apiClient.parameterToString(idempotencyKey));
         final String[] localVarAccepts = { 
             "application/json"
         };
@@ -81,7 +102,7 @@ public class WorkspacesApi {
         };
         final MediaType localVarContentType = apiClient.selectHeaderContentType(localVarContentTypes);
 
-        String[] localVarAuthNames = new String[] {  };
+        String[] localVarAuthNames = new String[] { "WorkspaceContext", "TenantContext" };
 
         ParameterizedTypeReference<WorkspaceRead> localVarReturnType = new ParameterizedTypeReference<WorkspaceRead>() {};
         return apiClient.invokeAPI("/api/v1/workspaces", HttpMethod.POST, pathParams, queryParams, postBody, headerParams, cookieParams, formParams, localVarAccept, localVarContentType, localVarAuthNames, localVarReturnType);
@@ -92,13 +113,17 @@ public class WorkspacesApi {
      * 
      * <p><b>201</b> - Successful response
      * <p><b>422</b> - Validation Error
+     * @param xTenantId Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present.
+     * @param xWorkspaceId Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation.
      * @param workspaceCreate The workspaceCreate parameter
+     * @param xCorrelationId Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.
+     * @param idempotencyKey Optional client-supplied idempotency key for mutating operations. The first request with a key persists its result; subsequent requests with the same key + same tenant return the cached response. Keys expire after 24h.
      * @return WorkspaceRead
      * @throws WebClientResponseException if an error occurs while attempting to invoke the API
      */
-    public Mono<WorkspaceRead> create(@javax.annotation.Nonnull WorkspaceCreate workspaceCreate) throws WebClientResponseException {
+    public Mono<WorkspaceRead> create(@javax.annotation.Nonnull String xTenantId, @javax.annotation.Nonnull String xWorkspaceId, @javax.annotation.Nonnull WorkspaceCreate workspaceCreate, @javax.annotation.Nullable UUID xCorrelationId, @javax.annotation.Nullable String idempotencyKey) throws WebClientResponseException {
         ParameterizedTypeReference<WorkspaceRead> localVarReturnType = new ParameterizedTypeReference<WorkspaceRead>() {};
-        return createRequestCreation(workspaceCreate).bodyToMono(localVarReturnType);
+        return createRequestCreation(xTenantId, xWorkspaceId, workspaceCreate, xCorrelationId, idempotencyKey).bodyToMono(localVarReturnType);
     }
 
     /**
@@ -106,13 +131,17 @@ public class WorkspacesApi {
      * 
      * <p><b>201</b> - Successful response
      * <p><b>422</b> - Validation Error
+     * @param xTenantId Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present.
+     * @param xWorkspaceId Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation.
      * @param workspaceCreate The workspaceCreate parameter
+     * @param xCorrelationId Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.
+     * @param idempotencyKey Optional client-supplied idempotency key for mutating operations. The first request with a key persists its result; subsequent requests with the same key + same tenant return the cached response. Keys expire after 24h.
      * @return ResponseEntity&lt;WorkspaceRead&gt;
      * @throws WebClientResponseException if an error occurs while attempting to invoke the API
      */
-    public Mono<ResponseEntity<WorkspaceRead>> createWithHttpInfo(@javax.annotation.Nonnull WorkspaceCreate workspaceCreate) throws WebClientResponseException {
+    public Mono<ResponseEntity<WorkspaceRead>> createWithHttpInfo(@javax.annotation.Nonnull String xTenantId, @javax.annotation.Nonnull String xWorkspaceId, @javax.annotation.Nonnull WorkspaceCreate workspaceCreate, @javax.annotation.Nullable UUID xCorrelationId, @javax.annotation.Nullable String idempotencyKey) throws WebClientResponseException {
         ParameterizedTypeReference<WorkspaceRead> localVarReturnType = new ParameterizedTypeReference<WorkspaceRead>() {};
-        return createRequestCreation(workspaceCreate).toEntity(localVarReturnType);
+        return createRequestCreation(xTenantId, xWorkspaceId, workspaceCreate, xCorrelationId, idempotencyKey).toEntity(localVarReturnType);
     }
 
     /**
@@ -120,22 +149,42 @@ public class WorkspacesApi {
      * 
      * <p><b>201</b> - Successful response
      * <p><b>422</b> - Validation Error
+     * @param xTenantId Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present.
+     * @param xWorkspaceId Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation.
      * @param workspaceCreate The workspaceCreate parameter
+     * @param xCorrelationId Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.
+     * @param idempotencyKey Optional client-supplied idempotency key for mutating operations. The first request with a key persists its result; subsequent requests with the same key + same tenant return the cached response. Keys expire after 24h.
      * @return ResponseSpec
      * @throws WebClientResponseException if an error occurs while attempting to invoke the API
      */
-    public ResponseSpec createWithResponseSpec(@javax.annotation.Nonnull WorkspaceCreate workspaceCreate) throws WebClientResponseException {
-        return createRequestCreation(workspaceCreate);
+    public ResponseSpec createWithResponseSpec(@javax.annotation.Nonnull String xTenantId, @javax.annotation.Nonnull String xWorkspaceId, @javax.annotation.Nonnull WorkspaceCreate workspaceCreate, @javax.annotation.Nullable UUID xCorrelationId, @javax.annotation.Nullable String idempotencyKey) throws WebClientResponseException {
+        return createRequestCreation(xTenantId, xWorkspaceId, workspaceCreate, xCorrelationId, idempotencyKey);
     }
 
     /**
-     * Return all workspaces for the caller&#39;s tenant.
-     * 
+     * Search/filter workspaces for the caller&#39;s tenant.
+     * Query parameters ---------------- * &#x60;&#x60;q&#x60;&#x60;      -- free-text substring match against &#x60;&#x60;slug&#x60;&#x60; or &#x60;&#x60;name&#x60;&#x60; (case-insensitive &#x60;&#x60;ILIKE&#x60;&#x60;). * &#x60;&#x60;slug&#x60;&#x60;   -- exact match on &#x60;&#x60;slug&#x60;&#x60; -- gives you slug-based lookup with zero extra round trips. * &#x60;&#x60;status&#x60;&#x60; -- exact match (&#x60;&#x60;ACTIVE&#x60;&#x60;, &#x60;&#x60;ARCHIVED&#x60;&#x60;, &#x60;&#x60;PURGING&#x60;&#x60;). * &#x60;&#x60;limit&#x60;&#x60;  -- page size, clamped to [1, 1000]. Default 100. * &#x60;&#x60;offset&#x60;&#x60; -- starting offset. Default 0.  Response envelope: &#x60;&#x60;{items, total, limit, offset, has_more}&#x60;&#x60; where &#x60;&#x60;total&#x60;&#x60; is the un-paginated match count.
      * <p><b>200</b> - Successful response
+     * @param xTenantId Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present.
+     * @param xWorkspaceId Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation.
+     * @param q The q parameter
+     * @param slug The slug parameter
+     * @param status The status parameter
+     * @param limit The limit parameter
+     * @param offset The offset parameter
+     * @param xCorrelationId Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.
      * @throws WebClientResponseException if an error occurs while attempting to invoke the API
      */
-    private ResponseSpec listWorkspacesRequestCreation() throws WebClientResponseException {
+    private ResponseSpec listWorkspacesRequestCreation(@javax.annotation.Nonnull String xTenantId, @javax.annotation.Nonnull String xWorkspaceId, @javax.annotation.Nullable String q, @javax.annotation.Nullable String slug, @javax.annotation.Nullable String status, @javax.annotation.Nullable Integer limit, @javax.annotation.Nullable Integer offset, @javax.annotation.Nullable UUID xCorrelationId) throws WebClientResponseException {
         Object postBody = null;
+        // verify the required parameter 'xTenantId' is set
+        if (xTenantId == null) {
+            throw new WebClientResponseException("Missing the required parameter 'xTenantId' when calling listWorkspaces", HttpStatus.BAD_REQUEST.value(), HttpStatus.BAD_REQUEST.getReasonPhrase(), null, null, null);
+        }
+        // verify the required parameter 'xWorkspaceId' is set
+        if (xWorkspaceId == null) {
+            throw new WebClientResponseException("Missing the required parameter 'xWorkspaceId' when calling listWorkspaces", HttpStatus.BAD_REQUEST.value(), HttpStatus.BAD_REQUEST.getReasonPhrase(), null, null, null);
+        }
         // create path and map variables
         final Map<String, Object> pathParams = new HashMap<String, Object>();
 
@@ -144,48 +193,84 @@ public class WorkspacesApi {
         final MultiValueMap<String, String> cookieParams = new LinkedMultiValueMap<String, String>();
         final MultiValueMap<String, Object> formParams = new LinkedMultiValueMap<String, Object>();
 
+        queryParams.putAll(apiClient.parameterToMultiValueMap(null, "q", q));
+        queryParams.putAll(apiClient.parameterToMultiValueMap(null, "slug", slug));
+        queryParams.putAll(apiClient.parameterToMultiValueMap(null, "status", status));
+        queryParams.putAll(apiClient.parameterToMultiValueMap(null, "limit", limit));
+        queryParams.putAll(apiClient.parameterToMultiValueMap(null, "offset", offset));
+
+        if (xTenantId != null)
+        headerParams.add("X-Tenant-Id", apiClient.parameterToString(xTenantId));
+        if (xWorkspaceId != null)
+        headerParams.add("X-Workspace-Id", apiClient.parameterToString(xWorkspaceId));
+        if (xCorrelationId != null)
+        headerParams.add("X-Correlation-Id", apiClient.parameterToString(xCorrelationId));
         final String[] localVarAccepts = { };
         final List<MediaType> localVarAccept = apiClient.selectHeaderAccept(localVarAccepts);
         final String[] localVarContentTypes = { };
         final MediaType localVarContentType = apiClient.selectHeaderContentType(localVarContentTypes);
 
-        String[] localVarAuthNames = new String[] {  };
+        String[] localVarAuthNames = new String[] { "WorkspaceContext", "TenantContext" };
 
         ParameterizedTypeReference<Void> localVarReturnType = new ParameterizedTypeReference<Void>() {};
         return apiClient.invokeAPI("/api/v1/workspaces", HttpMethod.GET, pathParams, queryParams, postBody, headerParams, cookieParams, formParams, localVarAccept, localVarContentType, localVarAuthNames, localVarReturnType);
     }
 
     /**
-     * Return all workspaces for the caller&#39;s tenant.
-     * 
+     * Search/filter workspaces for the caller&#39;s tenant.
+     * Query parameters ---------------- * &#x60;&#x60;q&#x60;&#x60;      -- free-text substring match against &#x60;&#x60;slug&#x60;&#x60; or &#x60;&#x60;name&#x60;&#x60; (case-insensitive &#x60;&#x60;ILIKE&#x60;&#x60;). * &#x60;&#x60;slug&#x60;&#x60;   -- exact match on &#x60;&#x60;slug&#x60;&#x60; -- gives you slug-based lookup with zero extra round trips. * &#x60;&#x60;status&#x60;&#x60; -- exact match (&#x60;&#x60;ACTIVE&#x60;&#x60;, &#x60;&#x60;ARCHIVED&#x60;&#x60;, &#x60;&#x60;PURGING&#x60;&#x60;). * &#x60;&#x60;limit&#x60;&#x60;  -- page size, clamped to [1, 1000]. Default 100. * &#x60;&#x60;offset&#x60;&#x60; -- starting offset. Default 0.  Response envelope: &#x60;&#x60;{items, total, limit, offset, has_more}&#x60;&#x60; where &#x60;&#x60;total&#x60;&#x60; is the un-paginated match count.
      * <p><b>200</b> - Successful response
+     * @param xTenantId Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present.
+     * @param xWorkspaceId Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation.
+     * @param q The q parameter
+     * @param slug The slug parameter
+     * @param status The status parameter
+     * @param limit The limit parameter
+     * @param offset The offset parameter
+     * @param xCorrelationId Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.
      * @throws WebClientResponseException if an error occurs while attempting to invoke the API
      */
-    public Mono<Void> listWorkspaces() throws WebClientResponseException {
+    public Mono<Void> listWorkspaces(@javax.annotation.Nonnull String xTenantId, @javax.annotation.Nonnull String xWorkspaceId, @javax.annotation.Nullable String q, @javax.annotation.Nullable String slug, @javax.annotation.Nullable String status, @javax.annotation.Nullable Integer limit, @javax.annotation.Nullable Integer offset, @javax.annotation.Nullable UUID xCorrelationId) throws WebClientResponseException {
         ParameterizedTypeReference<Void> localVarReturnType = new ParameterizedTypeReference<Void>() {};
-        return listWorkspacesRequestCreation().bodyToMono(localVarReturnType);
+        return listWorkspacesRequestCreation(xTenantId, xWorkspaceId, q, slug, status, limit, offset, xCorrelationId).bodyToMono(localVarReturnType);
     }
 
     /**
-     * Return all workspaces for the caller&#39;s tenant.
-     * 
+     * Search/filter workspaces for the caller&#39;s tenant.
+     * Query parameters ---------------- * &#x60;&#x60;q&#x60;&#x60;      -- free-text substring match against &#x60;&#x60;slug&#x60;&#x60; or &#x60;&#x60;name&#x60;&#x60; (case-insensitive &#x60;&#x60;ILIKE&#x60;&#x60;). * &#x60;&#x60;slug&#x60;&#x60;   -- exact match on &#x60;&#x60;slug&#x60;&#x60; -- gives you slug-based lookup with zero extra round trips. * &#x60;&#x60;status&#x60;&#x60; -- exact match (&#x60;&#x60;ACTIVE&#x60;&#x60;, &#x60;&#x60;ARCHIVED&#x60;&#x60;, &#x60;&#x60;PURGING&#x60;&#x60;). * &#x60;&#x60;limit&#x60;&#x60;  -- page size, clamped to [1, 1000]. Default 100. * &#x60;&#x60;offset&#x60;&#x60; -- starting offset. Default 0.  Response envelope: &#x60;&#x60;{items, total, limit, offset, has_more}&#x60;&#x60; where &#x60;&#x60;total&#x60;&#x60; is the un-paginated match count.
      * <p><b>200</b> - Successful response
+     * @param xTenantId Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present.
+     * @param xWorkspaceId Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation.
+     * @param q The q parameter
+     * @param slug The slug parameter
+     * @param status The status parameter
+     * @param limit The limit parameter
+     * @param offset The offset parameter
+     * @param xCorrelationId Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.
      * @throws WebClientResponseException if an error occurs while attempting to invoke the API
      */
-    public Mono<ResponseEntity<Void>> listWorkspacesWithHttpInfo() throws WebClientResponseException {
+    public Mono<ResponseEntity<Void>> listWorkspacesWithHttpInfo(@javax.annotation.Nonnull String xTenantId, @javax.annotation.Nonnull String xWorkspaceId, @javax.annotation.Nullable String q, @javax.annotation.Nullable String slug, @javax.annotation.Nullable String status, @javax.annotation.Nullable Integer limit, @javax.annotation.Nullable Integer offset, @javax.annotation.Nullable UUID xCorrelationId) throws WebClientResponseException {
         ParameterizedTypeReference<Void> localVarReturnType = new ParameterizedTypeReference<Void>() {};
-        return listWorkspacesRequestCreation().toEntity(localVarReturnType);
+        return listWorkspacesRequestCreation(xTenantId, xWorkspaceId, q, slug, status, limit, offset, xCorrelationId).toEntity(localVarReturnType);
     }
 
     /**
-     * Return all workspaces for the caller&#39;s tenant.
-     * 
+     * Search/filter workspaces for the caller&#39;s tenant.
+     * Query parameters ---------------- * &#x60;&#x60;q&#x60;&#x60;      -- free-text substring match against &#x60;&#x60;slug&#x60;&#x60; or &#x60;&#x60;name&#x60;&#x60; (case-insensitive &#x60;&#x60;ILIKE&#x60;&#x60;). * &#x60;&#x60;slug&#x60;&#x60;   -- exact match on &#x60;&#x60;slug&#x60;&#x60; -- gives you slug-based lookup with zero extra round trips. * &#x60;&#x60;status&#x60;&#x60; -- exact match (&#x60;&#x60;ACTIVE&#x60;&#x60;, &#x60;&#x60;ARCHIVED&#x60;&#x60;, &#x60;&#x60;PURGING&#x60;&#x60;). * &#x60;&#x60;limit&#x60;&#x60;  -- page size, clamped to [1, 1000]. Default 100. * &#x60;&#x60;offset&#x60;&#x60; -- starting offset. Default 0.  Response envelope: &#x60;&#x60;{items, total, limit, offset, has_more}&#x60;&#x60; where &#x60;&#x60;total&#x60;&#x60; is the un-paginated match count.
      * <p><b>200</b> - Successful response
+     * @param xTenantId Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present.
+     * @param xWorkspaceId Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation.
+     * @param q The q parameter
+     * @param slug The slug parameter
+     * @param status The status parameter
+     * @param limit The limit parameter
+     * @param offset The offset parameter
+     * @param xCorrelationId Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.
      * @return ResponseSpec
      * @throws WebClientResponseException if an error occurs while attempting to invoke the API
      */
-    public ResponseSpec listWorkspacesWithResponseSpec() throws WebClientResponseException {
-        return listWorkspacesRequestCreation();
+    public ResponseSpec listWorkspacesWithResponseSpec(@javax.annotation.Nonnull String xTenantId, @javax.annotation.Nonnull String xWorkspaceId, @javax.annotation.Nullable String q, @javax.annotation.Nullable String slug, @javax.annotation.Nullable String status, @javax.annotation.Nullable Integer limit, @javax.annotation.Nullable Integer offset, @javax.annotation.Nullable UUID xCorrelationId) throws WebClientResponseException {
+        return listWorkspacesRequestCreation(xTenantId, xWorkspaceId, q, slug, status, limit, offset, xCorrelationId);
     }
 
     /**
@@ -193,13 +278,25 @@ public class WorkspacesApi {
      * Returns 202 Accepted with a tombstone placeholder.
      * <p><b>202</b> - Successful response
      * @param workspaceId The workspaceId parameter
+     * @param xTenantId Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present.
+     * @param xWorkspaceId Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation.
+     * @param xCorrelationId Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.
+     * @param idempotencyKey Optional client-supplied idempotency key for mutating operations. The first request with a key persists its result; subsequent requests with the same key + same tenant return the cached response. Keys expire after 24h.
      * @throws WebClientResponseException if an error occurs while attempting to invoke the API
      */
-    private ResponseSpec purgeRequestCreation(@javax.annotation.Nonnull String workspaceId) throws WebClientResponseException {
+    private ResponseSpec purgeRequestCreation(@javax.annotation.Nonnull String workspaceId, @javax.annotation.Nonnull String xTenantId, @javax.annotation.Nonnull String xWorkspaceId, @javax.annotation.Nullable UUID xCorrelationId, @javax.annotation.Nullable String idempotencyKey) throws WebClientResponseException {
         Object postBody = null;
         // verify the required parameter 'workspaceId' is set
         if (workspaceId == null) {
             throw new WebClientResponseException("Missing the required parameter 'workspaceId' when calling purge", HttpStatus.BAD_REQUEST.value(), HttpStatus.BAD_REQUEST.getReasonPhrase(), null, null, null);
+        }
+        // verify the required parameter 'xTenantId' is set
+        if (xTenantId == null) {
+            throw new WebClientResponseException("Missing the required parameter 'xTenantId' when calling purge", HttpStatus.BAD_REQUEST.value(), HttpStatus.BAD_REQUEST.getReasonPhrase(), null, null, null);
+        }
+        // verify the required parameter 'xWorkspaceId' is set
+        if (xWorkspaceId == null) {
+            throw new WebClientResponseException("Missing the required parameter 'xWorkspaceId' when calling purge", HttpStatus.BAD_REQUEST.value(), HttpStatus.BAD_REQUEST.getReasonPhrase(), null, null, null);
         }
         // create path and map variables
         final Map<String, Object> pathParams = new HashMap<String, Object>();
@@ -211,12 +308,20 @@ public class WorkspacesApi {
         final MultiValueMap<String, String> cookieParams = new LinkedMultiValueMap<String, String>();
         final MultiValueMap<String, Object> formParams = new LinkedMultiValueMap<String, Object>();
 
+        if (xTenantId != null)
+        headerParams.add("X-Tenant-Id", apiClient.parameterToString(xTenantId));
+        if (xWorkspaceId != null)
+        headerParams.add("X-Workspace-Id", apiClient.parameterToString(xWorkspaceId));
+        if (xCorrelationId != null)
+        headerParams.add("X-Correlation-Id", apiClient.parameterToString(xCorrelationId));
+        if (idempotencyKey != null)
+        headerParams.add("Idempotency-Key", apiClient.parameterToString(idempotencyKey));
         final String[] localVarAccepts = { };
         final List<MediaType> localVarAccept = apiClient.selectHeaderAccept(localVarAccepts);
         final String[] localVarContentTypes = { };
         final MediaType localVarContentType = apiClient.selectHeaderContentType(localVarContentTypes);
 
-        String[] localVarAuthNames = new String[] {  };
+        String[] localVarAuthNames = new String[] { "WorkspaceContext", "TenantContext" };
 
         ParameterizedTypeReference<Void> localVarReturnType = new ParameterizedTypeReference<Void>() {};
         return apiClient.invokeAPI("/api/v1/workspaces/{workspace_id}:purge", HttpMethod.DELETE, pathParams, queryParams, postBody, headerParams, cookieParams, formParams, localVarAccept, localVarContentType, localVarAuthNames, localVarReturnType);
@@ -227,11 +332,15 @@ public class WorkspacesApi {
      * Returns 202 Accepted with a tombstone placeholder.
      * <p><b>202</b> - Successful response
      * @param workspaceId The workspaceId parameter
+     * @param xTenantId Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present.
+     * @param xWorkspaceId Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation.
+     * @param xCorrelationId Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.
+     * @param idempotencyKey Optional client-supplied idempotency key for mutating operations. The first request with a key persists its result; subsequent requests with the same key + same tenant return the cached response. Keys expire after 24h.
      * @throws WebClientResponseException if an error occurs while attempting to invoke the API
      */
-    public Mono<Void> purge(@javax.annotation.Nonnull String workspaceId) throws WebClientResponseException {
+    public Mono<Void> purge(@javax.annotation.Nonnull String workspaceId, @javax.annotation.Nonnull String xTenantId, @javax.annotation.Nonnull String xWorkspaceId, @javax.annotation.Nullable UUID xCorrelationId, @javax.annotation.Nullable String idempotencyKey) throws WebClientResponseException {
         ParameterizedTypeReference<Void> localVarReturnType = new ParameterizedTypeReference<Void>() {};
-        return purgeRequestCreation(workspaceId).bodyToMono(localVarReturnType);
+        return purgeRequestCreation(workspaceId, xTenantId, xWorkspaceId, xCorrelationId, idempotencyKey).bodyToMono(localVarReturnType);
     }
 
     /**
@@ -239,11 +348,15 @@ public class WorkspacesApi {
      * Returns 202 Accepted with a tombstone placeholder.
      * <p><b>202</b> - Successful response
      * @param workspaceId The workspaceId parameter
+     * @param xTenantId Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present.
+     * @param xWorkspaceId Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation.
+     * @param xCorrelationId Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.
+     * @param idempotencyKey Optional client-supplied idempotency key for mutating operations. The first request with a key persists its result; subsequent requests with the same key + same tenant return the cached response. Keys expire after 24h.
      * @throws WebClientResponseException if an error occurs while attempting to invoke the API
      */
-    public Mono<ResponseEntity<Void>> purgeWithHttpInfo(@javax.annotation.Nonnull String workspaceId) throws WebClientResponseException {
+    public Mono<ResponseEntity<Void>> purgeWithHttpInfo(@javax.annotation.Nonnull String workspaceId, @javax.annotation.Nonnull String xTenantId, @javax.annotation.Nonnull String xWorkspaceId, @javax.annotation.Nullable UUID xCorrelationId, @javax.annotation.Nullable String idempotencyKey) throws WebClientResponseException {
         ParameterizedTypeReference<Void> localVarReturnType = new ParameterizedTypeReference<Void>() {};
-        return purgeRequestCreation(workspaceId).toEntity(localVarReturnType);
+        return purgeRequestCreation(workspaceId, xTenantId, xWorkspaceId, xCorrelationId, idempotencyKey).toEntity(localVarReturnType);
     }
 
     /**
@@ -251,11 +364,15 @@ public class WorkspacesApi {
      * Returns 202 Accepted with a tombstone placeholder.
      * <p><b>202</b> - Successful response
      * @param workspaceId The workspaceId parameter
+     * @param xTenantId Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present.
+     * @param xWorkspaceId Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation.
+     * @param xCorrelationId Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.
+     * @param idempotencyKey Optional client-supplied idempotency key for mutating operations. The first request with a key persists its result; subsequent requests with the same key + same tenant return the cached response. Keys expire after 24h.
      * @return ResponseSpec
      * @throws WebClientResponseException if an error occurs while attempting to invoke the API
      */
-    public ResponseSpec purgeWithResponseSpec(@javax.annotation.Nonnull String workspaceId) throws WebClientResponseException {
-        return purgeRequestCreation(workspaceId);
+    public ResponseSpec purgeWithResponseSpec(@javax.annotation.Nonnull String workspaceId, @javax.annotation.Nonnull String xTenantId, @javax.annotation.Nonnull String xWorkspaceId, @javax.annotation.Nullable UUID xCorrelationId, @javax.annotation.Nullable String idempotencyKey) throws WebClientResponseException {
+        return purgeRequestCreation(workspaceId, xTenantId, xWorkspaceId, xCorrelationId, idempotencyKey);
     }
 
     /**
@@ -263,14 +380,25 @@ public class WorkspacesApi {
      * 
      * <p><b>200</b> - Successful response
      * @param workspaceId The workspaceId parameter
+     * @param xTenantId Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present.
+     * @param xWorkspaceId Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation.
+     * @param xCorrelationId Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.
      * @return WorkspaceRead
      * @throws WebClientResponseException if an error occurs while attempting to invoke the API
      */
-    private ResponseSpec readRequestCreation(@javax.annotation.Nullable String workspaceId) throws WebClientResponseException {
+    private ResponseSpec readRequestCreation(@javax.annotation.Nullable String workspaceId, @javax.annotation.Nonnull String xTenantId, @javax.annotation.Nonnull String xWorkspaceId, @javax.annotation.Nullable UUID xCorrelationId) throws WebClientResponseException {
         Object postBody = null;
         // verify the required parameter 'workspaceId' is set
         if (workspaceId == null) {
             throw new WebClientResponseException("Missing the required parameter 'workspaceId' when calling read", HttpStatus.BAD_REQUEST.value(), HttpStatus.BAD_REQUEST.getReasonPhrase(), null, null, null);
+        }
+        // verify the required parameter 'xTenantId' is set
+        if (xTenantId == null) {
+            throw new WebClientResponseException("Missing the required parameter 'xTenantId' when calling read", HttpStatus.BAD_REQUEST.value(), HttpStatus.BAD_REQUEST.getReasonPhrase(), null, null, null);
+        }
+        // verify the required parameter 'xWorkspaceId' is set
+        if (xWorkspaceId == null) {
+            throw new WebClientResponseException("Missing the required parameter 'xWorkspaceId' when calling read", HttpStatus.BAD_REQUEST.value(), HttpStatus.BAD_REQUEST.getReasonPhrase(), null, null, null);
         }
         // create path and map variables
         final Map<String, Object> pathParams = new HashMap<String, Object>();
@@ -282,6 +410,12 @@ public class WorkspacesApi {
         final MultiValueMap<String, String> cookieParams = new LinkedMultiValueMap<String, String>();
         final MultiValueMap<String, Object> formParams = new LinkedMultiValueMap<String, Object>();
 
+        if (xTenantId != null)
+        headerParams.add("X-Tenant-Id", apiClient.parameterToString(xTenantId));
+        if (xWorkspaceId != null)
+        headerParams.add("X-Workspace-Id", apiClient.parameterToString(xWorkspaceId));
+        if (xCorrelationId != null)
+        headerParams.add("X-Correlation-Id", apiClient.parameterToString(xCorrelationId));
         final String[] localVarAccepts = { 
             "application/json"
         };
@@ -289,7 +423,7 @@ public class WorkspacesApi {
         final String[] localVarContentTypes = { };
         final MediaType localVarContentType = apiClient.selectHeaderContentType(localVarContentTypes);
 
-        String[] localVarAuthNames = new String[] {  };
+        String[] localVarAuthNames = new String[] { "WorkspaceContext", "TenantContext" };
 
         ParameterizedTypeReference<WorkspaceRead> localVarReturnType = new ParameterizedTypeReference<WorkspaceRead>() {};
         return apiClient.invokeAPI("/api/v1/workspaces/{workspace_id}", HttpMethod.GET, pathParams, queryParams, postBody, headerParams, cookieParams, formParams, localVarAccept, localVarContentType, localVarAuthNames, localVarReturnType);
@@ -300,12 +434,15 @@ public class WorkspacesApi {
      * 
      * <p><b>200</b> - Successful response
      * @param workspaceId The workspaceId parameter
+     * @param xTenantId Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present.
+     * @param xWorkspaceId Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation.
+     * @param xCorrelationId Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.
      * @return WorkspaceRead
      * @throws WebClientResponseException if an error occurs while attempting to invoke the API
      */
-    public Mono<WorkspaceRead> read(@javax.annotation.Nullable String workspaceId) throws WebClientResponseException {
+    public Mono<WorkspaceRead> read(@javax.annotation.Nullable String workspaceId, @javax.annotation.Nonnull String xTenantId, @javax.annotation.Nonnull String xWorkspaceId, @javax.annotation.Nullable UUID xCorrelationId) throws WebClientResponseException {
         ParameterizedTypeReference<WorkspaceRead> localVarReturnType = new ParameterizedTypeReference<WorkspaceRead>() {};
-        return readRequestCreation(workspaceId).bodyToMono(localVarReturnType);
+        return readRequestCreation(workspaceId, xTenantId, xWorkspaceId, xCorrelationId).bodyToMono(localVarReturnType);
     }
 
     /**
@@ -313,12 +450,15 @@ public class WorkspacesApi {
      * 
      * <p><b>200</b> - Successful response
      * @param workspaceId The workspaceId parameter
+     * @param xTenantId Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present.
+     * @param xWorkspaceId Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation.
+     * @param xCorrelationId Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.
      * @return ResponseEntity&lt;WorkspaceRead&gt;
      * @throws WebClientResponseException if an error occurs while attempting to invoke the API
      */
-    public Mono<ResponseEntity<WorkspaceRead>> readWithHttpInfo(@javax.annotation.Nullable String workspaceId) throws WebClientResponseException {
+    public Mono<ResponseEntity<WorkspaceRead>> readWithHttpInfo(@javax.annotation.Nullable String workspaceId, @javax.annotation.Nonnull String xTenantId, @javax.annotation.Nonnull String xWorkspaceId, @javax.annotation.Nullable UUID xCorrelationId) throws WebClientResponseException {
         ParameterizedTypeReference<WorkspaceRead> localVarReturnType = new ParameterizedTypeReference<WorkspaceRead>() {};
-        return readRequestCreation(workspaceId).toEntity(localVarReturnType);
+        return readRequestCreation(workspaceId, xTenantId, xWorkspaceId, xCorrelationId).toEntity(localVarReturnType);
     }
 
     /**
@@ -326,11 +466,115 @@ public class WorkspacesApi {
      * 
      * <p><b>200</b> - Successful response
      * @param workspaceId The workspaceId parameter
+     * @param xTenantId Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present.
+     * @param xWorkspaceId Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation.
+     * @param xCorrelationId Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.
      * @return ResponseSpec
      * @throws WebClientResponseException if an error occurs while attempting to invoke the API
      */
-    public ResponseSpec readWithResponseSpec(@javax.annotation.Nullable String workspaceId) throws WebClientResponseException {
-        return readRequestCreation(workspaceId);
+    public ResponseSpec readWithResponseSpec(@javax.annotation.Nullable String workspaceId, @javax.annotation.Nonnull String xTenantId, @javax.annotation.Nonnull String xWorkspaceId, @javax.annotation.Nullable UUID xCorrelationId) throws WebClientResponseException {
+        return readRequestCreation(workspaceId, xTenantId, xWorkspaceId, xCorrelationId);
+    }
+
+    /**
+     * Fetch a workspace by its &#x60;&#x60;(tenant_id, slug)&#x60;&#x60; natural key.
+     * Lets SDKs and CLIs resolve a workspace from a memorable identifier instead of carrying around a UUID. Returns 404 if no match.
+     * <p><b>200</b> - Successful response
+     * @param slug The slug parameter
+     * @param xTenantId Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present.
+     * @param xWorkspaceId Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation.
+     * @param xCorrelationId Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.
+     * @return WorkspaceRead
+     * @throws WebClientResponseException if an error occurs while attempting to invoke the API
+     */
+    private ResponseSpec readBySlugRequestCreation(@javax.annotation.Nullable String slug, @javax.annotation.Nonnull String xTenantId, @javax.annotation.Nonnull String xWorkspaceId, @javax.annotation.Nullable UUID xCorrelationId) throws WebClientResponseException {
+        Object postBody = null;
+        // verify the required parameter 'slug' is set
+        if (slug == null) {
+            throw new WebClientResponseException("Missing the required parameter 'slug' when calling readBySlug", HttpStatus.BAD_REQUEST.value(), HttpStatus.BAD_REQUEST.getReasonPhrase(), null, null, null);
+        }
+        // verify the required parameter 'xTenantId' is set
+        if (xTenantId == null) {
+            throw new WebClientResponseException("Missing the required parameter 'xTenantId' when calling readBySlug", HttpStatus.BAD_REQUEST.value(), HttpStatus.BAD_REQUEST.getReasonPhrase(), null, null, null);
+        }
+        // verify the required parameter 'xWorkspaceId' is set
+        if (xWorkspaceId == null) {
+            throw new WebClientResponseException("Missing the required parameter 'xWorkspaceId' when calling readBySlug", HttpStatus.BAD_REQUEST.value(), HttpStatus.BAD_REQUEST.getReasonPhrase(), null, null, null);
+        }
+        // create path and map variables
+        final Map<String, Object> pathParams = new HashMap<String, Object>();
+
+        pathParams.put("slug", slug);
+
+        final MultiValueMap<String, String> queryParams = new LinkedMultiValueMap<String, String>();
+        final HttpHeaders headerParams = new HttpHeaders();
+        final MultiValueMap<String, String> cookieParams = new LinkedMultiValueMap<String, String>();
+        final MultiValueMap<String, Object> formParams = new LinkedMultiValueMap<String, Object>();
+
+        if (xTenantId != null)
+        headerParams.add("X-Tenant-Id", apiClient.parameterToString(xTenantId));
+        if (xWorkspaceId != null)
+        headerParams.add("X-Workspace-Id", apiClient.parameterToString(xWorkspaceId));
+        if (xCorrelationId != null)
+        headerParams.add("X-Correlation-Id", apiClient.parameterToString(xCorrelationId));
+        final String[] localVarAccepts = { 
+            "application/json"
+        };
+        final List<MediaType> localVarAccept = apiClient.selectHeaderAccept(localVarAccepts);
+        final String[] localVarContentTypes = { };
+        final MediaType localVarContentType = apiClient.selectHeaderContentType(localVarContentTypes);
+
+        String[] localVarAuthNames = new String[] { "WorkspaceContext", "TenantContext" };
+
+        ParameterizedTypeReference<WorkspaceRead> localVarReturnType = new ParameterizedTypeReference<WorkspaceRead>() {};
+        return apiClient.invokeAPI("/api/v1/workspaces/by-slug/{slug}", HttpMethod.GET, pathParams, queryParams, postBody, headerParams, cookieParams, formParams, localVarAccept, localVarContentType, localVarAuthNames, localVarReturnType);
+    }
+
+    /**
+     * Fetch a workspace by its &#x60;&#x60;(tenant_id, slug)&#x60;&#x60; natural key.
+     * Lets SDKs and CLIs resolve a workspace from a memorable identifier instead of carrying around a UUID. Returns 404 if no match.
+     * <p><b>200</b> - Successful response
+     * @param slug The slug parameter
+     * @param xTenantId Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present.
+     * @param xWorkspaceId Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation.
+     * @param xCorrelationId Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.
+     * @return WorkspaceRead
+     * @throws WebClientResponseException if an error occurs while attempting to invoke the API
+     */
+    public Mono<WorkspaceRead> readBySlug(@javax.annotation.Nullable String slug, @javax.annotation.Nonnull String xTenantId, @javax.annotation.Nonnull String xWorkspaceId, @javax.annotation.Nullable UUID xCorrelationId) throws WebClientResponseException {
+        ParameterizedTypeReference<WorkspaceRead> localVarReturnType = new ParameterizedTypeReference<WorkspaceRead>() {};
+        return readBySlugRequestCreation(slug, xTenantId, xWorkspaceId, xCorrelationId).bodyToMono(localVarReturnType);
+    }
+
+    /**
+     * Fetch a workspace by its &#x60;&#x60;(tenant_id, slug)&#x60;&#x60; natural key.
+     * Lets SDKs and CLIs resolve a workspace from a memorable identifier instead of carrying around a UUID. Returns 404 if no match.
+     * <p><b>200</b> - Successful response
+     * @param slug The slug parameter
+     * @param xTenantId Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present.
+     * @param xWorkspaceId Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation.
+     * @param xCorrelationId Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.
+     * @return ResponseEntity&lt;WorkspaceRead&gt;
+     * @throws WebClientResponseException if an error occurs while attempting to invoke the API
+     */
+    public Mono<ResponseEntity<WorkspaceRead>> readBySlugWithHttpInfo(@javax.annotation.Nullable String slug, @javax.annotation.Nonnull String xTenantId, @javax.annotation.Nonnull String xWorkspaceId, @javax.annotation.Nullable UUID xCorrelationId) throws WebClientResponseException {
+        ParameterizedTypeReference<WorkspaceRead> localVarReturnType = new ParameterizedTypeReference<WorkspaceRead>() {};
+        return readBySlugRequestCreation(slug, xTenantId, xWorkspaceId, xCorrelationId).toEntity(localVarReturnType);
+    }
+
+    /**
+     * Fetch a workspace by its &#x60;&#x60;(tenant_id, slug)&#x60;&#x60; natural key.
+     * Lets SDKs and CLIs resolve a workspace from a memorable identifier instead of carrying around a UUID. Returns 404 if no match.
+     * <p><b>200</b> - Successful response
+     * @param slug The slug parameter
+     * @param xTenantId Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present.
+     * @param xWorkspaceId Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation.
+     * @param xCorrelationId Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.
+     * @return ResponseSpec
+     * @throws WebClientResponseException if an error occurs while attempting to invoke the API
+     */
+    public ResponseSpec readBySlugWithResponseSpec(@javax.annotation.Nullable String slug, @javax.annotation.Nonnull String xTenantId, @javax.annotation.Nonnull String xWorkspaceId, @javax.annotation.Nullable UUID xCorrelationId) throws WebClientResponseException {
+        return readBySlugRequestCreation(slug, xTenantId, xWorkspaceId, xCorrelationId);
     }
 
     /**
@@ -339,15 +583,27 @@ public class WorkspacesApi {
      * <p><b>200</b> - Successful response
      * <p><b>422</b> - Validation Error
      * @param workspaceId The workspaceId parameter
+     * @param xTenantId Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present.
+     * @param xWorkspaceId Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation.
      * @param workspaceUpdate The workspaceUpdate parameter
+     * @param xCorrelationId Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.
+     * @param idempotencyKey Optional client-supplied idempotency key for mutating operations. The first request with a key persists its result; subsequent requests with the same key + same tenant return the cached response. Keys expire after 24h.
      * @return WorkspaceRead
      * @throws WebClientResponseException if an error occurs while attempting to invoke the API
      */
-    private ResponseSpec updateRequestCreation(@javax.annotation.Nonnull String workspaceId, @javax.annotation.Nonnull WorkspaceUpdate workspaceUpdate) throws WebClientResponseException {
+    private ResponseSpec updateRequestCreation(@javax.annotation.Nonnull String workspaceId, @javax.annotation.Nonnull String xTenantId, @javax.annotation.Nonnull String xWorkspaceId, @javax.annotation.Nonnull WorkspaceUpdate workspaceUpdate, @javax.annotation.Nullable UUID xCorrelationId, @javax.annotation.Nullable String idempotencyKey) throws WebClientResponseException {
         Object postBody = workspaceUpdate;
         // verify the required parameter 'workspaceId' is set
         if (workspaceId == null) {
             throw new WebClientResponseException("Missing the required parameter 'workspaceId' when calling update", HttpStatus.BAD_REQUEST.value(), HttpStatus.BAD_REQUEST.getReasonPhrase(), null, null, null);
+        }
+        // verify the required parameter 'xTenantId' is set
+        if (xTenantId == null) {
+            throw new WebClientResponseException("Missing the required parameter 'xTenantId' when calling update", HttpStatus.BAD_REQUEST.value(), HttpStatus.BAD_REQUEST.getReasonPhrase(), null, null, null);
+        }
+        // verify the required parameter 'xWorkspaceId' is set
+        if (xWorkspaceId == null) {
+            throw new WebClientResponseException("Missing the required parameter 'xWorkspaceId' when calling update", HttpStatus.BAD_REQUEST.value(), HttpStatus.BAD_REQUEST.getReasonPhrase(), null, null, null);
         }
         // verify the required parameter 'workspaceUpdate' is set
         if (workspaceUpdate == null) {
@@ -363,6 +619,14 @@ public class WorkspacesApi {
         final MultiValueMap<String, String> cookieParams = new LinkedMultiValueMap<String, String>();
         final MultiValueMap<String, Object> formParams = new LinkedMultiValueMap<String, Object>();
 
+        if (xTenantId != null)
+        headerParams.add("X-Tenant-Id", apiClient.parameterToString(xTenantId));
+        if (xWorkspaceId != null)
+        headerParams.add("X-Workspace-Id", apiClient.parameterToString(xWorkspaceId));
+        if (xCorrelationId != null)
+        headerParams.add("X-Correlation-Id", apiClient.parameterToString(xCorrelationId));
+        if (idempotencyKey != null)
+        headerParams.add("Idempotency-Key", apiClient.parameterToString(idempotencyKey));
         final String[] localVarAccepts = { 
             "application/json"
         };
@@ -372,7 +636,7 @@ public class WorkspacesApi {
         };
         final MediaType localVarContentType = apiClient.selectHeaderContentType(localVarContentTypes);
 
-        String[] localVarAuthNames = new String[] {  };
+        String[] localVarAuthNames = new String[] { "WorkspaceContext", "TenantContext" };
 
         ParameterizedTypeReference<WorkspaceRead> localVarReturnType = new ParameterizedTypeReference<WorkspaceRead>() {};
         return apiClient.invokeAPI("/api/v1/workspaces/{workspace_id}", HttpMethod.PUT, pathParams, queryParams, postBody, headerParams, cookieParams, formParams, localVarAccept, localVarContentType, localVarAuthNames, localVarReturnType);
@@ -384,13 +648,17 @@ public class WorkspacesApi {
      * <p><b>200</b> - Successful response
      * <p><b>422</b> - Validation Error
      * @param workspaceId The workspaceId parameter
+     * @param xTenantId Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present.
+     * @param xWorkspaceId Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation.
      * @param workspaceUpdate The workspaceUpdate parameter
+     * @param xCorrelationId Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.
+     * @param idempotencyKey Optional client-supplied idempotency key for mutating operations. The first request with a key persists its result; subsequent requests with the same key + same tenant return the cached response. Keys expire after 24h.
      * @return WorkspaceRead
      * @throws WebClientResponseException if an error occurs while attempting to invoke the API
      */
-    public Mono<WorkspaceRead> update(@javax.annotation.Nonnull String workspaceId, @javax.annotation.Nonnull WorkspaceUpdate workspaceUpdate) throws WebClientResponseException {
+    public Mono<WorkspaceRead> update(@javax.annotation.Nonnull String workspaceId, @javax.annotation.Nonnull String xTenantId, @javax.annotation.Nonnull String xWorkspaceId, @javax.annotation.Nonnull WorkspaceUpdate workspaceUpdate, @javax.annotation.Nullable UUID xCorrelationId, @javax.annotation.Nullable String idempotencyKey) throws WebClientResponseException {
         ParameterizedTypeReference<WorkspaceRead> localVarReturnType = new ParameterizedTypeReference<WorkspaceRead>() {};
-        return updateRequestCreation(workspaceId, workspaceUpdate).bodyToMono(localVarReturnType);
+        return updateRequestCreation(workspaceId, xTenantId, xWorkspaceId, workspaceUpdate, xCorrelationId, idempotencyKey).bodyToMono(localVarReturnType);
     }
 
     /**
@@ -399,13 +667,17 @@ public class WorkspacesApi {
      * <p><b>200</b> - Successful response
      * <p><b>422</b> - Validation Error
      * @param workspaceId The workspaceId parameter
+     * @param xTenantId Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present.
+     * @param xWorkspaceId Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation.
      * @param workspaceUpdate The workspaceUpdate parameter
+     * @param xCorrelationId Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.
+     * @param idempotencyKey Optional client-supplied idempotency key for mutating operations. The first request with a key persists its result; subsequent requests with the same key + same tenant return the cached response. Keys expire after 24h.
      * @return ResponseEntity&lt;WorkspaceRead&gt;
      * @throws WebClientResponseException if an error occurs while attempting to invoke the API
      */
-    public Mono<ResponseEntity<WorkspaceRead>> updateWithHttpInfo(@javax.annotation.Nonnull String workspaceId, @javax.annotation.Nonnull WorkspaceUpdate workspaceUpdate) throws WebClientResponseException {
+    public Mono<ResponseEntity<WorkspaceRead>> updateWithHttpInfo(@javax.annotation.Nonnull String workspaceId, @javax.annotation.Nonnull String xTenantId, @javax.annotation.Nonnull String xWorkspaceId, @javax.annotation.Nonnull WorkspaceUpdate workspaceUpdate, @javax.annotation.Nullable UUID xCorrelationId, @javax.annotation.Nullable String idempotencyKey) throws WebClientResponseException {
         ParameterizedTypeReference<WorkspaceRead> localVarReturnType = new ParameterizedTypeReference<WorkspaceRead>() {};
-        return updateRequestCreation(workspaceId, workspaceUpdate).toEntity(localVarReturnType);
+        return updateRequestCreation(workspaceId, xTenantId, xWorkspaceId, workspaceUpdate, xCorrelationId, idempotencyKey).toEntity(localVarReturnType);
     }
 
     /**
@@ -414,11 +686,15 @@ public class WorkspacesApi {
      * <p><b>200</b> - Successful response
      * <p><b>422</b> - Validation Error
      * @param workspaceId The workspaceId parameter
+     * @param xTenantId Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present.
+     * @param xWorkspaceId Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation.
      * @param workspaceUpdate The workspaceUpdate parameter
+     * @param xCorrelationId Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.
+     * @param idempotencyKey Optional client-supplied idempotency key for mutating operations. The first request with a key persists its result; subsequent requests with the same key + same tenant return the cached response. Keys expire after 24h.
      * @return ResponseSpec
      * @throws WebClientResponseException if an error occurs while attempting to invoke the API
      */
-    public ResponseSpec updateWithResponseSpec(@javax.annotation.Nonnull String workspaceId, @javax.annotation.Nonnull WorkspaceUpdate workspaceUpdate) throws WebClientResponseException {
-        return updateRequestCreation(workspaceId, workspaceUpdate);
+    public ResponseSpec updateWithResponseSpec(@javax.annotation.Nonnull String workspaceId, @javax.annotation.Nonnull String xTenantId, @javax.annotation.Nonnull String xWorkspaceId, @javax.annotation.Nonnull WorkspaceUpdate workspaceUpdate, @javax.annotation.Nullable UUID xCorrelationId, @javax.annotation.Nullable String idempotencyKey) throws WebClientResponseException {
+        return updateRequestCreation(workspaceId, xTenantId, xWorkspaceId, workspaceUpdate, xCorrelationId, idempotencyKey);
     }
 }

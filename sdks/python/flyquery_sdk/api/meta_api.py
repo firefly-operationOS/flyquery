@@ -15,6 +15,10 @@ from pydantic import validate_call, Field, StrictFloat, StrictStr, StrictInt
 from typing import Any, Dict, List, Optional, Tuple, Union
 from typing_extensions import Annotated
 
+from pydantic import Field
+from typing import Optional
+from typing_extensions import Annotated
+from uuid import UUID
 
 from flyquery_sdk.api_client import ApiClient, RequestSerialized
 from flyquery_sdk.api_response import ApiResponse
@@ -37,6 +41,8 @@ class MetaApi:
     @validate_call
     async def version(
         self,
+        x_agent_token: Annotated[str, Field(min_length=32, strict=True, description="Machine-to-machine bearer token. Replaces X-Tenant-Id and X-Workspace-Id on agent-tier endpoints -- the token's claims encode the tenant + workspace + scopes. Issue via ``POST /api/v1/agent-tokens``.")],
+        x_correlation_id: Annotated[Optional[UUID], Field(description="Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.")] = None,
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -54,6 +60,10 @@ class MetaApi:
 
         Requires a valid ``X-Agent-Token`` with ``flyquery.audit:read`` scope. Missing or invalid tokens return 401 / 403 respectively.
 
+        :param x_agent_token: Machine-to-machine bearer token. Replaces X-Tenant-Id and X-Workspace-Id on agent-tier endpoints -- the token's claims encode the tenant + workspace + scopes. Issue via ``POST /api/v1/agent-tokens``. (required)
+        :type x_agent_token: str
+        :param x_correlation_id: Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.
+        :type x_correlation_id: UUID
         :param _request_timeout: timeout setting for this request. If one
                                  number provided, it will be total request
                                  timeout. It can also be a pair (tuple) of
@@ -77,6 +87,8 @@ class MetaApi:
         """ # noqa: E501
 
         _param = self._version_serialize(
+            x_agent_token=x_agent_token,
+            x_correlation_id=x_correlation_id,
             _request_auth=_request_auth,
             _content_type=_content_type,
             _headers=_headers,
@@ -100,6 +112,8 @@ class MetaApi:
     @validate_call
     async def version_with_http_info(
         self,
+        x_agent_token: Annotated[str, Field(min_length=32, strict=True, description="Machine-to-machine bearer token. Replaces X-Tenant-Id and X-Workspace-Id on agent-tier endpoints -- the token's claims encode the tenant + workspace + scopes. Issue via ``POST /api/v1/agent-tokens``.")],
+        x_correlation_id: Annotated[Optional[UUID], Field(description="Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.")] = None,
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -117,6 +131,10 @@ class MetaApi:
 
         Requires a valid ``X-Agent-Token`` with ``flyquery.audit:read`` scope. Missing or invalid tokens return 401 / 403 respectively.
 
+        :param x_agent_token: Machine-to-machine bearer token. Replaces X-Tenant-Id and X-Workspace-Id on agent-tier endpoints -- the token's claims encode the tenant + workspace + scopes. Issue via ``POST /api/v1/agent-tokens``. (required)
+        :type x_agent_token: str
+        :param x_correlation_id: Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.
+        :type x_correlation_id: UUID
         :param _request_timeout: timeout setting for this request. If one
                                  number provided, it will be total request
                                  timeout. It can also be a pair (tuple) of
@@ -140,6 +158,8 @@ class MetaApi:
         """ # noqa: E501
 
         _param = self._version_serialize(
+            x_agent_token=x_agent_token,
+            x_correlation_id=x_correlation_id,
             _request_auth=_request_auth,
             _content_type=_content_type,
             _headers=_headers,
@@ -163,6 +183,8 @@ class MetaApi:
     @validate_call
     async def version_without_preload_content(
         self,
+        x_agent_token: Annotated[str, Field(min_length=32, strict=True, description="Machine-to-machine bearer token. Replaces X-Tenant-Id and X-Workspace-Id on agent-tier endpoints -- the token's claims encode the tenant + workspace + scopes. Issue via ``POST /api/v1/agent-tokens``.")],
+        x_correlation_id: Annotated[Optional[UUID], Field(description="Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.")] = None,
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -180,6 +202,10 @@ class MetaApi:
 
         Requires a valid ``X-Agent-Token`` with ``flyquery.audit:read`` scope. Missing or invalid tokens return 401 / 403 respectively.
 
+        :param x_agent_token: Machine-to-machine bearer token. Replaces X-Tenant-Id and X-Workspace-Id on agent-tier endpoints -- the token's claims encode the tenant + workspace + scopes. Issue via ``POST /api/v1/agent-tokens``. (required)
+        :type x_agent_token: str
+        :param x_correlation_id: Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.
+        :type x_correlation_id: UUID
         :param _request_timeout: timeout setting for this request. If one
                                  number provided, it will be total request
                                  timeout. It can also be a pair (tuple) of
@@ -203,6 +229,8 @@ class MetaApi:
         """ # noqa: E501
 
         _param = self._version_serialize(
+            x_agent_token=x_agent_token,
+            x_correlation_id=x_correlation_id,
             _request_auth=_request_auth,
             _content_type=_content_type,
             _headers=_headers,
@@ -221,6 +249,8 @@ class MetaApi:
 
     def _version_serialize(
         self,
+        x_agent_token,
+        x_correlation_id,
         _request_auth,
         _content_type,
         _headers,
@@ -244,6 +274,10 @@ class MetaApi:
         # process the path parameters
         # process the query parameters
         # process the header parameters
+        if x_agent_token is not None:
+            _header_params['X-Agent-Token'] = x_agent_token
+        if x_correlation_id is not None:
+            _header_params['X-Correlation-Id'] = x_correlation_id
         # process the form parameters
         # process the body parameter
 
@@ -252,6 +286,7 @@ class MetaApi:
 
         # authentication setting
         _auth_settings: List[str] = [
+            'AgentToken'
         ]
 
         return self.api_client.param_serialize(
@@ -275,6 +310,9 @@ class MetaApi:
     @validate_call
     async def version_0(
         self,
+        x_tenant_id: Annotated[str, Field(min_length=1, strict=True, max_length=128, description="Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present.")],
+        x_workspace_id: Annotated[str, Field(min_length=1, strict=True, max_length=128, description="Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation.")],
+        x_correlation_id: Annotated[Optional[UUID], Field(description="Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.")] = None,
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -291,6 +329,12 @@ class MetaApi:
         """Return service name + CalVer version tag.
 
 
+        :param x_tenant_id: Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present. (required)
+        :type x_tenant_id: str
+        :param x_workspace_id: Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation. (required)
+        :type x_workspace_id: str
+        :param x_correlation_id: Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.
+        :type x_correlation_id: UUID
         :param _request_timeout: timeout setting for this request. If one
                                  number provided, it will be total request
                                  timeout. It can also be a pair (tuple) of
@@ -314,6 +358,9 @@ class MetaApi:
         """ # noqa: E501
 
         _param = self._version_0_serialize(
+            x_tenant_id=x_tenant_id,
+            x_workspace_id=x_workspace_id,
+            x_correlation_id=x_correlation_id,
             _request_auth=_request_auth,
             _content_type=_content_type,
             _headers=_headers,
@@ -337,6 +384,9 @@ class MetaApi:
     @validate_call
     async def version_0_with_http_info(
         self,
+        x_tenant_id: Annotated[str, Field(min_length=1, strict=True, max_length=128, description="Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present.")],
+        x_workspace_id: Annotated[str, Field(min_length=1, strict=True, max_length=128, description="Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation.")],
+        x_correlation_id: Annotated[Optional[UUID], Field(description="Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.")] = None,
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -353,6 +403,12 @@ class MetaApi:
         """Return service name + CalVer version tag.
 
 
+        :param x_tenant_id: Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present. (required)
+        :type x_tenant_id: str
+        :param x_workspace_id: Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation. (required)
+        :type x_workspace_id: str
+        :param x_correlation_id: Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.
+        :type x_correlation_id: UUID
         :param _request_timeout: timeout setting for this request. If one
                                  number provided, it will be total request
                                  timeout. It can also be a pair (tuple) of
@@ -376,6 +432,9 @@ class MetaApi:
         """ # noqa: E501
 
         _param = self._version_0_serialize(
+            x_tenant_id=x_tenant_id,
+            x_workspace_id=x_workspace_id,
+            x_correlation_id=x_correlation_id,
             _request_auth=_request_auth,
             _content_type=_content_type,
             _headers=_headers,
@@ -399,6 +458,9 @@ class MetaApi:
     @validate_call
     async def version_0_without_preload_content(
         self,
+        x_tenant_id: Annotated[str, Field(min_length=1, strict=True, max_length=128, description="Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present.")],
+        x_workspace_id: Annotated[str, Field(min_length=1, strict=True, max_length=128, description="Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation.")],
+        x_correlation_id: Annotated[Optional[UUID], Field(description="Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.")] = None,
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -415,6 +477,12 @@ class MetaApi:
         """Return service name + CalVer version tag.
 
 
+        :param x_tenant_id: Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present. (required)
+        :type x_tenant_id: str
+        :param x_workspace_id: Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation. (required)
+        :type x_workspace_id: str
+        :param x_correlation_id: Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.
+        :type x_correlation_id: UUID
         :param _request_timeout: timeout setting for this request. If one
                                  number provided, it will be total request
                                  timeout. It can also be a pair (tuple) of
@@ -438,6 +506,9 @@ class MetaApi:
         """ # noqa: E501
 
         _param = self._version_0_serialize(
+            x_tenant_id=x_tenant_id,
+            x_workspace_id=x_workspace_id,
+            x_correlation_id=x_correlation_id,
             _request_auth=_request_auth,
             _content_type=_content_type,
             _headers=_headers,
@@ -456,6 +527,9 @@ class MetaApi:
 
     def _version_0_serialize(
         self,
+        x_tenant_id,
+        x_workspace_id,
+        x_correlation_id,
         _request_auth,
         _content_type,
         _headers,
@@ -479,6 +553,12 @@ class MetaApi:
         # process the path parameters
         # process the query parameters
         # process the header parameters
+        if x_tenant_id is not None:
+            _header_params['X-Tenant-Id'] = x_tenant_id
+        if x_workspace_id is not None:
+            _header_params['X-Workspace-Id'] = x_workspace_id
+        if x_correlation_id is not None:
+            _header_params['X-Correlation-Id'] = x_correlation_id
         # process the form parameters
         # process the body parameter
 
@@ -487,6 +567,8 @@ class MetaApi:
 
         # authentication setting
         _auth_settings: List[str] = [
+            'WorkspaceContext', 
+            'TenantContext'
         ]
 
         return self.api_client.param_serialize(

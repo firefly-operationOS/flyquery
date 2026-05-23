@@ -48,7 +48,7 @@ import com.fasterxml.jackson.annotation.JsonTypeName;
   SchemaChangeRead.JSON_PROPERTY_PREV_SNAPSHOT_ID,
   SchemaChangeRead.JSON_PROPERTY_TABLE_ID
 })
-@javax.annotation.Generated(value = "org.openapitools.codegen.languages.JavaClientCodegen", date = "2026-05-23T20:36:34.703085+02:00[Europe/Madrid]", comments = "Generator version: 7.22.0")
+@javax.annotation.Generated(value = "org.openapitools.codegen.languages.JavaClientCodegen", date = "2026-05-23T22:03:38.852419+02:00[Europe/Madrid]", comments = "Generator version: 7.22.0")
 public class SchemaChangeRead {
   public static final String JSON_PROPERTY_AFTER_JSON = "after_json";
   @javax.annotation.Nullable

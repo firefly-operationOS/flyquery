@@ -15,8 +15,10 @@ from pydantic import validate_call, Field, StrictFloat, StrictStr, StrictInt
 from typing import Any, Dict, List, Optional, Tuple, Union
 from typing_extensions import Annotated
 
-from pydantic import StrictStr
+from pydantic import Field, StrictStr
 from typing import Optional
+from typing_extensions import Annotated
+from uuid import UUID
 from flyquery_sdk.models.cancel_response import CancelResponse
 from flyquery_sdk.models.ingest_event_list_response import IngestEventListResponse
 from flyquery_sdk.models.ingest_job_list_response import IngestJobListResponse
@@ -44,6 +46,10 @@ class IngestApi:
     async def cancel_job(
         self,
         job_id: StrictStr,
+        x_tenant_id: Annotated[str, Field(min_length=1, strict=True, max_length=128, description="Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present.")],
+        x_workspace_id: Annotated[str, Field(min_length=1, strict=True, max_length=128, description="Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation.")],
+        x_correlation_id: Annotated[Optional[UUID], Field(description="Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.")] = None,
+        idempotency_key: Annotated[Optional[Annotated[str, Field(min_length=1, strict=True, max_length=256)]], Field(description="Optional client-supplied idempotency key for mutating operations. The first request with a key persists its result; subsequent requests with the same key + same tenant return the cached response. Keys expire after 24h.")] = None,
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -62,6 +68,14 @@ class IngestApi:
 
         :param job_id: (required)
         :type job_id: str
+        :param x_tenant_id: Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present. (required)
+        :type x_tenant_id: str
+        :param x_workspace_id: Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation. (required)
+        :type x_workspace_id: str
+        :param x_correlation_id: Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.
+        :type x_correlation_id: UUID
+        :param idempotency_key: Optional client-supplied idempotency key for mutating operations. The first request with a key persists its result; subsequent requests with the same key + same tenant return the cached response. Keys expire after 24h.
+        :type idempotency_key: str
         :param _request_timeout: timeout setting for this request. If one
                                  number provided, it will be total request
                                  timeout. It can also be a pair (tuple) of
@@ -86,6 +100,10 @@ class IngestApi:
 
         _param = self._cancel_job_serialize(
             job_id=job_id,
+            x_tenant_id=x_tenant_id,
+            x_workspace_id=x_workspace_id,
+            x_correlation_id=x_correlation_id,
+            idempotency_key=idempotency_key,
             _request_auth=_request_auth,
             _content_type=_content_type,
             _headers=_headers,
@@ -110,6 +128,10 @@ class IngestApi:
     async def cancel_job_with_http_info(
         self,
         job_id: StrictStr,
+        x_tenant_id: Annotated[str, Field(min_length=1, strict=True, max_length=128, description="Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present.")],
+        x_workspace_id: Annotated[str, Field(min_length=1, strict=True, max_length=128, description="Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation.")],
+        x_correlation_id: Annotated[Optional[UUID], Field(description="Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.")] = None,
+        idempotency_key: Annotated[Optional[Annotated[str, Field(min_length=1, strict=True, max_length=256)]], Field(description="Optional client-supplied idempotency key for mutating operations. The first request with a key persists its result; subsequent requests with the same key + same tenant return the cached response. Keys expire after 24h.")] = None,
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -128,6 +150,14 @@ class IngestApi:
 
         :param job_id: (required)
         :type job_id: str
+        :param x_tenant_id: Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present. (required)
+        :type x_tenant_id: str
+        :param x_workspace_id: Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation. (required)
+        :type x_workspace_id: str
+        :param x_correlation_id: Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.
+        :type x_correlation_id: UUID
+        :param idempotency_key: Optional client-supplied idempotency key for mutating operations. The first request with a key persists its result; subsequent requests with the same key + same tenant return the cached response. Keys expire after 24h.
+        :type idempotency_key: str
         :param _request_timeout: timeout setting for this request. If one
                                  number provided, it will be total request
                                  timeout. It can also be a pair (tuple) of
@@ -152,6 +182,10 @@ class IngestApi:
 
         _param = self._cancel_job_serialize(
             job_id=job_id,
+            x_tenant_id=x_tenant_id,
+            x_workspace_id=x_workspace_id,
+            x_correlation_id=x_correlation_id,
+            idempotency_key=idempotency_key,
             _request_auth=_request_auth,
             _content_type=_content_type,
             _headers=_headers,
@@ -176,6 +210,10 @@ class IngestApi:
     async def cancel_job_without_preload_content(
         self,
         job_id: StrictStr,
+        x_tenant_id: Annotated[str, Field(min_length=1, strict=True, max_length=128, description="Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present.")],
+        x_workspace_id: Annotated[str, Field(min_length=1, strict=True, max_length=128, description="Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation.")],
+        x_correlation_id: Annotated[Optional[UUID], Field(description="Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.")] = None,
+        idempotency_key: Annotated[Optional[Annotated[str, Field(min_length=1, strict=True, max_length=256)]], Field(description="Optional client-supplied idempotency key for mutating operations. The first request with a key persists its result; subsequent requests with the same key + same tenant return the cached response. Keys expire after 24h.")] = None,
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -194,6 +232,14 @@ class IngestApi:
 
         :param job_id: (required)
         :type job_id: str
+        :param x_tenant_id: Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present. (required)
+        :type x_tenant_id: str
+        :param x_workspace_id: Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation. (required)
+        :type x_workspace_id: str
+        :param x_correlation_id: Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.
+        :type x_correlation_id: UUID
+        :param idempotency_key: Optional client-supplied idempotency key for mutating operations. The first request with a key persists its result; subsequent requests with the same key + same tenant return the cached response. Keys expire after 24h.
+        :type idempotency_key: str
         :param _request_timeout: timeout setting for this request. If one
                                  number provided, it will be total request
                                  timeout. It can also be a pair (tuple) of
@@ -218,6 +264,10 @@ class IngestApi:
 
         _param = self._cancel_job_serialize(
             job_id=job_id,
+            x_tenant_id=x_tenant_id,
+            x_workspace_id=x_workspace_id,
+            x_correlation_id=x_correlation_id,
+            idempotency_key=idempotency_key,
             _request_auth=_request_auth,
             _content_type=_content_type,
             _headers=_headers,
@@ -237,6 +287,10 @@ class IngestApi:
     def _cancel_job_serialize(
         self,
         job_id,
+        x_tenant_id,
+        x_workspace_id,
+        x_correlation_id,
+        idempotency_key,
         _request_auth,
         _content_type,
         _headers,
@@ -262,6 +316,14 @@ class IngestApi:
             _path_params['job_id'] = job_id
         # process the query parameters
         # process the header parameters
+        if x_tenant_id is not None:
+            _header_params['X-Tenant-Id'] = x_tenant_id
+        if x_workspace_id is not None:
+            _header_params['X-Workspace-Id'] = x_workspace_id
+        if x_correlation_id is not None:
+            _header_params['X-Correlation-Id'] = x_correlation_id
+        if idempotency_key is not None:
+            _header_params['Idempotency-Key'] = idempotency_key
         # process the form parameters
         # process the body parameter
 
@@ -277,6 +339,8 @@ class IngestApi:
 
         # authentication setting
         _auth_settings: List[str] = [
+            'WorkspaceContext', 
+            'TenantContext'
         ]
 
         return self.api_client.param_serialize(
@@ -300,6 +364,10 @@ class IngestApi:
     @validate_call
     async def create_job(
         self,
+        x_tenant_id: Annotated[str, Field(min_length=1, strict=True, max_length=128, description="Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present.")],
+        x_workspace_id: Annotated[str, Field(min_length=1, strict=True, max_length=128, description="Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation.")],
+        x_correlation_id: Annotated[Optional[UUID], Field(description="Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.")] = None,
+        idempotency_key: Annotated[Optional[Annotated[str, Field(min_length=1, strict=True, max_length=256)]], Field(description="Optional client-supplied idempotency key for mutating operations. The first request with a key persists its result; subsequent requests with the same key + same tenant return the cached response. Keys expire after 24h.")] = None,
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -316,6 +384,14 @@ class IngestApi:
         """Start a background ingestion job (REPARSE/SAMPLE_REFRESH/DESCRIBE_PASS/RELATION_PASS).
 
 
+        :param x_tenant_id: Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present. (required)
+        :type x_tenant_id: str
+        :param x_workspace_id: Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation. (required)
+        :type x_workspace_id: str
+        :param x_correlation_id: Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.
+        :type x_correlation_id: UUID
+        :param idempotency_key: Optional client-supplied idempotency key for mutating operations. The first request with a key persists its result; subsequent requests with the same key + same tenant return the cached response. Keys expire after 24h.
+        :type idempotency_key: str
         :param _request_timeout: timeout setting for this request. If one
                                  number provided, it will be total request
                                  timeout. It can also be a pair (tuple) of
@@ -339,6 +415,10 @@ class IngestApi:
         """ # noqa: E501
 
         _param = self._create_job_serialize(
+            x_tenant_id=x_tenant_id,
+            x_workspace_id=x_workspace_id,
+            x_correlation_id=x_correlation_id,
+            idempotency_key=idempotency_key,
             _request_auth=_request_auth,
             _content_type=_content_type,
             _headers=_headers,
@@ -362,6 +442,10 @@ class IngestApi:
     @validate_call
     async def create_job_with_http_info(
         self,
+        x_tenant_id: Annotated[str, Field(min_length=1, strict=True, max_length=128, description="Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present.")],
+        x_workspace_id: Annotated[str, Field(min_length=1, strict=True, max_length=128, description="Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation.")],
+        x_correlation_id: Annotated[Optional[UUID], Field(description="Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.")] = None,
+        idempotency_key: Annotated[Optional[Annotated[str, Field(min_length=1, strict=True, max_length=256)]], Field(description="Optional client-supplied idempotency key for mutating operations. The first request with a key persists its result; subsequent requests with the same key + same tenant return the cached response. Keys expire after 24h.")] = None,
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -378,6 +462,14 @@ class IngestApi:
         """Start a background ingestion job (REPARSE/SAMPLE_REFRESH/DESCRIBE_PASS/RELATION_PASS).
 
 
+        :param x_tenant_id: Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present. (required)
+        :type x_tenant_id: str
+        :param x_workspace_id: Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation. (required)
+        :type x_workspace_id: str
+        :param x_correlation_id: Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.
+        :type x_correlation_id: UUID
+        :param idempotency_key: Optional client-supplied idempotency key for mutating operations. The first request with a key persists its result; subsequent requests with the same key + same tenant return the cached response. Keys expire after 24h.
+        :type idempotency_key: str
         :param _request_timeout: timeout setting for this request. If one
                                  number provided, it will be total request
                                  timeout. It can also be a pair (tuple) of
@@ -401,6 +493,10 @@ class IngestApi:
         """ # noqa: E501
 
         _param = self._create_job_serialize(
+            x_tenant_id=x_tenant_id,
+            x_workspace_id=x_workspace_id,
+            x_correlation_id=x_correlation_id,
+            idempotency_key=idempotency_key,
             _request_auth=_request_auth,
             _content_type=_content_type,
             _headers=_headers,
@@ -424,6 +520,10 @@ class IngestApi:
     @validate_call
     async def create_job_without_preload_content(
         self,
+        x_tenant_id: Annotated[str, Field(min_length=1, strict=True, max_length=128, description="Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present.")],
+        x_workspace_id: Annotated[str, Field(min_length=1, strict=True, max_length=128, description="Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation.")],
+        x_correlation_id: Annotated[Optional[UUID], Field(description="Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.")] = None,
+        idempotency_key: Annotated[Optional[Annotated[str, Field(min_length=1, strict=True, max_length=256)]], Field(description="Optional client-supplied idempotency key for mutating operations. The first request with a key persists its result; subsequent requests with the same key + same tenant return the cached response. Keys expire after 24h.")] = None,
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -440,6 +540,14 @@ class IngestApi:
         """Start a background ingestion job (REPARSE/SAMPLE_REFRESH/DESCRIBE_PASS/RELATION_PASS).
 
 
+        :param x_tenant_id: Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present. (required)
+        :type x_tenant_id: str
+        :param x_workspace_id: Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation. (required)
+        :type x_workspace_id: str
+        :param x_correlation_id: Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.
+        :type x_correlation_id: UUID
+        :param idempotency_key: Optional client-supplied idempotency key for mutating operations. The first request with a key persists its result; subsequent requests with the same key + same tenant return the cached response. Keys expire after 24h.
+        :type idempotency_key: str
         :param _request_timeout: timeout setting for this request. If one
                                  number provided, it will be total request
                                  timeout. It can also be a pair (tuple) of
@@ -463,6 +571,10 @@ class IngestApi:
         """ # noqa: E501
 
         _param = self._create_job_serialize(
+            x_tenant_id=x_tenant_id,
+            x_workspace_id=x_workspace_id,
+            x_correlation_id=x_correlation_id,
+            idempotency_key=idempotency_key,
             _request_auth=_request_auth,
             _content_type=_content_type,
             _headers=_headers,
@@ -481,6 +593,10 @@ class IngestApi:
 
     def _create_job_serialize(
         self,
+        x_tenant_id,
+        x_workspace_id,
+        x_correlation_id,
+        idempotency_key,
         _request_auth,
         _content_type,
         _headers,
@@ -504,6 +620,14 @@ class IngestApi:
         # process the path parameters
         # process the query parameters
         # process the header parameters
+        if x_tenant_id is not None:
+            _header_params['X-Tenant-Id'] = x_tenant_id
+        if x_workspace_id is not None:
+            _header_params['X-Workspace-Id'] = x_workspace_id
+        if x_correlation_id is not None:
+            _header_params['X-Correlation-Id'] = x_correlation_id
+        if idempotency_key is not None:
+            _header_params['Idempotency-Key'] = idempotency_key
         # process the form parameters
         # process the body parameter
 
@@ -519,6 +643,8 @@ class IngestApi:
 
         # authentication setting
         _auth_settings: List[str] = [
+            'WorkspaceContext', 
+            'TenantContext'
         ]
 
         return self.api_client.param_serialize(
@@ -543,6 +669,9 @@ class IngestApi:
     async def get_job(
         self,
         job_id: Optional[StrictStr],
+        x_tenant_id: Annotated[str, Field(min_length=1, strict=True, max_length=128, description="Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present.")],
+        x_workspace_id: Annotated[str, Field(min_length=1, strict=True, max_length=128, description="Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation.")],
+        x_correlation_id: Annotated[Optional[UUID], Field(description="Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.")] = None,
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -561,6 +690,12 @@ class IngestApi:
 
         :param job_id: (required)
         :type job_id: str
+        :param x_tenant_id: Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present. (required)
+        :type x_tenant_id: str
+        :param x_workspace_id: Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation. (required)
+        :type x_workspace_id: str
+        :param x_correlation_id: Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.
+        :type x_correlation_id: UUID
         :param _request_timeout: timeout setting for this request. If one
                                  number provided, it will be total request
                                  timeout. It can also be a pair (tuple) of
@@ -585,6 +720,9 @@ class IngestApi:
 
         _param = self._get_job_serialize(
             job_id=job_id,
+            x_tenant_id=x_tenant_id,
+            x_workspace_id=x_workspace_id,
+            x_correlation_id=x_correlation_id,
             _request_auth=_request_auth,
             _content_type=_content_type,
             _headers=_headers,
@@ -609,6 +747,9 @@ class IngestApi:
     async def get_job_with_http_info(
         self,
         job_id: Optional[StrictStr],
+        x_tenant_id: Annotated[str, Field(min_length=1, strict=True, max_length=128, description="Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present.")],
+        x_workspace_id: Annotated[str, Field(min_length=1, strict=True, max_length=128, description="Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation.")],
+        x_correlation_id: Annotated[Optional[UUID], Field(description="Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.")] = None,
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -627,6 +768,12 @@ class IngestApi:
 
         :param job_id: (required)
         :type job_id: str
+        :param x_tenant_id: Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present. (required)
+        :type x_tenant_id: str
+        :param x_workspace_id: Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation. (required)
+        :type x_workspace_id: str
+        :param x_correlation_id: Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.
+        :type x_correlation_id: UUID
         :param _request_timeout: timeout setting for this request. If one
                                  number provided, it will be total request
                                  timeout. It can also be a pair (tuple) of
@@ -651,6 +798,9 @@ class IngestApi:
 
         _param = self._get_job_serialize(
             job_id=job_id,
+            x_tenant_id=x_tenant_id,
+            x_workspace_id=x_workspace_id,
+            x_correlation_id=x_correlation_id,
             _request_auth=_request_auth,
             _content_type=_content_type,
             _headers=_headers,
@@ -675,6 +825,9 @@ class IngestApi:
     async def get_job_without_preload_content(
         self,
         job_id: Optional[StrictStr],
+        x_tenant_id: Annotated[str, Field(min_length=1, strict=True, max_length=128, description="Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present.")],
+        x_workspace_id: Annotated[str, Field(min_length=1, strict=True, max_length=128, description="Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation.")],
+        x_correlation_id: Annotated[Optional[UUID], Field(description="Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.")] = None,
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -693,6 +846,12 @@ class IngestApi:
 
         :param job_id: (required)
         :type job_id: str
+        :param x_tenant_id: Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present. (required)
+        :type x_tenant_id: str
+        :param x_workspace_id: Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation. (required)
+        :type x_workspace_id: str
+        :param x_correlation_id: Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.
+        :type x_correlation_id: UUID
         :param _request_timeout: timeout setting for this request. If one
                                  number provided, it will be total request
                                  timeout. It can also be a pair (tuple) of
@@ -717,6 +876,9 @@ class IngestApi:
 
         _param = self._get_job_serialize(
             job_id=job_id,
+            x_tenant_id=x_tenant_id,
+            x_workspace_id=x_workspace_id,
+            x_correlation_id=x_correlation_id,
             _request_auth=_request_auth,
             _content_type=_content_type,
             _headers=_headers,
@@ -736,6 +898,9 @@ class IngestApi:
     def _get_job_serialize(
         self,
         job_id,
+        x_tenant_id,
+        x_workspace_id,
+        x_correlation_id,
         _request_auth,
         _content_type,
         _headers,
@@ -761,6 +926,12 @@ class IngestApi:
             _path_params['job_id'] = job_id
         # process the query parameters
         # process the header parameters
+        if x_tenant_id is not None:
+            _header_params['X-Tenant-Id'] = x_tenant_id
+        if x_workspace_id is not None:
+            _header_params['X-Workspace-Id'] = x_workspace_id
+        if x_correlation_id is not None:
+            _header_params['X-Correlation-Id'] = x_correlation_id
         # process the form parameters
         # process the body parameter
 
@@ -776,6 +947,8 @@ class IngestApi:
 
         # authentication setting
         _auth_settings: List[str] = [
+            'WorkspaceContext', 
+            'TenantContext'
         ]
 
         return self.api_client.param_serialize(
@@ -800,6 +973,9 @@ class IngestApi:
     async def list_events(
         self,
         job_id: StrictStr,
+        x_tenant_id: Annotated[str, Field(min_length=1, strict=True, max_length=128, description="Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present.")],
+        x_workspace_id: Annotated[str, Field(min_length=1, strict=True, max_length=128, description="Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation.")],
+        x_correlation_id: Annotated[Optional[UUID], Field(description="Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.")] = None,
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -818,6 +994,12 @@ class IngestApi:
 
         :param job_id: (required)
         :type job_id: str
+        :param x_tenant_id: Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present. (required)
+        :type x_tenant_id: str
+        :param x_workspace_id: Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation. (required)
+        :type x_workspace_id: str
+        :param x_correlation_id: Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.
+        :type x_correlation_id: UUID
         :param _request_timeout: timeout setting for this request. If one
                                  number provided, it will be total request
                                  timeout. It can also be a pair (tuple) of
@@ -842,6 +1024,9 @@ class IngestApi:
 
         _param = self._list_events_serialize(
             job_id=job_id,
+            x_tenant_id=x_tenant_id,
+            x_workspace_id=x_workspace_id,
+            x_correlation_id=x_correlation_id,
             _request_auth=_request_auth,
             _content_type=_content_type,
             _headers=_headers,
@@ -866,6 +1051,9 @@ class IngestApi:
     async def list_events_with_http_info(
         self,
         job_id: StrictStr,
+        x_tenant_id: Annotated[str, Field(min_length=1, strict=True, max_length=128, description="Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present.")],
+        x_workspace_id: Annotated[str, Field(min_length=1, strict=True, max_length=128, description="Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation.")],
+        x_correlation_id: Annotated[Optional[UUID], Field(description="Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.")] = None,
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -884,6 +1072,12 @@ class IngestApi:
 
         :param job_id: (required)
         :type job_id: str
+        :param x_tenant_id: Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present. (required)
+        :type x_tenant_id: str
+        :param x_workspace_id: Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation. (required)
+        :type x_workspace_id: str
+        :param x_correlation_id: Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.
+        :type x_correlation_id: UUID
         :param _request_timeout: timeout setting for this request. If one
                                  number provided, it will be total request
                                  timeout. It can also be a pair (tuple) of
@@ -908,6 +1102,9 @@ class IngestApi:
 
         _param = self._list_events_serialize(
             job_id=job_id,
+            x_tenant_id=x_tenant_id,
+            x_workspace_id=x_workspace_id,
+            x_correlation_id=x_correlation_id,
             _request_auth=_request_auth,
             _content_type=_content_type,
             _headers=_headers,
@@ -932,6 +1129,9 @@ class IngestApi:
     async def list_events_without_preload_content(
         self,
         job_id: StrictStr,
+        x_tenant_id: Annotated[str, Field(min_length=1, strict=True, max_length=128, description="Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present.")],
+        x_workspace_id: Annotated[str, Field(min_length=1, strict=True, max_length=128, description="Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation.")],
+        x_correlation_id: Annotated[Optional[UUID], Field(description="Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.")] = None,
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -950,6 +1150,12 @@ class IngestApi:
 
         :param job_id: (required)
         :type job_id: str
+        :param x_tenant_id: Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present. (required)
+        :type x_tenant_id: str
+        :param x_workspace_id: Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation. (required)
+        :type x_workspace_id: str
+        :param x_correlation_id: Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.
+        :type x_correlation_id: UUID
         :param _request_timeout: timeout setting for this request. If one
                                  number provided, it will be total request
                                  timeout. It can also be a pair (tuple) of
@@ -974,6 +1180,9 @@ class IngestApi:
 
         _param = self._list_events_serialize(
             job_id=job_id,
+            x_tenant_id=x_tenant_id,
+            x_workspace_id=x_workspace_id,
+            x_correlation_id=x_correlation_id,
             _request_auth=_request_auth,
             _content_type=_content_type,
             _headers=_headers,
@@ -993,6 +1202,9 @@ class IngestApi:
     def _list_events_serialize(
         self,
         job_id,
+        x_tenant_id,
+        x_workspace_id,
+        x_correlation_id,
         _request_auth,
         _content_type,
         _headers,
@@ -1018,6 +1230,12 @@ class IngestApi:
             _path_params['job_id'] = job_id
         # process the query parameters
         # process the header parameters
+        if x_tenant_id is not None:
+            _header_params['X-Tenant-Id'] = x_tenant_id
+        if x_workspace_id is not None:
+            _header_params['X-Workspace-Id'] = x_workspace_id
+        if x_correlation_id is not None:
+            _header_params['X-Correlation-Id'] = x_correlation_id
         # process the form parameters
         # process the body parameter
 
@@ -1033,6 +1251,8 @@ class IngestApi:
 
         # authentication setting
         _auth_settings: List[str] = [
+            'WorkspaceContext', 
+            'TenantContext'
         ]
 
         return self.api_client.param_serialize(
@@ -1056,6 +1276,9 @@ class IngestApi:
     @validate_call
     async def list_jobs(
         self,
+        x_tenant_id: Annotated[str, Field(min_length=1, strict=True, max_length=128, description="Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present.")],
+        x_workspace_id: Annotated[str, Field(min_length=1, strict=True, max_length=128, description="Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation.")],
+        x_correlation_id: Annotated[Optional[UUID], Field(description="Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.")] = None,
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -1072,6 +1295,12 @@ class IngestApi:
         """List ingest jobs with optional filters.
 
 
+        :param x_tenant_id: Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present. (required)
+        :type x_tenant_id: str
+        :param x_workspace_id: Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation. (required)
+        :type x_workspace_id: str
+        :param x_correlation_id: Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.
+        :type x_correlation_id: UUID
         :param _request_timeout: timeout setting for this request. If one
                                  number provided, it will be total request
                                  timeout. It can also be a pair (tuple) of
@@ -1095,6 +1324,9 @@ class IngestApi:
         """ # noqa: E501
 
         _param = self._list_jobs_serialize(
+            x_tenant_id=x_tenant_id,
+            x_workspace_id=x_workspace_id,
+            x_correlation_id=x_correlation_id,
             _request_auth=_request_auth,
             _content_type=_content_type,
             _headers=_headers,
@@ -1118,6 +1350,9 @@ class IngestApi:
     @validate_call
     async def list_jobs_with_http_info(
         self,
+        x_tenant_id: Annotated[str, Field(min_length=1, strict=True, max_length=128, description="Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present.")],
+        x_workspace_id: Annotated[str, Field(min_length=1, strict=True, max_length=128, description="Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation.")],
+        x_correlation_id: Annotated[Optional[UUID], Field(description="Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.")] = None,
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -1134,6 +1369,12 @@ class IngestApi:
         """List ingest jobs with optional filters.
 
 
+        :param x_tenant_id: Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present. (required)
+        :type x_tenant_id: str
+        :param x_workspace_id: Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation. (required)
+        :type x_workspace_id: str
+        :param x_correlation_id: Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.
+        :type x_correlation_id: UUID
         :param _request_timeout: timeout setting for this request. If one
                                  number provided, it will be total request
                                  timeout. It can also be a pair (tuple) of
@@ -1157,6 +1398,9 @@ class IngestApi:
         """ # noqa: E501
 
         _param = self._list_jobs_serialize(
+            x_tenant_id=x_tenant_id,
+            x_workspace_id=x_workspace_id,
+            x_correlation_id=x_correlation_id,
             _request_auth=_request_auth,
             _content_type=_content_type,
             _headers=_headers,
@@ -1180,6 +1424,9 @@ class IngestApi:
     @validate_call
     async def list_jobs_without_preload_content(
         self,
+        x_tenant_id: Annotated[str, Field(min_length=1, strict=True, max_length=128, description="Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present.")],
+        x_workspace_id: Annotated[str, Field(min_length=1, strict=True, max_length=128, description="Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation.")],
+        x_correlation_id: Annotated[Optional[UUID], Field(description="Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.")] = None,
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -1196,6 +1443,12 @@ class IngestApi:
         """List ingest jobs with optional filters.
 
 
+        :param x_tenant_id: Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present. (required)
+        :type x_tenant_id: str
+        :param x_workspace_id: Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation. (required)
+        :type x_workspace_id: str
+        :param x_correlation_id: Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.
+        :type x_correlation_id: UUID
         :param _request_timeout: timeout setting for this request. If one
                                  number provided, it will be total request
                                  timeout. It can also be a pair (tuple) of
@@ -1219,6 +1472,9 @@ class IngestApi:
         """ # noqa: E501
 
         _param = self._list_jobs_serialize(
+            x_tenant_id=x_tenant_id,
+            x_workspace_id=x_workspace_id,
+            x_correlation_id=x_correlation_id,
             _request_auth=_request_auth,
             _content_type=_content_type,
             _headers=_headers,
@@ -1237,6 +1493,9 @@ class IngestApi:
 
     def _list_jobs_serialize(
         self,
+        x_tenant_id,
+        x_workspace_id,
+        x_correlation_id,
         _request_auth,
         _content_type,
         _headers,
@@ -1260,6 +1519,12 @@ class IngestApi:
         # process the path parameters
         # process the query parameters
         # process the header parameters
+        if x_tenant_id is not None:
+            _header_params['X-Tenant-Id'] = x_tenant_id
+        if x_workspace_id is not None:
+            _header_params['X-Workspace-Id'] = x_workspace_id
+        if x_correlation_id is not None:
+            _header_params['X-Correlation-Id'] = x_correlation_id
         # process the form parameters
         # process the body parameter
 
@@ -1275,6 +1540,8 @@ class IngestApi:
 
         # authentication setting
         _auth_settings: List[str] = [
+            'WorkspaceContext', 
+            'TenantContext'
         ]
 
         return self.api_client.param_serialize(
@@ -1299,6 +1566,9 @@ class IngestApi:
     async def stream_job(
         self,
         job_id: StrictStr,
+        x_tenant_id: Annotated[str, Field(min_length=1, strict=True, max_length=128, description="Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present.")],
+        x_workspace_id: Annotated[str, Field(min_length=1, strict=True, max_length=128, description="Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation.")],
+        x_correlation_id: Annotated[Optional[UUID], Field(description="Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.")] = None,
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -1318,6 +1588,12 @@ class IngestApi:
 
         :param job_id: (required)
         :type job_id: str
+        :param x_tenant_id: Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present. (required)
+        :type x_tenant_id: str
+        :param x_workspace_id: Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation. (required)
+        :type x_workspace_id: str
+        :param x_correlation_id: Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.
+        :type x_correlation_id: UUID
         :param _request_timeout: timeout setting for this request. If one
                                  number provided, it will be total request
                                  timeout. It can also be a pair (tuple) of
@@ -1342,6 +1618,9 @@ class IngestApi:
 
         _param = self._stream_job_serialize(
             job_id=job_id,
+            x_tenant_id=x_tenant_id,
+            x_workspace_id=x_workspace_id,
+            x_correlation_id=x_correlation_id,
             _request_auth=_request_auth,
             _content_type=_content_type,
             _headers=_headers,
@@ -1366,6 +1645,9 @@ class IngestApi:
     async def stream_job_with_http_info(
         self,
         job_id: StrictStr,
+        x_tenant_id: Annotated[str, Field(min_length=1, strict=True, max_length=128, description="Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present.")],
+        x_workspace_id: Annotated[str, Field(min_length=1, strict=True, max_length=128, description="Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation.")],
+        x_correlation_id: Annotated[Optional[UUID], Field(description="Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.")] = None,
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -1385,6 +1667,12 @@ class IngestApi:
 
         :param job_id: (required)
         :type job_id: str
+        :param x_tenant_id: Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present. (required)
+        :type x_tenant_id: str
+        :param x_workspace_id: Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation. (required)
+        :type x_workspace_id: str
+        :param x_correlation_id: Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.
+        :type x_correlation_id: UUID
         :param _request_timeout: timeout setting for this request. If one
                                  number provided, it will be total request
                                  timeout. It can also be a pair (tuple) of
@@ -1409,6 +1697,9 @@ class IngestApi:
 
         _param = self._stream_job_serialize(
             job_id=job_id,
+            x_tenant_id=x_tenant_id,
+            x_workspace_id=x_workspace_id,
+            x_correlation_id=x_correlation_id,
             _request_auth=_request_auth,
             _content_type=_content_type,
             _headers=_headers,
@@ -1433,6 +1724,9 @@ class IngestApi:
     async def stream_job_without_preload_content(
         self,
         job_id: StrictStr,
+        x_tenant_id: Annotated[str, Field(min_length=1, strict=True, max_length=128, description="Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present.")],
+        x_workspace_id: Annotated[str, Field(min_length=1, strict=True, max_length=128, description="Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation.")],
+        x_correlation_id: Annotated[Optional[UUID], Field(description="Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.")] = None,
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -1452,6 +1746,12 @@ class IngestApi:
 
         :param job_id: (required)
         :type job_id: str
+        :param x_tenant_id: Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present. (required)
+        :type x_tenant_id: str
+        :param x_workspace_id: Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation. (required)
+        :type x_workspace_id: str
+        :param x_correlation_id: Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.
+        :type x_correlation_id: UUID
         :param _request_timeout: timeout setting for this request. If one
                                  number provided, it will be total request
                                  timeout. It can also be a pair (tuple) of
@@ -1476,6 +1776,9 @@ class IngestApi:
 
         _param = self._stream_job_serialize(
             job_id=job_id,
+            x_tenant_id=x_tenant_id,
+            x_workspace_id=x_workspace_id,
+            x_correlation_id=x_correlation_id,
             _request_auth=_request_auth,
             _content_type=_content_type,
             _headers=_headers,
@@ -1495,6 +1798,9 @@ class IngestApi:
     def _stream_job_serialize(
         self,
         job_id,
+        x_tenant_id,
+        x_workspace_id,
+        x_correlation_id,
         _request_auth,
         _content_type,
         _headers,
@@ -1520,6 +1826,12 @@ class IngestApi:
             _path_params['job_id'] = job_id
         # process the query parameters
         # process the header parameters
+        if x_tenant_id is not None:
+            _header_params['X-Tenant-Id'] = x_tenant_id
+        if x_workspace_id is not None:
+            _header_params['X-Workspace-Id'] = x_workspace_id
+        if x_correlation_id is not None:
+            _header_params['X-Correlation-Id'] = x_correlation_id
         # process the form parameters
         # process the body parameter
 
@@ -1528,6 +1840,8 @@ class IngestApi:
 
         # authentication setting
         _auth_settings: List[str] = [
+            'WorkspaceContext', 
+            'TenantContext'
         ]
 
         return self.api_client.param_serialize(

@@ -15,6 +15,10 @@ from pydantic import validate_call, Field, StrictFloat, StrictStr, StrictInt
 from typing import Any, Dict, List, Optional, Tuple, Union
 from typing_extensions import Annotated
 
+from pydantic import Field
+from typing import Optional
+from typing_extensions import Annotated
+from uuid import UUID
 from flyquery_sdk.models.answer_response import AnswerResponse
 from flyquery_sdk.models.explain_response import ExplainResponse
 from flyquery_sdk.models.query_request import QueryRequest
@@ -41,7 +45,10 @@ class AgentQueryApi:
     @validate_call
     async def explain(
         self,
+        x_agent_token: Annotated[str, Field(min_length=32, strict=True, description="Machine-to-machine bearer token. Replaces X-Tenant-Id and X-Workspace-Id on agent-tier endpoints -- the token's claims encode the tenant + workspace + scopes. Issue via ``POST /api/v1/agent-tokens``.")],
         query_request: QueryRequest,
+        x_correlation_id: Annotated[Optional[UUID], Field(description="Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.")] = None,
+        idempotency_key: Annotated[Optional[Annotated[str, Field(min_length=1, strict=True, max_length=256)]], Field(description="Optional client-supplied idempotency key for mutating operations. The first request with a key persists its result; subsequent requests with the same key + same tenant return the cached response. Keys expire after 24h.")] = None,
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -59,8 +66,14 @@ class AgentQueryApi:
 
         :param http_request: Starlette request :param body: validated QueryRequest :return: ExplainResponse with candidate SQL and reasoning
 
+        :param x_agent_token: Machine-to-machine bearer token. Replaces X-Tenant-Id and X-Workspace-Id on agent-tier endpoints -- the token's claims encode the tenant + workspace + scopes. Issue via ``POST /api/v1/agent-tokens``. (required)
+        :type x_agent_token: str
         :param query_request: (required)
         :type query_request: QueryRequest
+        :param x_correlation_id: Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.
+        :type x_correlation_id: UUID
+        :param idempotency_key: Optional client-supplied idempotency key for mutating operations. The first request with a key persists its result; subsequent requests with the same key + same tenant return the cached response. Keys expire after 24h.
+        :type idempotency_key: str
         :param _request_timeout: timeout setting for this request. If one
                                  number provided, it will be total request
                                  timeout. It can also be a pair (tuple) of
@@ -84,7 +97,10 @@ class AgentQueryApi:
         """ # noqa: E501
 
         _param = self._explain_serialize(
+            x_agent_token=x_agent_token,
             query_request=query_request,
+            x_correlation_id=x_correlation_id,
+            idempotency_key=idempotency_key,
             _request_auth=_request_auth,
             _content_type=_content_type,
             _headers=_headers,
@@ -109,7 +125,10 @@ class AgentQueryApi:
     @validate_call
     async def explain_with_http_info(
         self,
+        x_agent_token: Annotated[str, Field(min_length=32, strict=True, description="Machine-to-machine bearer token. Replaces X-Tenant-Id and X-Workspace-Id on agent-tier endpoints -- the token's claims encode the tenant + workspace + scopes. Issue via ``POST /api/v1/agent-tokens``.")],
         query_request: QueryRequest,
+        x_correlation_id: Annotated[Optional[UUID], Field(description="Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.")] = None,
+        idempotency_key: Annotated[Optional[Annotated[str, Field(min_length=1, strict=True, max_length=256)]], Field(description="Optional client-supplied idempotency key for mutating operations. The first request with a key persists its result; subsequent requests with the same key + same tenant return the cached response. Keys expire after 24h.")] = None,
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -127,8 +146,14 @@ class AgentQueryApi:
 
         :param http_request: Starlette request :param body: validated QueryRequest :return: ExplainResponse with candidate SQL and reasoning
 
+        :param x_agent_token: Machine-to-machine bearer token. Replaces X-Tenant-Id and X-Workspace-Id on agent-tier endpoints -- the token's claims encode the tenant + workspace + scopes. Issue via ``POST /api/v1/agent-tokens``. (required)
+        :type x_agent_token: str
         :param query_request: (required)
         :type query_request: QueryRequest
+        :param x_correlation_id: Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.
+        :type x_correlation_id: UUID
+        :param idempotency_key: Optional client-supplied idempotency key for mutating operations. The first request with a key persists its result; subsequent requests with the same key + same tenant return the cached response. Keys expire after 24h.
+        :type idempotency_key: str
         :param _request_timeout: timeout setting for this request. If one
                                  number provided, it will be total request
                                  timeout. It can also be a pair (tuple) of
@@ -152,7 +177,10 @@ class AgentQueryApi:
         """ # noqa: E501
 
         _param = self._explain_serialize(
+            x_agent_token=x_agent_token,
             query_request=query_request,
+            x_correlation_id=x_correlation_id,
+            idempotency_key=idempotency_key,
             _request_auth=_request_auth,
             _content_type=_content_type,
             _headers=_headers,
@@ -177,7 +205,10 @@ class AgentQueryApi:
     @validate_call
     async def explain_without_preload_content(
         self,
+        x_agent_token: Annotated[str, Field(min_length=32, strict=True, description="Machine-to-machine bearer token. Replaces X-Tenant-Id and X-Workspace-Id on agent-tier endpoints -- the token's claims encode the tenant + workspace + scopes. Issue via ``POST /api/v1/agent-tokens``.")],
         query_request: QueryRequest,
+        x_correlation_id: Annotated[Optional[UUID], Field(description="Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.")] = None,
+        idempotency_key: Annotated[Optional[Annotated[str, Field(min_length=1, strict=True, max_length=256)]], Field(description="Optional client-supplied idempotency key for mutating operations. The first request with a key persists its result; subsequent requests with the same key + same tenant return the cached response. Keys expire after 24h.")] = None,
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -195,8 +226,14 @@ class AgentQueryApi:
 
         :param http_request: Starlette request :param body: validated QueryRequest :return: ExplainResponse with candidate SQL and reasoning
 
+        :param x_agent_token: Machine-to-machine bearer token. Replaces X-Tenant-Id and X-Workspace-Id on agent-tier endpoints -- the token's claims encode the tenant + workspace + scopes. Issue via ``POST /api/v1/agent-tokens``. (required)
+        :type x_agent_token: str
         :param query_request: (required)
         :type query_request: QueryRequest
+        :param x_correlation_id: Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.
+        :type x_correlation_id: UUID
+        :param idempotency_key: Optional client-supplied idempotency key for mutating operations. The first request with a key persists its result; subsequent requests with the same key + same tenant return the cached response. Keys expire after 24h.
+        :type idempotency_key: str
         :param _request_timeout: timeout setting for this request. If one
                                  number provided, it will be total request
                                  timeout. It can also be a pair (tuple) of
@@ -220,7 +257,10 @@ class AgentQueryApi:
         """ # noqa: E501
 
         _param = self._explain_serialize(
+            x_agent_token=x_agent_token,
             query_request=query_request,
+            x_correlation_id=x_correlation_id,
+            idempotency_key=idempotency_key,
             _request_auth=_request_auth,
             _content_type=_content_type,
             _headers=_headers,
@@ -240,7 +280,10 @@ class AgentQueryApi:
 
     def _explain_serialize(
         self,
+        x_agent_token,
         query_request,
+        x_correlation_id,
+        idempotency_key,
         _request_auth,
         _content_type,
         _headers,
@@ -264,6 +307,12 @@ class AgentQueryApi:
         # process the path parameters
         # process the query parameters
         # process the header parameters
+        if x_agent_token is not None:
+            _header_params['X-Agent-Token'] = x_agent_token
+        if x_correlation_id is not None:
+            _header_params['X-Correlation-Id'] = x_correlation_id
+        if idempotency_key is not None:
+            _header_params['Idempotency-Key'] = idempotency_key
         # process the form parameters
         # process the body parameter
         if query_request is not None:
@@ -294,6 +343,7 @@ class AgentQueryApi:
 
         # authentication setting
         _auth_settings: List[str] = [
+            'AgentToken'
         ]
 
         return self.api_client.param_serialize(
@@ -317,7 +367,10 @@ class AgentQueryApi:
     @validate_call
     async def query(
         self,
+        x_agent_token: Annotated[str, Field(min_length=32, strict=True, description="Machine-to-machine bearer token. Replaces X-Tenant-Id and X-Workspace-Id on agent-tier endpoints -- the token's claims encode the tenant + workspace + scopes. Issue via ``POST /api/v1/agent-tokens``.")],
         query_request: QueryRequest,
+        x_correlation_id: Annotated[Optional[UUID], Field(description="Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.")] = None,
+        idempotency_key: Annotated[Optional[Annotated[str, Field(min_length=1, strict=True, max_length=256)]], Field(description="Optional client-supplied idempotency key for mutating operations. The first request with a key persists its result; subsequent requests with the same key + same tenant return the cached response. Keys expire after 24h.")] = None,
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -335,8 +388,14 @@ class AgentQueryApi:
 
         :param http_request: Starlette request (provides tenant context + agent token) :param body: validated QueryRequest :return: AnswerResponse
 
+        :param x_agent_token: Machine-to-machine bearer token. Replaces X-Tenant-Id and X-Workspace-Id on agent-tier endpoints -- the token's claims encode the tenant + workspace + scopes. Issue via ``POST /api/v1/agent-tokens``. (required)
+        :type x_agent_token: str
         :param query_request: (required)
         :type query_request: QueryRequest
+        :param x_correlation_id: Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.
+        :type x_correlation_id: UUID
+        :param idempotency_key: Optional client-supplied idempotency key for mutating operations. The first request with a key persists its result; subsequent requests with the same key + same tenant return the cached response. Keys expire after 24h.
+        :type idempotency_key: str
         :param _request_timeout: timeout setting for this request. If one
                                  number provided, it will be total request
                                  timeout. It can also be a pair (tuple) of
@@ -360,7 +419,10 @@ class AgentQueryApi:
         """ # noqa: E501
 
         _param = self._query_serialize(
+            x_agent_token=x_agent_token,
             query_request=query_request,
+            x_correlation_id=x_correlation_id,
+            idempotency_key=idempotency_key,
             _request_auth=_request_auth,
             _content_type=_content_type,
             _headers=_headers,
@@ -385,7 +447,10 @@ class AgentQueryApi:
     @validate_call
     async def query_with_http_info(
         self,
+        x_agent_token: Annotated[str, Field(min_length=32, strict=True, description="Machine-to-machine bearer token. Replaces X-Tenant-Id and X-Workspace-Id on agent-tier endpoints -- the token's claims encode the tenant + workspace + scopes. Issue via ``POST /api/v1/agent-tokens``.")],
         query_request: QueryRequest,
+        x_correlation_id: Annotated[Optional[UUID], Field(description="Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.")] = None,
+        idempotency_key: Annotated[Optional[Annotated[str, Field(min_length=1, strict=True, max_length=256)]], Field(description="Optional client-supplied idempotency key for mutating operations. The first request with a key persists its result; subsequent requests with the same key + same tenant return the cached response. Keys expire after 24h.")] = None,
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -403,8 +468,14 @@ class AgentQueryApi:
 
         :param http_request: Starlette request (provides tenant context + agent token) :param body: validated QueryRequest :return: AnswerResponse
 
+        :param x_agent_token: Machine-to-machine bearer token. Replaces X-Tenant-Id and X-Workspace-Id on agent-tier endpoints -- the token's claims encode the tenant + workspace + scopes. Issue via ``POST /api/v1/agent-tokens``. (required)
+        :type x_agent_token: str
         :param query_request: (required)
         :type query_request: QueryRequest
+        :param x_correlation_id: Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.
+        :type x_correlation_id: UUID
+        :param idempotency_key: Optional client-supplied idempotency key for mutating operations. The first request with a key persists its result; subsequent requests with the same key + same tenant return the cached response. Keys expire after 24h.
+        :type idempotency_key: str
         :param _request_timeout: timeout setting for this request. If one
                                  number provided, it will be total request
                                  timeout. It can also be a pair (tuple) of
@@ -428,7 +499,10 @@ class AgentQueryApi:
         """ # noqa: E501
 
         _param = self._query_serialize(
+            x_agent_token=x_agent_token,
             query_request=query_request,
+            x_correlation_id=x_correlation_id,
+            idempotency_key=idempotency_key,
             _request_auth=_request_auth,
             _content_type=_content_type,
             _headers=_headers,
@@ -453,7 +527,10 @@ class AgentQueryApi:
     @validate_call
     async def query_without_preload_content(
         self,
+        x_agent_token: Annotated[str, Field(min_length=32, strict=True, description="Machine-to-machine bearer token. Replaces X-Tenant-Id and X-Workspace-Id on agent-tier endpoints -- the token's claims encode the tenant + workspace + scopes. Issue via ``POST /api/v1/agent-tokens``.")],
         query_request: QueryRequest,
+        x_correlation_id: Annotated[Optional[UUID], Field(description="Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.")] = None,
+        idempotency_key: Annotated[Optional[Annotated[str, Field(min_length=1, strict=True, max_length=256)]], Field(description="Optional client-supplied idempotency key for mutating operations. The first request with a key persists its result; subsequent requests with the same key + same tenant return the cached response. Keys expire after 24h.")] = None,
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -471,8 +548,14 @@ class AgentQueryApi:
 
         :param http_request: Starlette request (provides tenant context + agent token) :param body: validated QueryRequest :return: AnswerResponse
 
+        :param x_agent_token: Machine-to-machine bearer token. Replaces X-Tenant-Id and X-Workspace-Id on agent-tier endpoints -- the token's claims encode the tenant + workspace + scopes. Issue via ``POST /api/v1/agent-tokens``. (required)
+        :type x_agent_token: str
         :param query_request: (required)
         :type query_request: QueryRequest
+        :param x_correlation_id: Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.
+        :type x_correlation_id: UUID
+        :param idempotency_key: Optional client-supplied idempotency key for mutating operations. The first request with a key persists its result; subsequent requests with the same key + same tenant return the cached response. Keys expire after 24h.
+        :type idempotency_key: str
         :param _request_timeout: timeout setting for this request. If one
                                  number provided, it will be total request
                                  timeout. It can also be a pair (tuple) of
@@ -496,7 +579,10 @@ class AgentQueryApi:
         """ # noqa: E501
 
         _param = self._query_serialize(
+            x_agent_token=x_agent_token,
             query_request=query_request,
+            x_correlation_id=x_correlation_id,
+            idempotency_key=idempotency_key,
             _request_auth=_request_auth,
             _content_type=_content_type,
             _headers=_headers,
@@ -516,7 +602,10 @@ class AgentQueryApi:
 
     def _query_serialize(
         self,
+        x_agent_token,
         query_request,
+        x_correlation_id,
+        idempotency_key,
         _request_auth,
         _content_type,
         _headers,
@@ -540,6 +629,12 @@ class AgentQueryApi:
         # process the path parameters
         # process the query parameters
         # process the header parameters
+        if x_agent_token is not None:
+            _header_params['X-Agent-Token'] = x_agent_token
+        if x_correlation_id is not None:
+            _header_params['X-Correlation-Id'] = x_correlation_id
+        if idempotency_key is not None:
+            _header_params['Idempotency-Key'] = idempotency_key
         # process the form parameters
         # process the body parameter
         if query_request is not None:
@@ -570,6 +665,7 @@ class AgentQueryApi:
 
         # authentication setting
         _auth_settings: List[str] = [
+            'AgentToken'
         ]
 
         return self.api_client.param_serialize(
@@ -593,7 +689,10 @@ class AgentQueryApi:
     @validate_call
     async def stream(
         self,
+        x_agent_token: Annotated[str, Field(min_length=32, strict=True, description="Machine-to-machine bearer token. Replaces X-Tenant-Id and X-Workspace-Id on agent-tier endpoints -- the token's claims encode the tenant + workspace + scopes. Issue via ``POST /api/v1/agent-tokens``.")],
         query_request: QueryRequest,
+        x_correlation_id: Annotated[Optional[UUID], Field(description="Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.")] = None,
+        idempotency_key: Annotated[Optional[Annotated[str, Field(min_length=1, strict=True, max_length=256)]], Field(description="Optional client-supplied idempotency key for mutating operations. The first request with a key persists its result; subsequent requests with the same key + same tenant return the cached response. Keys expire after 24h.")] = None,
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -611,8 +710,14 @@ class AgentQueryApi:
 
         :param http_request: Starlette request :param body: validated QueryRequest :return: StreamingResponse with text/event-stream
 
+        :param x_agent_token: Machine-to-machine bearer token. Replaces X-Tenant-Id and X-Workspace-Id on agent-tier endpoints -- the token's claims encode the tenant + workspace + scopes. Issue via ``POST /api/v1/agent-tokens``. (required)
+        :type x_agent_token: str
         :param query_request: (required)
         :type query_request: QueryRequest
+        :param x_correlation_id: Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.
+        :type x_correlation_id: UUID
+        :param idempotency_key: Optional client-supplied idempotency key for mutating operations. The first request with a key persists its result; subsequent requests with the same key + same tenant return the cached response. Keys expire after 24h.
+        :type idempotency_key: str
         :param _request_timeout: timeout setting for this request. If one
                                  number provided, it will be total request
                                  timeout. It can also be a pair (tuple) of
@@ -636,7 +741,10 @@ class AgentQueryApi:
         """ # noqa: E501
 
         _param = self._stream_serialize(
+            x_agent_token=x_agent_token,
             query_request=query_request,
+            x_correlation_id=x_correlation_id,
+            idempotency_key=idempotency_key,
             _request_auth=_request_auth,
             _content_type=_content_type,
             _headers=_headers,
@@ -661,7 +769,10 @@ class AgentQueryApi:
     @validate_call
     async def stream_with_http_info(
         self,
+        x_agent_token: Annotated[str, Field(min_length=32, strict=True, description="Machine-to-machine bearer token. Replaces X-Tenant-Id and X-Workspace-Id on agent-tier endpoints -- the token's claims encode the tenant + workspace + scopes. Issue via ``POST /api/v1/agent-tokens``.")],
         query_request: QueryRequest,
+        x_correlation_id: Annotated[Optional[UUID], Field(description="Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.")] = None,
+        idempotency_key: Annotated[Optional[Annotated[str, Field(min_length=1, strict=True, max_length=256)]], Field(description="Optional client-supplied idempotency key for mutating operations. The first request with a key persists its result; subsequent requests with the same key + same tenant return the cached response. Keys expire after 24h.")] = None,
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -679,8 +790,14 @@ class AgentQueryApi:
 
         :param http_request: Starlette request :param body: validated QueryRequest :return: StreamingResponse with text/event-stream
 
+        :param x_agent_token: Machine-to-machine bearer token. Replaces X-Tenant-Id and X-Workspace-Id on agent-tier endpoints -- the token's claims encode the tenant + workspace + scopes. Issue via ``POST /api/v1/agent-tokens``. (required)
+        :type x_agent_token: str
         :param query_request: (required)
         :type query_request: QueryRequest
+        :param x_correlation_id: Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.
+        :type x_correlation_id: UUID
+        :param idempotency_key: Optional client-supplied idempotency key for mutating operations. The first request with a key persists its result; subsequent requests with the same key + same tenant return the cached response. Keys expire after 24h.
+        :type idempotency_key: str
         :param _request_timeout: timeout setting for this request. If one
                                  number provided, it will be total request
                                  timeout. It can also be a pair (tuple) of
@@ -704,7 +821,10 @@ class AgentQueryApi:
         """ # noqa: E501
 
         _param = self._stream_serialize(
+            x_agent_token=x_agent_token,
             query_request=query_request,
+            x_correlation_id=x_correlation_id,
+            idempotency_key=idempotency_key,
             _request_auth=_request_auth,
             _content_type=_content_type,
             _headers=_headers,
@@ -729,7 +849,10 @@ class AgentQueryApi:
     @validate_call
     async def stream_without_preload_content(
         self,
+        x_agent_token: Annotated[str, Field(min_length=32, strict=True, description="Machine-to-machine bearer token. Replaces X-Tenant-Id and X-Workspace-Id on agent-tier endpoints -- the token's claims encode the tenant + workspace + scopes. Issue via ``POST /api/v1/agent-tokens``.")],
         query_request: QueryRequest,
+        x_correlation_id: Annotated[Optional[UUID], Field(description="Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.")] = None,
+        idempotency_key: Annotated[Optional[Annotated[str, Field(min_length=1, strict=True, max_length=256)]], Field(description="Optional client-supplied idempotency key for mutating operations. The first request with a key persists its result; subsequent requests with the same key + same tenant return the cached response. Keys expire after 24h.")] = None,
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -747,8 +870,14 @@ class AgentQueryApi:
 
         :param http_request: Starlette request :param body: validated QueryRequest :return: StreamingResponse with text/event-stream
 
+        :param x_agent_token: Machine-to-machine bearer token. Replaces X-Tenant-Id and X-Workspace-Id on agent-tier endpoints -- the token's claims encode the tenant + workspace + scopes. Issue via ``POST /api/v1/agent-tokens``. (required)
+        :type x_agent_token: str
         :param query_request: (required)
         :type query_request: QueryRequest
+        :param x_correlation_id: Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.
+        :type x_correlation_id: UUID
+        :param idempotency_key: Optional client-supplied idempotency key for mutating operations. The first request with a key persists its result; subsequent requests with the same key + same tenant return the cached response. Keys expire after 24h.
+        :type idempotency_key: str
         :param _request_timeout: timeout setting for this request. If one
                                  number provided, it will be total request
                                  timeout. It can also be a pair (tuple) of
@@ -772,7 +901,10 @@ class AgentQueryApi:
         """ # noqa: E501
 
         _param = self._stream_serialize(
+            x_agent_token=x_agent_token,
             query_request=query_request,
+            x_correlation_id=x_correlation_id,
+            idempotency_key=idempotency_key,
             _request_auth=_request_auth,
             _content_type=_content_type,
             _headers=_headers,
@@ -792,7 +924,10 @@ class AgentQueryApi:
 
     def _stream_serialize(
         self,
+        x_agent_token,
         query_request,
+        x_correlation_id,
+        idempotency_key,
         _request_auth,
         _content_type,
         _headers,
@@ -816,6 +951,12 @@ class AgentQueryApi:
         # process the path parameters
         # process the query parameters
         # process the header parameters
+        if x_agent_token is not None:
+            _header_params['X-Agent-Token'] = x_agent_token
+        if x_correlation_id is not None:
+            _header_params['X-Correlation-Id'] = x_correlation_id
+        if idempotency_key is not None:
+            _header_params['Idempotency-Key'] = idempotency_key
         # process the form parameters
         # process the body parameter
         if query_request is not None:
@@ -846,6 +987,7 @@ class AgentQueryApi:
 
         # authentication setting
         _auth_settings: List[str] = [
+            'AgentToken'
         ]
 
         return self.api_client.param_serialize(
@@ -869,7 +1011,10 @@ class AgentQueryApi:
     @validate_call
     async def validate(
         self,
+        x_agent_token: Annotated[str, Field(min_length=32, strict=True, description="Machine-to-machine bearer token. Replaces X-Tenant-Id and X-Workspace-Id on agent-tier endpoints -- the token's claims encode the tenant + workspace + scopes. Issue via ``POST /api/v1/agent-tokens``.")],
         query_request: QueryRequest,
+        x_correlation_id: Annotated[Optional[UUID], Field(description="Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.")] = None,
+        idempotency_key: Annotated[Optional[Annotated[str, Field(min_length=1, strict=True, max_length=256)]], Field(description="Optional client-supplied idempotency key for mutating operations. The first request with a key persists its result; subsequent requests with the same key + same tenant return the cached response. Keys expire after 24h.")] = None,
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -887,8 +1032,14 @@ class AgentQueryApi:
 
         :param http_request: Starlette request :param body: validated QueryRequest :return: ValidateResponse
 
+        :param x_agent_token: Machine-to-machine bearer token. Replaces X-Tenant-Id and X-Workspace-Id on agent-tier endpoints -- the token's claims encode the tenant + workspace + scopes. Issue via ``POST /api/v1/agent-tokens``. (required)
+        :type x_agent_token: str
         :param query_request: (required)
         :type query_request: QueryRequest
+        :param x_correlation_id: Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.
+        :type x_correlation_id: UUID
+        :param idempotency_key: Optional client-supplied idempotency key for mutating operations. The first request with a key persists its result; subsequent requests with the same key + same tenant return the cached response. Keys expire after 24h.
+        :type idempotency_key: str
         :param _request_timeout: timeout setting for this request. If one
                                  number provided, it will be total request
                                  timeout. It can also be a pair (tuple) of
@@ -912,7 +1063,10 @@ class AgentQueryApi:
         """ # noqa: E501
 
         _param = self._validate_serialize(
+            x_agent_token=x_agent_token,
             query_request=query_request,
+            x_correlation_id=x_correlation_id,
+            idempotency_key=idempotency_key,
             _request_auth=_request_auth,
             _content_type=_content_type,
             _headers=_headers,
@@ -937,7 +1091,10 @@ class AgentQueryApi:
     @validate_call
     async def validate_with_http_info(
         self,
+        x_agent_token: Annotated[str, Field(min_length=32, strict=True, description="Machine-to-machine bearer token. Replaces X-Tenant-Id and X-Workspace-Id on agent-tier endpoints -- the token's claims encode the tenant + workspace + scopes. Issue via ``POST /api/v1/agent-tokens``.")],
         query_request: QueryRequest,
+        x_correlation_id: Annotated[Optional[UUID], Field(description="Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.")] = None,
+        idempotency_key: Annotated[Optional[Annotated[str, Field(min_length=1, strict=True, max_length=256)]], Field(description="Optional client-supplied idempotency key for mutating operations. The first request with a key persists its result; subsequent requests with the same key + same tenant return the cached response. Keys expire after 24h.")] = None,
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -955,8 +1112,14 @@ class AgentQueryApi:
 
         :param http_request: Starlette request :param body: validated QueryRequest :return: ValidateResponse
 
+        :param x_agent_token: Machine-to-machine bearer token. Replaces X-Tenant-Id and X-Workspace-Id on agent-tier endpoints -- the token's claims encode the tenant + workspace + scopes. Issue via ``POST /api/v1/agent-tokens``. (required)
+        :type x_agent_token: str
         :param query_request: (required)
         :type query_request: QueryRequest
+        :param x_correlation_id: Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.
+        :type x_correlation_id: UUID
+        :param idempotency_key: Optional client-supplied idempotency key for mutating operations. The first request with a key persists its result; subsequent requests with the same key + same tenant return the cached response. Keys expire after 24h.
+        :type idempotency_key: str
         :param _request_timeout: timeout setting for this request. If one
                                  number provided, it will be total request
                                  timeout. It can also be a pair (tuple) of
@@ -980,7 +1143,10 @@ class AgentQueryApi:
         """ # noqa: E501
 
         _param = self._validate_serialize(
+            x_agent_token=x_agent_token,
             query_request=query_request,
+            x_correlation_id=x_correlation_id,
+            idempotency_key=idempotency_key,
             _request_auth=_request_auth,
             _content_type=_content_type,
             _headers=_headers,
@@ -1005,7 +1171,10 @@ class AgentQueryApi:
     @validate_call
     async def validate_without_preload_content(
         self,
+        x_agent_token: Annotated[str, Field(min_length=32, strict=True, description="Machine-to-machine bearer token. Replaces X-Tenant-Id and X-Workspace-Id on agent-tier endpoints -- the token's claims encode the tenant + workspace + scopes. Issue via ``POST /api/v1/agent-tokens``.")],
         query_request: QueryRequest,
+        x_correlation_id: Annotated[Optional[UUID], Field(description="Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.")] = None,
+        idempotency_key: Annotated[Optional[Annotated[str, Field(min_length=1, strict=True, max_length=256)]], Field(description="Optional client-supplied idempotency key for mutating operations. The first request with a key persists its result; subsequent requests with the same key + same tenant return the cached response. Keys expire after 24h.")] = None,
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -1023,8 +1192,14 @@ class AgentQueryApi:
 
         :param http_request: Starlette request :param body: validated QueryRequest :return: ValidateResponse
 
+        :param x_agent_token: Machine-to-machine bearer token. Replaces X-Tenant-Id and X-Workspace-Id on agent-tier endpoints -- the token's claims encode the tenant + workspace + scopes. Issue via ``POST /api/v1/agent-tokens``. (required)
+        :type x_agent_token: str
         :param query_request: (required)
         :type query_request: QueryRequest
+        :param x_correlation_id: Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.
+        :type x_correlation_id: UUID
+        :param idempotency_key: Optional client-supplied idempotency key for mutating operations. The first request with a key persists its result; subsequent requests with the same key + same tenant return the cached response. Keys expire after 24h.
+        :type idempotency_key: str
         :param _request_timeout: timeout setting for this request. If one
                                  number provided, it will be total request
                                  timeout. It can also be a pair (tuple) of
@@ -1048,7 +1223,10 @@ class AgentQueryApi:
         """ # noqa: E501
 
         _param = self._validate_serialize(
+            x_agent_token=x_agent_token,
             query_request=query_request,
+            x_correlation_id=x_correlation_id,
+            idempotency_key=idempotency_key,
             _request_auth=_request_auth,
             _content_type=_content_type,
             _headers=_headers,
@@ -1068,7 +1246,10 @@ class AgentQueryApi:
 
     def _validate_serialize(
         self,
+        x_agent_token,
         query_request,
+        x_correlation_id,
+        idempotency_key,
         _request_auth,
         _content_type,
         _headers,
@@ -1092,6 +1273,12 @@ class AgentQueryApi:
         # process the path parameters
         # process the query parameters
         # process the header parameters
+        if x_agent_token is not None:
+            _header_params['X-Agent-Token'] = x_agent_token
+        if x_correlation_id is not None:
+            _header_params['X-Correlation-Id'] = x_correlation_id
+        if idempotency_key is not None:
+            _header_params['Idempotency-Key'] = idempotency_key
         # process the form parameters
         # process the body parameter
         if query_request is not None:
@@ -1122,6 +1309,7 @@ class AgentQueryApi:
 
         # authentication setting
         _auth_settings: List[str] = [
+            'AgentToken'
         ]
 
         return self.api_client.param_serialize(

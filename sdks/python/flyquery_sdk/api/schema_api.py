@@ -15,8 +15,10 @@ from pydantic import validate_call, Field, StrictFloat, StrictStr, StrictInt
 from typing import Any, Dict, List, Optional, Tuple, Union
 from typing_extensions import Annotated
 
-from pydantic import StrictStr
+from pydantic import Field, StrictStr
 from typing import Optional
+from typing_extensions import Annotated
+from uuid import UUID
 from flyquery_sdk.models.schema_change_read import SchemaChangeRead
 from flyquery_sdk.models.schema_object_read import SchemaObjectRead
 from flyquery_sdk.models.schema_object_update import SchemaObjectUpdate
@@ -43,6 +45,10 @@ class SchemaApi:
     async def confirm(
         self,
         change_id: Optional[StrictStr],
+        x_tenant_id: Annotated[str, Field(min_length=1, strict=True, max_length=128, description="Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present.")],
+        x_workspace_id: Annotated[str, Field(min_length=1, strict=True, max_length=128, description="Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation.")],
+        x_correlation_id: Annotated[Optional[UUID], Field(description="Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.")] = None,
+        idempotency_key: Annotated[Optional[Annotated[str, Field(min_length=1, strict=True, max_length=256)]], Field(description="Optional client-supplied idempotency key for mutating operations. The first request with a key persists its result; subsequent requests with the same key + same tenant return the cached response. Keys expire after 24h.")] = None,
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -62,6 +68,14 @@ class SchemaApi:
 
         :param change_id: (required)
         :type change_id: str
+        :param x_tenant_id: Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present. (required)
+        :type x_tenant_id: str
+        :param x_workspace_id: Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation. (required)
+        :type x_workspace_id: str
+        :param x_correlation_id: Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.
+        :type x_correlation_id: UUID
+        :param idempotency_key: Optional client-supplied idempotency key for mutating operations. The first request with a key persists its result; subsequent requests with the same key + same tenant return the cached response. Keys expire after 24h.
+        :type idempotency_key: str
         :param _request_timeout: timeout setting for this request. If one
                                  number provided, it will be total request
                                  timeout. It can also be a pair (tuple) of
@@ -86,6 +100,10 @@ class SchemaApi:
 
         _param = self._confirm_serialize(
             change_id=change_id,
+            x_tenant_id=x_tenant_id,
+            x_workspace_id=x_workspace_id,
+            x_correlation_id=x_correlation_id,
+            idempotency_key=idempotency_key,
             _request_auth=_request_auth,
             _content_type=_content_type,
             _headers=_headers,
@@ -110,6 +128,10 @@ class SchemaApi:
     async def confirm_with_http_info(
         self,
         change_id: Optional[StrictStr],
+        x_tenant_id: Annotated[str, Field(min_length=1, strict=True, max_length=128, description="Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present.")],
+        x_workspace_id: Annotated[str, Field(min_length=1, strict=True, max_length=128, description="Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation.")],
+        x_correlation_id: Annotated[Optional[UUID], Field(description="Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.")] = None,
+        idempotency_key: Annotated[Optional[Annotated[str, Field(min_length=1, strict=True, max_length=256)]], Field(description="Optional client-supplied idempotency key for mutating operations. The first request with a key persists its result; subsequent requests with the same key + same tenant return the cached response. Keys expire after 24h.")] = None,
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -129,6 +151,14 @@ class SchemaApi:
 
         :param change_id: (required)
         :type change_id: str
+        :param x_tenant_id: Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present. (required)
+        :type x_tenant_id: str
+        :param x_workspace_id: Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation. (required)
+        :type x_workspace_id: str
+        :param x_correlation_id: Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.
+        :type x_correlation_id: UUID
+        :param idempotency_key: Optional client-supplied idempotency key for mutating operations. The first request with a key persists its result; subsequent requests with the same key + same tenant return the cached response. Keys expire after 24h.
+        :type idempotency_key: str
         :param _request_timeout: timeout setting for this request. If one
                                  number provided, it will be total request
                                  timeout. It can also be a pair (tuple) of
@@ -153,6 +183,10 @@ class SchemaApi:
 
         _param = self._confirm_serialize(
             change_id=change_id,
+            x_tenant_id=x_tenant_id,
+            x_workspace_id=x_workspace_id,
+            x_correlation_id=x_correlation_id,
+            idempotency_key=idempotency_key,
             _request_auth=_request_auth,
             _content_type=_content_type,
             _headers=_headers,
@@ -177,6 +211,10 @@ class SchemaApi:
     async def confirm_without_preload_content(
         self,
         change_id: Optional[StrictStr],
+        x_tenant_id: Annotated[str, Field(min_length=1, strict=True, max_length=128, description="Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present.")],
+        x_workspace_id: Annotated[str, Field(min_length=1, strict=True, max_length=128, description="Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation.")],
+        x_correlation_id: Annotated[Optional[UUID], Field(description="Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.")] = None,
+        idempotency_key: Annotated[Optional[Annotated[str, Field(min_length=1, strict=True, max_length=256)]], Field(description="Optional client-supplied idempotency key for mutating operations. The first request with a key persists its result; subsequent requests with the same key + same tenant return the cached response. Keys expire after 24h.")] = None,
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -196,6 +234,14 @@ class SchemaApi:
 
         :param change_id: (required)
         :type change_id: str
+        :param x_tenant_id: Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present. (required)
+        :type x_tenant_id: str
+        :param x_workspace_id: Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation. (required)
+        :type x_workspace_id: str
+        :param x_correlation_id: Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.
+        :type x_correlation_id: UUID
+        :param idempotency_key: Optional client-supplied idempotency key for mutating operations. The first request with a key persists its result; subsequent requests with the same key + same tenant return the cached response. Keys expire after 24h.
+        :type idempotency_key: str
         :param _request_timeout: timeout setting for this request. If one
                                  number provided, it will be total request
                                  timeout. It can also be a pair (tuple) of
@@ -220,6 +266,10 @@ class SchemaApi:
 
         _param = self._confirm_serialize(
             change_id=change_id,
+            x_tenant_id=x_tenant_id,
+            x_workspace_id=x_workspace_id,
+            x_correlation_id=x_correlation_id,
+            idempotency_key=idempotency_key,
             _request_auth=_request_auth,
             _content_type=_content_type,
             _headers=_headers,
@@ -239,6 +289,10 @@ class SchemaApi:
     def _confirm_serialize(
         self,
         change_id,
+        x_tenant_id,
+        x_workspace_id,
+        x_correlation_id,
+        idempotency_key,
         _request_auth,
         _content_type,
         _headers,
@@ -264,6 +318,14 @@ class SchemaApi:
             _path_params['change_id'] = change_id
         # process the query parameters
         # process the header parameters
+        if x_tenant_id is not None:
+            _header_params['X-Tenant-Id'] = x_tenant_id
+        if x_workspace_id is not None:
+            _header_params['X-Workspace-Id'] = x_workspace_id
+        if x_correlation_id is not None:
+            _header_params['X-Correlation-Id'] = x_correlation_id
+        if idempotency_key is not None:
+            _header_params['Idempotency-Key'] = idempotency_key
         # process the form parameters
         # process the body parameter
 
@@ -279,6 +341,8 @@ class SchemaApi:
 
         # authentication setting
         _auth_settings: List[str] = [
+            'WorkspaceContext', 
+            'TenantContext'
         ]
 
         return self.api_client.param_serialize(
@@ -303,6 +367,9 @@ class SchemaApi:
     async def get_object(
         self,
         object_id: Optional[StrictStr],
+        x_tenant_id: Annotated[str, Field(min_length=1, strict=True, max_length=128, description="Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present.")],
+        x_workspace_id: Annotated[str, Field(min_length=1, strict=True, max_length=128, description="Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation.")],
+        x_correlation_id: Annotated[Optional[UUID], Field(description="Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.")] = None,
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -321,6 +388,12 @@ class SchemaApi:
 
         :param object_id: (required)
         :type object_id: str
+        :param x_tenant_id: Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present. (required)
+        :type x_tenant_id: str
+        :param x_workspace_id: Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation. (required)
+        :type x_workspace_id: str
+        :param x_correlation_id: Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.
+        :type x_correlation_id: UUID
         :param _request_timeout: timeout setting for this request. If one
                                  number provided, it will be total request
                                  timeout. It can also be a pair (tuple) of
@@ -345,6 +418,9 @@ class SchemaApi:
 
         _param = self._get_object_serialize(
             object_id=object_id,
+            x_tenant_id=x_tenant_id,
+            x_workspace_id=x_workspace_id,
+            x_correlation_id=x_correlation_id,
             _request_auth=_request_auth,
             _content_type=_content_type,
             _headers=_headers,
@@ -369,6 +445,9 @@ class SchemaApi:
     async def get_object_with_http_info(
         self,
         object_id: Optional[StrictStr],
+        x_tenant_id: Annotated[str, Field(min_length=1, strict=True, max_length=128, description="Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present.")],
+        x_workspace_id: Annotated[str, Field(min_length=1, strict=True, max_length=128, description="Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation.")],
+        x_correlation_id: Annotated[Optional[UUID], Field(description="Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.")] = None,
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -387,6 +466,12 @@ class SchemaApi:
 
         :param object_id: (required)
         :type object_id: str
+        :param x_tenant_id: Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present. (required)
+        :type x_tenant_id: str
+        :param x_workspace_id: Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation. (required)
+        :type x_workspace_id: str
+        :param x_correlation_id: Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.
+        :type x_correlation_id: UUID
         :param _request_timeout: timeout setting for this request. If one
                                  number provided, it will be total request
                                  timeout. It can also be a pair (tuple) of
@@ -411,6 +496,9 @@ class SchemaApi:
 
         _param = self._get_object_serialize(
             object_id=object_id,
+            x_tenant_id=x_tenant_id,
+            x_workspace_id=x_workspace_id,
+            x_correlation_id=x_correlation_id,
             _request_auth=_request_auth,
             _content_type=_content_type,
             _headers=_headers,
@@ -435,6 +523,9 @@ class SchemaApi:
     async def get_object_without_preload_content(
         self,
         object_id: Optional[StrictStr],
+        x_tenant_id: Annotated[str, Field(min_length=1, strict=True, max_length=128, description="Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present.")],
+        x_workspace_id: Annotated[str, Field(min_length=1, strict=True, max_length=128, description="Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation.")],
+        x_correlation_id: Annotated[Optional[UUID], Field(description="Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.")] = None,
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -453,6 +544,12 @@ class SchemaApi:
 
         :param object_id: (required)
         :type object_id: str
+        :param x_tenant_id: Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present. (required)
+        :type x_tenant_id: str
+        :param x_workspace_id: Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation. (required)
+        :type x_workspace_id: str
+        :param x_correlation_id: Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.
+        :type x_correlation_id: UUID
         :param _request_timeout: timeout setting for this request. If one
                                  number provided, it will be total request
                                  timeout. It can also be a pair (tuple) of
@@ -477,6 +574,9 @@ class SchemaApi:
 
         _param = self._get_object_serialize(
             object_id=object_id,
+            x_tenant_id=x_tenant_id,
+            x_workspace_id=x_workspace_id,
+            x_correlation_id=x_correlation_id,
             _request_auth=_request_auth,
             _content_type=_content_type,
             _headers=_headers,
@@ -496,6 +596,9 @@ class SchemaApi:
     def _get_object_serialize(
         self,
         object_id,
+        x_tenant_id,
+        x_workspace_id,
+        x_correlation_id,
         _request_auth,
         _content_type,
         _headers,
@@ -521,6 +624,12 @@ class SchemaApi:
             _path_params['object_id'] = object_id
         # process the query parameters
         # process the header parameters
+        if x_tenant_id is not None:
+            _header_params['X-Tenant-Id'] = x_tenant_id
+        if x_workspace_id is not None:
+            _header_params['X-Workspace-Id'] = x_workspace_id
+        if x_correlation_id is not None:
+            _header_params['X-Correlation-Id'] = x_correlation_id
         # process the form parameters
         # process the body parameter
 
@@ -536,6 +645,8 @@ class SchemaApi:
 
         # authentication setting
         _auth_settings: List[str] = [
+            'WorkspaceContext', 
+            'TenantContext'
         ]
 
         return self.api_client.param_serialize(
@@ -560,7 +671,11 @@ class SchemaApi:
     async def update_object(
         self,
         object_id: StrictStr,
+        x_tenant_id: Annotated[str, Field(min_length=1, strict=True, max_length=128, description="Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present.")],
+        x_workspace_id: Annotated[str, Field(min_length=1, strict=True, max_length=128, description="Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation.")],
         schema_object_update: SchemaObjectUpdate,
+        x_correlation_id: Annotated[Optional[UUID], Field(description="Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.")] = None,
+        idempotency_key: Annotated[Optional[Annotated[str, Field(min_length=1, strict=True, max_length=256)]], Field(description="Optional client-supplied idempotency key for mutating operations. The first request with a key persists its result; subsequent requests with the same key + same tenant return the cached response. Keys expire after 24h.")] = None,
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -580,8 +695,16 @@ class SchemaApi:
 
         :param object_id: (required)
         :type object_id: str
+        :param x_tenant_id: Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present. (required)
+        :type x_tenant_id: str
+        :param x_workspace_id: Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation. (required)
+        :type x_workspace_id: str
         :param schema_object_update: (required)
         :type schema_object_update: SchemaObjectUpdate
+        :param x_correlation_id: Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.
+        :type x_correlation_id: UUID
+        :param idempotency_key: Optional client-supplied idempotency key for mutating operations. The first request with a key persists its result; subsequent requests with the same key + same tenant return the cached response. Keys expire after 24h.
+        :type idempotency_key: str
         :param _request_timeout: timeout setting for this request. If one
                                  number provided, it will be total request
                                  timeout. It can also be a pair (tuple) of
@@ -606,7 +729,11 @@ class SchemaApi:
 
         _param = self._update_object_serialize(
             object_id=object_id,
+            x_tenant_id=x_tenant_id,
+            x_workspace_id=x_workspace_id,
             schema_object_update=schema_object_update,
+            x_correlation_id=x_correlation_id,
+            idempotency_key=idempotency_key,
             _request_auth=_request_auth,
             _content_type=_content_type,
             _headers=_headers,
@@ -632,7 +759,11 @@ class SchemaApi:
     async def update_object_with_http_info(
         self,
         object_id: StrictStr,
+        x_tenant_id: Annotated[str, Field(min_length=1, strict=True, max_length=128, description="Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present.")],
+        x_workspace_id: Annotated[str, Field(min_length=1, strict=True, max_length=128, description="Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation.")],
         schema_object_update: SchemaObjectUpdate,
+        x_correlation_id: Annotated[Optional[UUID], Field(description="Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.")] = None,
+        idempotency_key: Annotated[Optional[Annotated[str, Field(min_length=1, strict=True, max_length=256)]], Field(description="Optional client-supplied idempotency key for mutating operations. The first request with a key persists its result; subsequent requests with the same key + same tenant return the cached response. Keys expire after 24h.")] = None,
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -652,8 +783,16 @@ class SchemaApi:
 
         :param object_id: (required)
         :type object_id: str
+        :param x_tenant_id: Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present. (required)
+        :type x_tenant_id: str
+        :param x_workspace_id: Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation. (required)
+        :type x_workspace_id: str
         :param schema_object_update: (required)
         :type schema_object_update: SchemaObjectUpdate
+        :param x_correlation_id: Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.
+        :type x_correlation_id: UUID
+        :param idempotency_key: Optional client-supplied idempotency key for mutating operations. The first request with a key persists its result; subsequent requests with the same key + same tenant return the cached response. Keys expire after 24h.
+        :type idempotency_key: str
         :param _request_timeout: timeout setting for this request. If one
                                  number provided, it will be total request
                                  timeout. It can also be a pair (tuple) of
@@ -678,7 +817,11 @@ class SchemaApi:
 
         _param = self._update_object_serialize(
             object_id=object_id,
+            x_tenant_id=x_tenant_id,
+            x_workspace_id=x_workspace_id,
             schema_object_update=schema_object_update,
+            x_correlation_id=x_correlation_id,
+            idempotency_key=idempotency_key,
             _request_auth=_request_auth,
             _content_type=_content_type,
             _headers=_headers,
@@ -704,7 +847,11 @@ class SchemaApi:
     async def update_object_without_preload_content(
         self,
         object_id: StrictStr,
+        x_tenant_id: Annotated[str, Field(min_length=1, strict=True, max_length=128, description="Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present.")],
+        x_workspace_id: Annotated[str, Field(min_length=1, strict=True, max_length=128, description="Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation.")],
         schema_object_update: SchemaObjectUpdate,
+        x_correlation_id: Annotated[Optional[UUID], Field(description="Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.")] = None,
+        idempotency_key: Annotated[Optional[Annotated[str, Field(min_length=1, strict=True, max_length=256)]], Field(description="Optional client-supplied idempotency key for mutating operations. The first request with a key persists its result; subsequent requests with the same key + same tenant return the cached response. Keys expire after 24h.")] = None,
         _request_timeout: Union[
             None,
             Annotated[StrictFloat, Field(gt=0)],
@@ -724,8 +871,16 @@ class SchemaApi:
 
         :param object_id: (required)
         :type object_id: str
+        :param x_tenant_id: Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present. (required)
+        :type x_tenant_id: str
+        :param x_workspace_id: Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation. (required)
+        :type x_workspace_id: str
         :param schema_object_update: (required)
         :type schema_object_update: SchemaObjectUpdate
+        :param x_correlation_id: Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.
+        :type x_correlation_id: UUID
+        :param idempotency_key: Optional client-supplied idempotency key for mutating operations. The first request with a key persists its result; subsequent requests with the same key + same tenant return the cached response. Keys expire after 24h.
+        :type idempotency_key: str
         :param _request_timeout: timeout setting for this request. If one
                                  number provided, it will be total request
                                  timeout. It can also be a pair (tuple) of
@@ -750,7 +905,11 @@ class SchemaApi:
 
         _param = self._update_object_serialize(
             object_id=object_id,
+            x_tenant_id=x_tenant_id,
+            x_workspace_id=x_workspace_id,
             schema_object_update=schema_object_update,
+            x_correlation_id=x_correlation_id,
+            idempotency_key=idempotency_key,
             _request_auth=_request_auth,
             _content_type=_content_type,
             _headers=_headers,
@@ -771,7 +930,11 @@ class SchemaApi:
     def _update_object_serialize(
         self,
         object_id,
+        x_tenant_id,
+        x_workspace_id,
         schema_object_update,
+        x_correlation_id,
+        idempotency_key,
         _request_auth,
         _content_type,
         _headers,
@@ -797,6 +960,14 @@ class SchemaApi:
             _path_params['object_id'] = object_id
         # process the query parameters
         # process the header parameters
+        if x_tenant_id is not None:
+            _header_params['X-Tenant-Id'] = x_tenant_id
+        if x_workspace_id is not None:
+            _header_params['X-Workspace-Id'] = x_workspace_id
+        if x_correlation_id is not None:
+            _header_params['X-Correlation-Id'] = x_correlation_id
+        if idempotency_key is not None:
+            _header_params['Idempotency-Key'] = idempotency_key
         # process the form parameters
         # process the body parameter
         if schema_object_update is not None:
@@ -827,6 +998,8 @@ class SchemaApi:
 
         # authentication setting
         _auth_settings: List[str] = [
+            'WorkspaceContext', 
+            'TenantContext'
         ]
 
         return self.api_client.param_serialize(

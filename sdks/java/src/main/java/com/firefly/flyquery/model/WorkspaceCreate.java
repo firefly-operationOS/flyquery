@@ -41,7 +41,7 @@ import com.fasterxml.jackson.annotation.JsonTypeName;
   WorkspaceCreate.JSON_PROPERTY_RETENTION_DAYS,
   WorkspaceCreate.JSON_PROPERTY_SLUG
 })
-@javax.annotation.Generated(value = "org.openapitools.codegen.languages.JavaClientCodegen", date = "2026-05-23T20:36:34.703085+02:00[Europe/Madrid]", comments = "Generator version: 7.22.0")
+@javax.annotation.Generated(value = "org.openapitools.codegen.languages.JavaClientCodegen", date = "2026-05-23T22:03:38.852419+02:00[Europe/Madrid]", comments = "Generator version: 7.22.0")
 public class WorkspaceCreate {
   public static final String JSON_PROPERTY_ALLOW_DIRECT_SQL = "allow_direct_sql";
   @javax.annotation.Nullable

@@ -99,7 +99,7 @@ tasks:
           -g python
           -o sdks/python
           --package-name flyquery_sdk
-          --additional-properties=packageVersion=26.5.4,projectName=flyquery-sdk,library=asyncio
+          --additional-properties=packageVersion=26.5.5,projectName=flyquery-sdk,library=asyncio
           --skip-validate-spec
       - cd sdks/python && uv pip install --system --quiet . || true
 
@@ -116,5 +116,5 @@ tasks:
           --invoker-package com.firefly.flyquery
           --api-package com.firefly.flyquery.api
           --model-package com.firefly.flyquery.model
-          --additional-properties=artifactId=flyquery-sdk,groupId=com.firefly,artifactVersion=26.5.4,library=webclient,dateLibrary=java8,java8=true
+          --additional-properties=artifactId=flyquery-sdk,groupId=com.firefly,artifactVersion=26.5.5,library=webclient,dateLibrary=java8,java8=true
           --skip-validate-spec

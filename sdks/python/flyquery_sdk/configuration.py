@@ -111,6 +111,9 @@ HTTPSignatureAuthSetting = TypedDict(
 AuthSettings = TypedDict(
     "AuthSettings",
     {
+        "AgentToken": APIKeyAuthSetting,
+        "TenantContext": APIKeyAuthSetting,
+        "WorkspaceContext": APIKeyAuthSetting,
     },
     total=False,
 )
@@ -175,6 +178,26 @@ class Configuration:
     :param datetime_format: Datetime format string for serialization.
     :param date_format: Date format string for serialization.
 
+    :Example:
+
+    API Key Authentication Example.
+    Given the following security scheme in the OpenAPI specification:
+      components:
+        securitySchemes:
+          cookieAuth:         # name for the security scheme
+            type: apiKey
+            in: cookie
+            name: JSESSIONID  # cookie name
+
+    You can programmatically set the cookie:
+
+conf = flyquery_sdk.Configuration(
+    api_key={'cookieAuth': 'abc123'}
+    api_key_prefix={'cookieAuth': 'JSESSIONID'}
+)
+
+    The following cookie will be added to the HTTP request:
+       Cookie: JSESSIONID abc123
     """
 
     _default: ClassVar[Optional[Self]] = None
@@ -512,6 +535,33 @@ class Configuration:
         :return: The Auth Settings information dict.
         """
         auth: AuthSettings = {}
+        if 'AgentToken' in self.api_key:
+            auth['AgentToken'] = {
+                'type': 'api_key',
+                'in': 'header',
+                'key': 'X-Agent-Token',
+                'value': self.get_api_key_with_prefix(
+                    'AgentToken',
+                ),
+            }
+        if 'TenantContext' in self.api_key:
+            auth['TenantContext'] = {
+                'type': 'api_key',
+                'in': 'header',
+                'key': 'X-Tenant-Id',
+                'value': self.get_api_key_with_prefix(
+                    'TenantContext',
+                ),
+            }
+        if 'WorkspaceContext' in self.api_key:
+            auth['WorkspaceContext'] = {
+                'type': 'api_key',
+                'in': 'header',
+                'key': 'X-Workspace-Id',
+                'value': self.get_api_key_with_prefix(
+                    'WorkspaceContext',
+                ),
+            }
         return auth
 
     def to_debug_report(self) -> str:
@@ -523,7 +573,7 @@ class Configuration:
                "OS: {env}\n"\
                "Python Version: {pyversion}\n"\
                "Version of the API: 26.5.4\n"\
-               "SDK Package Version: 26.5.4".\
+               "SDK Package Version: 26.5.5".\
                format(env=sys.platform, pyversion=sys.version)
 
     def get_host_settings(self) -> List[HostSetting]:

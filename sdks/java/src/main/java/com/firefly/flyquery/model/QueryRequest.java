@@ -36,7 +36,7 @@ import com.fasterxml.jackson.annotation.JsonTypeName;
   QueryRequest.JSON_PROPERTY_DATASET_ID,
   QueryRequest.JSON_PROPERTY_QUESTION
 })
-@javax.annotation.Generated(value = "org.openapitools.codegen.languages.JavaClientCodegen", date = "2026-05-23T20:36:34.703085+02:00[Europe/Madrid]", comments = "Generator version: 7.22.0")
+@javax.annotation.Generated(value = "org.openapitools.codegen.languages.JavaClientCodegen", date = "2026-05-23T22:03:38.852419+02:00[Europe/Madrid]", comments = "Generator version: 7.22.0")
 public class QueryRequest {
   public static final String JSON_PROPERTY_CONVERSATION_ID = "conversation_id";
   @javax.annotation.Nullable

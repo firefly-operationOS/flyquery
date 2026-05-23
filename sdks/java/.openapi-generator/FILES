@@ -78,7 +78,6 @@ gradle/wrapper/gradle-wrapper.jar
 gradle/wrapper/gradle-wrapper.properties
 gradlew
 gradlew.bat
-pom.xml
 settings.gradle
 src/main/AndroidManifest.xml
 src/main/java/com/firefly/flyquery/ApiClient.java

@@ -6,6 +6,7 @@ import com.firefly.flyquery.model.HTTPValidationError;
 import com.firefly.flyquery.model.SchemaChangeRead;
 import com.firefly.flyquery.model.SchemaObjectRead;
 import com.firefly.flyquery.model.SchemaObjectUpdate;
+import java.util.UUID;
 
 import java.util.HashMap;
 import java.util.List;
@@ -29,7 +30,7 @@ import org.springframework.web.reactive.function.client.WebClientResponseExcepti
 import reactor.core.publisher.Mono;
 import reactor.core.publisher.Flux;
 
-@javax.annotation.Generated(value = "org.openapitools.codegen.languages.JavaClientCodegen", date = "2026-05-23T20:36:34.703085+02:00[Europe/Madrid]", comments = "Generator version: 7.22.0")
+@javax.annotation.Generated(value = "org.openapitools.codegen.languages.JavaClientCodegen", date = "2026-05-23T22:03:38.852419+02:00[Europe/Madrid]", comments = "Generator version: 7.22.0")
 public class SchemaApi {
     private ApiClient apiClient;
 
@@ -54,14 +55,26 @@ public class SchemaApi {
      * Validates that the change exists and is in state RENAMED_CANDIDATE. Sets approved_by (the current actor / tenant_id), approved_at (now), change &#x3D; &#39;RENAMED&#39;. Also updates last_changed_at on the corresponding schema_objects column row.
      * <p><b>200</b> - Successful response
      * @param changeId The changeId parameter
+     * @param xTenantId Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present.
+     * @param xWorkspaceId Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation.
+     * @param xCorrelationId Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.
+     * @param idempotencyKey Optional client-supplied idempotency key for mutating operations. The first request with a key persists its result; subsequent requests with the same key + same tenant return the cached response. Keys expire after 24h.
      * @return SchemaChangeRead
      * @throws WebClientResponseException if an error occurs while attempting to invoke the API
      */
-    private ResponseSpec confirmRequestCreation(@javax.annotation.Nullable String changeId) throws WebClientResponseException {
+    private ResponseSpec confirmRequestCreation(@javax.annotation.Nullable String changeId, @javax.annotation.Nonnull String xTenantId, @javax.annotation.Nonnull String xWorkspaceId, @javax.annotation.Nullable UUID xCorrelationId, @javax.annotation.Nullable String idempotencyKey) throws WebClientResponseException {
         Object postBody = null;
         // verify the required parameter 'changeId' is set
         if (changeId == null) {
             throw new WebClientResponseException("Missing the required parameter 'changeId' when calling confirm", HttpStatus.BAD_REQUEST.value(), HttpStatus.BAD_REQUEST.getReasonPhrase(), null, null, null);
+        }
+        // verify the required parameter 'xTenantId' is set
+        if (xTenantId == null) {
+            throw new WebClientResponseException("Missing the required parameter 'xTenantId' when calling confirm", HttpStatus.BAD_REQUEST.value(), HttpStatus.BAD_REQUEST.getReasonPhrase(), null, null, null);
+        }
+        // verify the required parameter 'xWorkspaceId' is set
+        if (xWorkspaceId == null) {
+            throw new WebClientResponseException("Missing the required parameter 'xWorkspaceId' when calling confirm", HttpStatus.BAD_REQUEST.value(), HttpStatus.BAD_REQUEST.getReasonPhrase(), null, null, null);
         }
         // create path and map variables
         final Map<String, Object> pathParams = new HashMap<String, Object>();
@@ -73,6 +86,14 @@ public class SchemaApi {
         final MultiValueMap<String, String> cookieParams = new LinkedMultiValueMap<String, String>();
         final MultiValueMap<String, Object> formParams = new LinkedMultiValueMap<String, Object>();
 
+        if (xTenantId != null)
+        headerParams.add("X-Tenant-Id", apiClient.parameterToString(xTenantId));
+        if (xWorkspaceId != null)
+        headerParams.add("X-Workspace-Id", apiClient.parameterToString(xWorkspaceId));
+        if (xCorrelationId != null)
+        headerParams.add("X-Correlation-Id", apiClient.parameterToString(xCorrelationId));
+        if (idempotencyKey != null)
+        headerParams.add("Idempotency-Key", apiClient.parameterToString(idempotencyKey));
         final String[] localVarAccepts = { 
             "application/json"
         };
@@ -80,7 +101,7 @@ public class SchemaApi {
         final String[] localVarContentTypes = { };
         final MediaType localVarContentType = apiClient.selectHeaderContentType(localVarContentTypes);
 
-        String[] localVarAuthNames = new String[] {  };
+        String[] localVarAuthNames = new String[] { "WorkspaceContext", "TenantContext" };
 
         ParameterizedTypeReference<SchemaChangeRead> localVarReturnType = new ParameterizedTypeReference<SchemaChangeRead>() {};
         return apiClient.invokeAPI("/api/v1/schema-changes/{change_id}:confirm", HttpMethod.POST, pathParams, queryParams, postBody, headerParams, cookieParams, formParams, localVarAccept, localVarContentType, localVarAuthNames, localVarReturnType);
@@ -91,12 +112,16 @@ public class SchemaApi {
      * Validates that the change exists and is in state RENAMED_CANDIDATE. Sets approved_by (the current actor / tenant_id), approved_at (now), change &#x3D; &#39;RENAMED&#39;. Also updates last_changed_at on the corresponding schema_objects column row.
      * <p><b>200</b> - Successful response
      * @param changeId The changeId parameter
+     * @param xTenantId Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present.
+     * @param xWorkspaceId Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation.
+     * @param xCorrelationId Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.
+     * @param idempotencyKey Optional client-supplied idempotency key for mutating operations. The first request with a key persists its result; subsequent requests with the same key + same tenant return the cached response. Keys expire after 24h.
      * @return SchemaChangeRead
      * @throws WebClientResponseException if an error occurs while attempting to invoke the API
      */
-    public Mono<SchemaChangeRead> confirm(@javax.annotation.Nullable String changeId) throws WebClientResponseException {
+    public Mono<SchemaChangeRead> confirm(@javax.annotation.Nullable String changeId, @javax.annotation.Nonnull String xTenantId, @javax.annotation.Nonnull String xWorkspaceId, @javax.annotation.Nullable UUID xCorrelationId, @javax.annotation.Nullable String idempotencyKey) throws WebClientResponseException {
         ParameterizedTypeReference<SchemaChangeRead> localVarReturnType = new ParameterizedTypeReference<SchemaChangeRead>() {};
-        return confirmRequestCreation(changeId).bodyToMono(localVarReturnType);
+        return confirmRequestCreation(changeId, xTenantId, xWorkspaceId, xCorrelationId, idempotencyKey).bodyToMono(localVarReturnType);
     }
 
     /**
@@ -104,12 +129,16 @@ public class SchemaApi {
      * Validates that the change exists and is in state RENAMED_CANDIDATE. Sets approved_by (the current actor / tenant_id), approved_at (now), change &#x3D; &#39;RENAMED&#39;. Also updates last_changed_at on the corresponding schema_objects column row.
      * <p><b>200</b> - Successful response
      * @param changeId The changeId parameter
+     * @param xTenantId Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present.
+     * @param xWorkspaceId Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation.
+     * @param xCorrelationId Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.
+     * @param idempotencyKey Optional client-supplied idempotency key for mutating operations. The first request with a key persists its result; subsequent requests with the same key + same tenant return the cached response. Keys expire after 24h.
      * @return ResponseEntity&lt;SchemaChangeRead&gt;
      * @throws WebClientResponseException if an error occurs while attempting to invoke the API
      */
-    public Mono<ResponseEntity<SchemaChangeRead>> confirmWithHttpInfo(@javax.annotation.Nullable String changeId) throws WebClientResponseException {
+    public Mono<ResponseEntity<SchemaChangeRead>> confirmWithHttpInfo(@javax.annotation.Nullable String changeId, @javax.annotation.Nonnull String xTenantId, @javax.annotation.Nonnull String xWorkspaceId, @javax.annotation.Nullable UUID xCorrelationId, @javax.annotation.Nullable String idempotencyKey) throws WebClientResponseException {
         ParameterizedTypeReference<SchemaChangeRead> localVarReturnType = new ParameterizedTypeReference<SchemaChangeRead>() {};
-        return confirmRequestCreation(changeId).toEntity(localVarReturnType);
+        return confirmRequestCreation(changeId, xTenantId, xWorkspaceId, xCorrelationId, idempotencyKey).toEntity(localVarReturnType);
     }
 
     /**
@@ -117,11 +146,15 @@ public class SchemaApi {
      * Validates that the change exists and is in state RENAMED_CANDIDATE. Sets approved_by (the current actor / tenant_id), approved_at (now), change &#x3D; &#39;RENAMED&#39;. Also updates last_changed_at on the corresponding schema_objects column row.
      * <p><b>200</b> - Successful response
      * @param changeId The changeId parameter
+     * @param xTenantId Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present.
+     * @param xWorkspaceId Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation.
+     * @param xCorrelationId Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.
+     * @param idempotencyKey Optional client-supplied idempotency key for mutating operations. The first request with a key persists its result; subsequent requests with the same key + same tenant return the cached response. Keys expire after 24h.
      * @return ResponseSpec
      * @throws WebClientResponseException if an error occurs while attempting to invoke the API
      */
-    public ResponseSpec confirmWithResponseSpec(@javax.annotation.Nullable String changeId) throws WebClientResponseException {
-        return confirmRequestCreation(changeId);
+    public ResponseSpec confirmWithResponseSpec(@javax.annotation.Nullable String changeId, @javax.annotation.Nonnull String xTenantId, @javax.annotation.Nonnull String xWorkspaceId, @javax.annotation.Nullable UUID xCorrelationId, @javax.annotation.Nullable String idempotencyKey) throws WebClientResponseException {
+        return confirmRequestCreation(changeId, xTenantId, xWorkspaceId, xCorrelationId, idempotencyKey);
     }
 
     /**
@@ -129,14 +162,25 @@ public class SchemaApi {
      * 
      * <p><b>200</b> - Successful response
      * @param objectId The objectId parameter
+     * @param xTenantId Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present.
+     * @param xWorkspaceId Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation.
+     * @param xCorrelationId Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.
      * @return SchemaObjectRead
      * @throws WebClientResponseException if an error occurs while attempting to invoke the API
      */
-    private ResponseSpec getObjectRequestCreation(@javax.annotation.Nullable String objectId) throws WebClientResponseException {
+    private ResponseSpec getObjectRequestCreation(@javax.annotation.Nullable String objectId, @javax.annotation.Nonnull String xTenantId, @javax.annotation.Nonnull String xWorkspaceId, @javax.annotation.Nullable UUID xCorrelationId) throws WebClientResponseException {
         Object postBody = null;
         // verify the required parameter 'objectId' is set
         if (objectId == null) {
             throw new WebClientResponseException("Missing the required parameter 'objectId' when calling getObject", HttpStatus.BAD_REQUEST.value(), HttpStatus.BAD_REQUEST.getReasonPhrase(), null, null, null);
+        }
+        // verify the required parameter 'xTenantId' is set
+        if (xTenantId == null) {
+            throw new WebClientResponseException("Missing the required parameter 'xTenantId' when calling getObject", HttpStatus.BAD_REQUEST.value(), HttpStatus.BAD_REQUEST.getReasonPhrase(), null, null, null);
+        }
+        // verify the required parameter 'xWorkspaceId' is set
+        if (xWorkspaceId == null) {
+            throw new WebClientResponseException("Missing the required parameter 'xWorkspaceId' when calling getObject", HttpStatus.BAD_REQUEST.value(), HttpStatus.BAD_REQUEST.getReasonPhrase(), null, null, null);
         }
         // create path and map variables
         final Map<String, Object> pathParams = new HashMap<String, Object>();
@@ -148,6 +192,12 @@ public class SchemaApi {
         final MultiValueMap<String, String> cookieParams = new LinkedMultiValueMap<String, String>();
         final MultiValueMap<String, Object> formParams = new LinkedMultiValueMap<String, Object>();
 
+        if (xTenantId != null)
+        headerParams.add("X-Tenant-Id", apiClient.parameterToString(xTenantId));
+        if (xWorkspaceId != null)
+        headerParams.add("X-Workspace-Id", apiClient.parameterToString(xWorkspaceId));
+        if (xCorrelationId != null)
+        headerParams.add("X-Correlation-Id", apiClient.parameterToString(xCorrelationId));
         final String[] localVarAccepts = { 
             "application/json"
         };
@@ -155,7 +205,7 @@ public class SchemaApi {
         final String[] localVarContentTypes = { };
         final MediaType localVarContentType = apiClient.selectHeaderContentType(localVarContentTypes);
 
-        String[] localVarAuthNames = new String[] {  };
+        String[] localVarAuthNames = new String[] { "WorkspaceContext", "TenantContext" };
 
         ParameterizedTypeReference<SchemaObjectRead> localVarReturnType = new ParameterizedTypeReference<SchemaObjectRead>() {};
         return apiClient.invokeAPI("/api/v1/schema-objects/{object_id}", HttpMethod.GET, pathParams, queryParams, postBody, headerParams, cookieParams, formParams, localVarAccept, localVarContentType, localVarAuthNames, localVarReturnType);
@@ -166,12 +216,15 @@ public class SchemaApi {
      * 
      * <p><b>200</b> - Successful response
      * @param objectId The objectId parameter
+     * @param xTenantId Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present.
+     * @param xWorkspaceId Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation.
+     * @param xCorrelationId Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.
      * @return SchemaObjectRead
      * @throws WebClientResponseException if an error occurs while attempting to invoke the API
      */
-    public Mono<SchemaObjectRead> getObject(@javax.annotation.Nullable String objectId) throws WebClientResponseException {
+    public Mono<SchemaObjectRead> getObject(@javax.annotation.Nullable String objectId, @javax.annotation.Nonnull String xTenantId, @javax.annotation.Nonnull String xWorkspaceId, @javax.annotation.Nullable UUID xCorrelationId) throws WebClientResponseException {
         ParameterizedTypeReference<SchemaObjectRead> localVarReturnType = new ParameterizedTypeReference<SchemaObjectRead>() {};
-        return getObjectRequestCreation(objectId).bodyToMono(localVarReturnType);
+        return getObjectRequestCreation(objectId, xTenantId, xWorkspaceId, xCorrelationId).bodyToMono(localVarReturnType);
     }
 
     /**
@@ -179,12 +232,15 @@ public class SchemaApi {
      * 
      * <p><b>200</b> - Successful response
      * @param objectId The objectId parameter
+     * @param xTenantId Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present.
+     * @param xWorkspaceId Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation.
+     * @param xCorrelationId Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.
      * @return ResponseEntity&lt;SchemaObjectRead&gt;
      * @throws WebClientResponseException if an error occurs while attempting to invoke the API
      */
-    public Mono<ResponseEntity<SchemaObjectRead>> getObjectWithHttpInfo(@javax.annotation.Nullable String objectId) throws WebClientResponseException {
+    public Mono<ResponseEntity<SchemaObjectRead>> getObjectWithHttpInfo(@javax.annotation.Nullable String objectId, @javax.annotation.Nonnull String xTenantId, @javax.annotation.Nonnull String xWorkspaceId, @javax.annotation.Nullable UUID xCorrelationId) throws WebClientResponseException {
         ParameterizedTypeReference<SchemaObjectRead> localVarReturnType = new ParameterizedTypeReference<SchemaObjectRead>() {};
-        return getObjectRequestCreation(objectId).toEntity(localVarReturnType);
+        return getObjectRequestCreation(objectId, xTenantId, xWorkspaceId, xCorrelationId).toEntity(localVarReturnType);
     }
 
     /**
@@ -192,11 +248,14 @@ public class SchemaApi {
      * 
      * <p><b>200</b> - Successful response
      * @param objectId The objectId parameter
+     * @param xTenantId Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present.
+     * @param xWorkspaceId Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation.
+     * @param xCorrelationId Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.
      * @return ResponseSpec
      * @throws WebClientResponseException if an error occurs while attempting to invoke the API
      */
-    public ResponseSpec getObjectWithResponseSpec(@javax.annotation.Nullable String objectId) throws WebClientResponseException {
-        return getObjectRequestCreation(objectId);
+    public ResponseSpec getObjectWithResponseSpec(@javax.annotation.Nullable String objectId, @javax.annotation.Nonnull String xTenantId, @javax.annotation.Nonnull String xWorkspaceId, @javax.annotation.Nullable UUID xCorrelationId) throws WebClientResponseException {
+        return getObjectRequestCreation(objectId, xTenantId, xWorkspaceId, xCorrelationId);
     }
 
     /**
@@ -205,15 +264,27 @@ public class SchemaApi {
      * <p><b>200</b> - Successful response
      * <p><b>422</b> - Validation Error
      * @param objectId The objectId parameter
+     * @param xTenantId Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present.
+     * @param xWorkspaceId Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation.
      * @param schemaObjectUpdate The schemaObjectUpdate parameter
+     * @param xCorrelationId Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.
+     * @param idempotencyKey Optional client-supplied idempotency key for mutating operations. The first request with a key persists its result; subsequent requests with the same key + same tenant return the cached response. Keys expire after 24h.
      * @return SchemaObjectRead
      * @throws WebClientResponseException if an error occurs while attempting to invoke the API
      */
-    private ResponseSpec updateObjectRequestCreation(@javax.annotation.Nonnull String objectId, @javax.annotation.Nonnull SchemaObjectUpdate schemaObjectUpdate) throws WebClientResponseException {
+    private ResponseSpec updateObjectRequestCreation(@javax.annotation.Nonnull String objectId, @javax.annotation.Nonnull String xTenantId, @javax.annotation.Nonnull String xWorkspaceId, @javax.annotation.Nonnull SchemaObjectUpdate schemaObjectUpdate, @javax.annotation.Nullable UUID xCorrelationId, @javax.annotation.Nullable String idempotencyKey) throws WebClientResponseException {
         Object postBody = schemaObjectUpdate;
         // verify the required parameter 'objectId' is set
         if (objectId == null) {
             throw new WebClientResponseException("Missing the required parameter 'objectId' when calling updateObject", HttpStatus.BAD_REQUEST.value(), HttpStatus.BAD_REQUEST.getReasonPhrase(), null, null, null);
+        }
+        // verify the required parameter 'xTenantId' is set
+        if (xTenantId == null) {
+            throw new WebClientResponseException("Missing the required parameter 'xTenantId' when calling updateObject", HttpStatus.BAD_REQUEST.value(), HttpStatus.BAD_REQUEST.getReasonPhrase(), null, null, null);
+        }
+        // verify the required parameter 'xWorkspaceId' is set
+        if (xWorkspaceId == null) {
+            throw new WebClientResponseException("Missing the required parameter 'xWorkspaceId' when calling updateObject", HttpStatus.BAD_REQUEST.value(), HttpStatus.BAD_REQUEST.getReasonPhrase(), null, null, null);
         }
         // verify the required parameter 'schemaObjectUpdate' is set
         if (schemaObjectUpdate == null) {
@@ -229,6 +300,14 @@ public class SchemaApi {
         final MultiValueMap<String, String> cookieParams = new LinkedMultiValueMap<String, String>();
         final MultiValueMap<String, Object> formParams = new LinkedMultiValueMap<String, Object>();
 
+        if (xTenantId != null)
+        headerParams.add("X-Tenant-Id", apiClient.parameterToString(xTenantId));
+        if (xWorkspaceId != null)
+        headerParams.add("X-Workspace-Id", apiClient.parameterToString(xWorkspaceId));
+        if (xCorrelationId != null)
+        headerParams.add("X-Correlation-Id", apiClient.parameterToString(xCorrelationId));
+        if (idempotencyKey != null)
+        headerParams.add("Idempotency-Key", apiClient.parameterToString(idempotencyKey));
         final String[] localVarAccepts = { 
             "application/json"
         };
@@ -238,7 +317,7 @@ public class SchemaApi {
         };
         final MediaType localVarContentType = apiClient.selectHeaderContentType(localVarContentTypes);
 
-        String[] localVarAuthNames = new String[] {  };
+        String[] localVarAuthNames = new String[] { "WorkspaceContext", "TenantContext" };
 
         ParameterizedTypeReference<SchemaObjectRead> localVarReturnType = new ParameterizedTypeReference<SchemaObjectRead>() {};
         return apiClient.invokeAPI("/api/v1/schema-objects/{object_id}", HttpMethod.PUT, pathParams, queryParams, postBody, headerParams, cookieParams, formParams, localVarAccept, localVarContentType, localVarAuthNames, localVarReturnType);
@@ -250,13 +329,17 @@ public class SchemaApi {
      * <p><b>200</b> - Successful response
      * <p><b>422</b> - Validation Error
      * @param objectId The objectId parameter
+     * @param xTenantId Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present.
+     * @param xWorkspaceId Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation.
      * @param schemaObjectUpdate The schemaObjectUpdate parameter
+     * @param xCorrelationId Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.
+     * @param idempotencyKey Optional client-supplied idempotency key for mutating operations. The first request with a key persists its result; subsequent requests with the same key + same tenant return the cached response. Keys expire after 24h.
      * @return SchemaObjectRead
      * @throws WebClientResponseException if an error occurs while attempting to invoke the API
      */
-    public Mono<SchemaObjectRead> updateObject(@javax.annotation.Nonnull String objectId, @javax.annotation.Nonnull SchemaObjectUpdate schemaObjectUpdate) throws WebClientResponseException {
+    public Mono<SchemaObjectRead> updateObject(@javax.annotation.Nonnull String objectId, @javax.annotation.Nonnull String xTenantId, @javax.annotation.Nonnull String xWorkspaceId, @javax.annotation.Nonnull SchemaObjectUpdate schemaObjectUpdate, @javax.annotation.Nullable UUID xCorrelationId, @javax.annotation.Nullable String idempotencyKey) throws WebClientResponseException {
         ParameterizedTypeReference<SchemaObjectRead> localVarReturnType = new ParameterizedTypeReference<SchemaObjectRead>() {};
-        return updateObjectRequestCreation(objectId, schemaObjectUpdate).bodyToMono(localVarReturnType);
+        return updateObjectRequestCreation(objectId, xTenantId, xWorkspaceId, schemaObjectUpdate, xCorrelationId, idempotencyKey).bodyToMono(localVarReturnType);
     }
 
     /**
@@ -265,13 +348,17 @@ public class SchemaApi {
      * <p><b>200</b> - Successful response
      * <p><b>422</b> - Validation Error
      * @param objectId The objectId parameter
+     * @param xTenantId Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present.
+     * @param xWorkspaceId Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation.
      * @param schemaObjectUpdate The schemaObjectUpdate parameter
+     * @param xCorrelationId Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.
+     * @param idempotencyKey Optional client-supplied idempotency key for mutating operations. The first request with a key persists its result; subsequent requests with the same key + same tenant return the cached response. Keys expire after 24h.
      * @return ResponseEntity&lt;SchemaObjectRead&gt;
      * @throws WebClientResponseException if an error occurs while attempting to invoke the API
      */
-    public Mono<ResponseEntity<SchemaObjectRead>> updateObjectWithHttpInfo(@javax.annotation.Nonnull String objectId, @javax.annotation.Nonnull SchemaObjectUpdate schemaObjectUpdate) throws WebClientResponseException {
+    public Mono<ResponseEntity<SchemaObjectRead>> updateObjectWithHttpInfo(@javax.annotation.Nonnull String objectId, @javax.annotation.Nonnull String xTenantId, @javax.annotation.Nonnull String xWorkspaceId, @javax.annotation.Nonnull SchemaObjectUpdate schemaObjectUpdate, @javax.annotation.Nullable UUID xCorrelationId, @javax.annotation.Nullable String idempotencyKey) throws WebClientResponseException {
         ParameterizedTypeReference<SchemaObjectRead> localVarReturnType = new ParameterizedTypeReference<SchemaObjectRead>() {};
-        return updateObjectRequestCreation(objectId, schemaObjectUpdate).toEntity(localVarReturnType);
+        return updateObjectRequestCreation(objectId, xTenantId, xWorkspaceId, schemaObjectUpdate, xCorrelationId, idempotencyKey).toEntity(localVarReturnType);
     }
 
     /**
@@ -280,11 +367,15 @@ public class SchemaApi {
      * <p><b>200</b> - Successful response
      * <p><b>422</b> - Validation Error
      * @param objectId The objectId parameter
+     * @param xTenantId Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present.
+     * @param xWorkspaceId Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation.
      * @param schemaObjectUpdate The schemaObjectUpdate parameter
+     * @param xCorrelationId Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.
+     * @param idempotencyKey Optional client-supplied idempotency key for mutating operations. The first request with a key persists its result; subsequent requests with the same key + same tenant return the cached response. Keys expire after 24h.
      * @return ResponseSpec
      * @throws WebClientResponseException if an error occurs while attempting to invoke the API
      */
-    public ResponseSpec updateObjectWithResponseSpec(@javax.annotation.Nonnull String objectId, @javax.annotation.Nonnull SchemaObjectUpdate schemaObjectUpdate) throws WebClientResponseException {
-        return updateObjectRequestCreation(objectId, schemaObjectUpdate);
+    public ResponseSpec updateObjectWithResponseSpec(@javax.annotation.Nonnull String objectId, @javax.annotation.Nonnull String xTenantId, @javax.annotation.Nonnull String xWorkspaceId, @javax.annotation.Nonnull SchemaObjectUpdate schemaObjectUpdate, @javax.annotation.Nullable UUID xCorrelationId, @javax.annotation.Nullable String idempotencyKey) throws WebClientResponseException {
+        return updateObjectRequestCreation(objectId, xTenantId, xWorkspaceId, schemaObjectUpdate, xCorrelationId, idempotencyKey);
     }
 }

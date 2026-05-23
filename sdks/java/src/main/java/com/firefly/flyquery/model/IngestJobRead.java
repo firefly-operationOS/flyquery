@@ -49,7 +49,7 @@ import com.fasterxml.jackson.annotation.JsonTypeName;
   IngestJobRead.JSON_PROPERTY_TENANT_ID,
   IngestJobRead.JSON_PROPERTY_WORKSPACE_ID
 })
-@javax.annotation.Generated(value = "org.openapitools.codegen.languages.JavaClientCodegen", date = "2026-05-23T20:36:34.703085+02:00[Europe/Madrid]", comments = "Generator version: 7.22.0")
+@javax.annotation.Generated(value = "org.openapitools.codegen.languages.JavaClientCodegen", date = "2026-05-23T22:03:38.852419+02:00[Europe/Madrid]", comments = "Generator version: 7.22.0")
 public class IngestJobRead {
   public static final String JSON_PROPERTY_ATTEMPTS = "attempts";
   @javax.annotation.Nonnull
