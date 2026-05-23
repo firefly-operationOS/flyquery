@@ -1,14 +1,19 @@
 # Copyright 2026 Firefly Software Solutions Inc
 """Workspace REST controller.
 
-``/api/v1/workspaces`` -- CRUD for flyquery_workspaces.
+``/api/v1/workspaces`` -- CRUD + search/filter for flyquery_workspaces.
 
 Path conventions:
-* ``POST   /api/v1/workspaces``                  -- create (201)
-* ``GET    /api/v1/workspaces``                  -- list for tenant
-* ``GET    /api/v1/workspaces/{workspace_id}``   -- fetch single
-* ``PUT    /api/v1/workspaces/{workspace_id}``   -- sparse update
-* ``DELETE /api/v1/workspaces/{workspace_id}:purge`` -- purge (202)
+* ``POST   /api/v1/workspaces``                          -- create (201)
+* ``GET    /api/v1/workspaces``                          -- list + search/filter
+* ``GET    /api/v1/workspaces/by-slug/{slug}``           -- lookup by slug
+* ``GET    /api/v1/workspaces/{workspace_id}``           -- fetch single by id
+* ``PUT    /api/v1/workspaces/{workspace_id}``           -- sparse update
+* ``DELETE /api/v1/workspaces/{workspace_id}:purge``     -- purge (202)
+
+List supports query params: ``q`` (free-text against slug + name),
+``slug`` (exact), ``status``, ``limit``, ``offset``. Response is an
+envelope: ``{items, total, limit, offset, has_more}``.
 """
 
 from __future__ import annotations
@@ -19,6 +24,7 @@ from pyfly.container import rest_controller
 from pyfly.web import (
     Body,
     PathVar,
+    QueryParam,
     Valid,
     delete_mapping,
     get_mapping,
@@ -62,11 +68,64 @@ class WorkspacesController:
         return WorkspaceRead.model_validate(row)
 
     @get_mapping("")
-    async def list_workspaces(self, http_request: Request) -> dict:
-        """Return all workspaces for the caller's tenant."""
+    async def list_workspaces(
+        self,
+        http_request: Request,
+        q: QueryParam[str | None] = None,
+        slug: QueryParam[str | None] = None,
+        status: QueryParam[str | None] = None,
+        limit: QueryParam[int] = 100,
+        offset: QueryParam[int] = 0,
+    ) -> dict:
+        """Search/filter workspaces for the caller's tenant.
+
+        Query parameters
+        ----------------
+        * ``q``      -- free-text substring match against ``slug`` or ``name``
+                        (case-insensitive ``ILIKE``).
+        * ``slug``   -- exact match on ``slug`` -- gives you slug-based lookup
+                        with zero extra round trips.
+        * ``status`` -- exact match (``ACTIVE``, ``ARCHIVED``, ``PURGING``).
+        * ``limit``  -- page size, clamped to [1, 1000]. Default 100.
+        * ``offset`` -- starting offset. Default 0.
+
+        Response envelope: ``{items, total, limit, offset, has_more}``
+        where ``total`` is the un-paginated match count.
+        """
         ctx = tenant_context_from_request(http_request)
-        rows = await self._service.list(ctx.tenant_id)
-        return {"items": [WorkspaceRead.model_validate(r).model_dump(mode="json") for r in rows]}
+        rows, total = await self._service.list_filtered(
+            ctx.tenant_id,
+            q=q,
+            slug=slug,
+            status=status,
+            limit=limit,
+            offset=offset,
+        )
+        items = [WorkspaceRead.model_validate(r).model_dump(mode="json") for r in rows]
+        return {
+            "items": items,
+            "total": total,
+            "limit": limit,
+            "offset": offset,
+            "has_more": (offset + len(items)) < total,
+        }
+
+    @get_mapping("/by-slug/{slug}")
+    async def read_by_slug(
+        self,
+        http_request: Request,
+        slug: PathVar[str],
+    ) -> WorkspaceRead:
+        """Fetch a workspace by its ``(tenant_id, slug)`` natural key.
+
+        Lets SDKs and CLIs resolve a workspace from a memorable identifier
+        instead of carrying around a UUID. Returns 404 if no match.
+        """
+        ctx = tenant_context_from_request(http_request)
+        row = await self._service.get_by_slug(ctx.tenant_id, slug)
+        if row is None:
+            raise ResourceNotFound(f"workspace with slug {slug!r} not found")
+        return WorkspaceRead.model_validate(row)
 
     @get_mapping("/{workspace_id}")
     async def read(

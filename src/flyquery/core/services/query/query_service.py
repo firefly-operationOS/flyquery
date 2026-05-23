@@ -184,7 +184,7 @@ def _render_generation_prompt(
         "qualified name shown above), e.g. write `FROM IVI_MALAGA_SL__Activos` "
         "rather than `FROM orbis_companies.IVI_MALAGA_SL__Activos`.\n"
         "- Quote any column name that isn't a plain identifier (e.g. date-shaped "
-        "names like `2024-12-31` must be `\"2024-12-31\"`).\n"
+        'names like `2024-12-31` must be `"2024-12-31"`).\n'
         "- Be a SINGLE statement (no multi-statement; no DDL).\n"
         "- Be a SELECT (DuckDB-flavored)."
     )
@@ -224,7 +224,7 @@ def _render_critic_prompt(
         "Return a corrected SQL that resolves the execution error. Output a "
         "RefinedSql with a brief reasoning + a confidence in [0,1]. Stay inside "
         "the grounded scope. Use unqualified table names (last segment only) and "
-        "quote any non-identifier column names like `\"2024-12-31\"`."
+        'quote any non-identifier column names like `"2024-12-31"`.'
     )
     return "\n".join(out)
 

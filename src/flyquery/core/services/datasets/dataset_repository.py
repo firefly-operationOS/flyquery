@@ -62,11 +62,128 @@ class DatasetRepository:
             )
             return [dict(row) for row in result.mappings().all()]
 
+    async def list_filtered(
+        self,
+        tenant_id: str,
+        *,
+        workspace_id: uuid.UUID | None = None,
+        q: str | None = None,
+        name: str | None = None,
+        status: str | None = None,
+        limit: int = 100,
+        offset: int = 0,
+    ) -> tuple[list[dict[str, Any]], int]:
+        """Search/filter + paginate datasets.
+
+        ``workspace_id`` is optional: when omitted, the search spans every
+        workspace in the tenant. With it, the search is scoped to that
+        workspace -- equivalent to the original list endpoint.
+
+        Returns ``(rows, total_unpaginated_count)``.
+        """
+        like = f"%{q}%" if q else None
+        params: dict[str, Any] = {
+            "tenant_id": tenant_id,
+            "workspace_id": workspace_id,
+            "q": like,
+            "name": name,
+            "status": status,
+            "limit": int(limit),
+            "offset": int(offset),
+        }
+        async with self._factory() as s:
+            result = await s.execute(
+                sa.text(
+                    """
+                    SELECT *, COUNT(*) OVER () AS _total
+                    FROM flyquery_datasets
+                    WHERE tenant_id = :tenant_id
+                      AND (CAST(:workspace_id AS uuid) IS NULL OR workspace_id = CAST(:workspace_id AS uuid))
+                      AND (CAST(:name AS text) IS NULL OR name = CAST(:name AS text))
+                      AND (CAST(:status AS text) IS NULL OR status = CAST(:status AS text))
+                      AND (CAST(:q AS text) IS NULL
+                           OR name ILIKE CAST(:q AS text)
+                           OR COALESCE(description, '') ILIKE CAST(:q AS text))
+                    ORDER BY created_at DESC
+                    LIMIT :limit OFFSET :offset
+                    """
+                ),
+                params,
+            )
+            rows = [dict(r) for r in result.mappings().all()]
+        if not rows:
+            return [], await self._count_filtered(
+                tenant_id,
+                workspace_id=workspace_id,
+                q=q,
+                name=name,
+                status=status,
+            )
+        total = int(rows[0].pop("_total"))
+        for r in rows[1:]:
+            r.pop("_total", None)
+        return rows, total
+
+    async def _count_filtered(
+        self,
+        tenant_id: str,
+        *,
+        workspace_id: uuid.UUID | None,
+        q: str | None,
+        name: str | None,
+        status: str | None,
+    ) -> int:
+        like = f"%{q}%" if q else None
+        async with self._factory() as s:
+            result = await s.execute(
+                sa.text(
+                    """
+                    SELECT COUNT(*) AS n
+                    FROM flyquery_datasets
+                    WHERE tenant_id = :tenant_id
+                      AND (CAST(:workspace_id AS uuid) IS NULL OR workspace_id = CAST(:workspace_id AS uuid))
+                      AND (CAST(:name AS text) IS NULL OR name = CAST(:name AS text))
+                      AND (CAST(:status AS text) IS NULL OR status = CAST(:status AS text))
+                      AND (CAST(:q AS text) IS NULL
+                           OR name ILIKE CAST(:q AS text)
+                           OR COALESCE(description, '') ILIKE CAST(:q AS text))
+                    """
+                ),
+                {
+                    "tenant_id": tenant_id,
+                    "workspace_id": workspace_id,
+                    "q": like,
+                    "name": name,
+                    "status": status,
+                },
+            )
+            return int(result.scalar_one())
+
     async def get(self, dataset_id: uuid.UUID) -> dict[str, Any] | None:
         async with self._factory() as s:
             result = await s.execute(
                 sa.text("SELECT * FROM flyquery_datasets WHERE id = :id"),
                 {"id": dataset_id},
+            )
+            row = result.mappings().one_or_none()
+            return dict(row) if row else None
+
+    async def get_by_name(
+        self,
+        tenant_id: str,
+        workspace_id: uuid.UUID,
+        name: str,
+    ) -> dict[str, Any] | None:
+        """Resolve a dataset by ``(tenant_id, workspace_id, name)``."""
+        async with self._factory() as s:
+            result = await s.execute(
+                sa.text(
+                    "SELECT * FROM flyquery_datasets "
+                    "WHERE tenant_id = :tenant_id "
+                    "AND workspace_id = :workspace_id "
+                    "AND name = :name"
+                ),
+                {"tenant_id": tenant_id, "workspace_id": workspace_id, "name": name},
             )
             row = result.mappings().one_or_none()
             return dict(row) if row else None

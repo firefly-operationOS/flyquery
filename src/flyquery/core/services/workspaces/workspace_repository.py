@@ -56,6 +56,100 @@ class WorkspaceRepository:
             )
             return [dict(row) for row in result.mappings().all()]
 
+    async def list_filtered(
+        self,
+        tenant_id: str,
+        *,
+        q: str | None = None,
+        slug: str | None = None,
+        status: str | None = None,
+        limit: int = 100,
+        offset: int = 0,
+    ) -> tuple[list[dict[str, Any]], int]:
+        """Search/filter + paginate. Returns ``(rows, total_unpaginated_count)``.
+
+        Filters
+        -------
+        * ``q``      -- case-insensitive substring against ``slug`` OR ``name``.
+        * ``slug``   -- exact match on ``slug``.
+        * ``status`` -- exact match on ``status`` (e.g. ``ACTIVE``).
+
+        ``total`` is the full match count BEFORE limit/offset so SDKs can
+        paginate without a second round-trip.
+        """
+        like = f"%{q}%" if q else None
+        params: dict[str, Any] = {
+            "tenant_id": tenant_id,
+            "q": like,
+            "slug": slug,
+            "status": status,
+            "limit": int(limit),
+            "offset": int(offset),
+        }
+        async with self._factory() as s:
+            result = await s.execute(
+                sa.text(
+                    """
+                    SELECT *, COUNT(*) OVER () AS _total
+                    FROM flyquery_workspaces
+                    WHERE tenant_id = :tenant_id
+                      AND (CAST(:slug AS text) IS NULL OR slug = CAST(:slug AS text))
+                      AND (CAST(:status AS text) IS NULL OR status = CAST(:status AS text))
+                      AND (CAST(:q AS text) IS NULL
+                           OR name ILIKE CAST(:q AS text)
+                           OR slug ILIKE CAST(:q AS text))
+                    ORDER BY created_at DESC
+                    LIMIT :limit OFFSET :offset
+                    """
+                ),
+                params,
+            )
+            rows = [dict(r) for r in result.mappings().all()]
+        if not rows:
+            # No rows; need a separate count query since the window can't run.
+            return [], await self._count_filtered(tenant_id, q=q, slug=slug, status=status)
+        total = int(rows[0].pop("_total"))
+        for r in rows[1:]:
+            r.pop("_total", None)
+        return rows, total
+
+    async def _count_filtered(
+        self,
+        tenant_id: str,
+        *,
+        q: str | None,
+        slug: str | None,
+        status: str | None,
+    ) -> int:
+        like = f"%{q}%" if q else None
+        async with self._factory() as s:
+            result = await s.execute(
+                sa.text(
+                    """
+                    SELECT COUNT(*) AS n
+                    FROM flyquery_workspaces
+                    WHERE tenant_id = :tenant_id
+                      AND (CAST(:slug AS text) IS NULL OR slug = CAST(:slug AS text))
+                      AND (CAST(:status AS text) IS NULL OR status = CAST(:status AS text))
+                      AND (CAST(:q AS text) IS NULL
+                           OR name ILIKE CAST(:q AS text)
+                           OR slug ILIKE CAST(:q AS text))
+                    """
+                ),
+                {"tenant_id": tenant_id, "q": like, "slug": slug, "status": status},
+            )
+            return int(result.scalar_one())
+
+    async def get_by_slug(self, tenant_id: str, slug: str) -> dict[str, Any] | None:
+        """Return the (at most one) workspace with matching ``tenant_id`` + ``slug``."""
+        async with self._factory() as s:
+            result = await s.execute(
+                sa.text("SELECT * FROM flyquery_workspaces WHERE tenant_id = :tenant_id AND slug = :slug"),
+                {"tenant_id": tenant_id, "slug": slug},
+            )
+            row = result.mappings().one_or_none()
+            return dict(row) if row else None
+
     async def get(self, workspace_id: uuid.UUID) -> dict[str, Any] | None:
         async with self._factory() as s:
             result = await s.execute(

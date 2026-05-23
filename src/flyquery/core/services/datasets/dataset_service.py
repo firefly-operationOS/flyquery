@@ -15,7 +15,24 @@ from flyquery.interfaces.datasets import DatasetCreate, DatasetUpdate
 class _Repo(Protocol):
     async def create(self, **fields: Any) -> dict[str, Any]: ...
     async def list(self, tenant_id: str, workspace_id: uuid.UUID) -> list[dict[str, Any]]: ...
+    async def list_filtered(
+        self,
+        tenant_id: str,
+        *,
+        workspace_id: uuid.UUID | None = None,
+        q: str | None = None,
+        name: str | None = None,
+        status: str | None = None,
+        limit: int = 100,
+        offset: int = 0,
+    ) -> tuple[list[dict[str, Any]], int]: ...
     async def get(self, dataset_id: uuid.UUID) -> dict[str, Any] | None: ...
+    async def get_by_name(
+        self,
+        tenant_id: str,
+        workspace_id: uuid.UUID,
+        name: str,
+    ) -> dict[str, Any] | None: ...
     async def update(self, dataset_id: uuid.UUID, **fields: Any) -> dict[str, Any]: ...
     async def archive(self, dataset_id: uuid.UUID) -> None: ...
 
@@ -41,8 +58,40 @@ class DatasetService:
     async def list(self, tenant_id: str, workspace_id: uuid.UUID) -> list[dict[str, Any]]:
         return await self._repo.list(tenant_id, workspace_id)
 
+    async def list_filtered(
+        self,
+        tenant_id: str,
+        *,
+        workspace_id: uuid.UUID | None = None,
+        q: str | None = None,
+        name: str | None = None,
+        status: str | None = None,
+        limit: int = 100,
+        offset: int = 0,
+    ) -> tuple[list[dict[str, Any]], int]:
+        """Filtered + paginated list. ``limit`` clamped to [1, 1000]."""
+        limit = max(1, min(1000, int(limit)))
+        offset = max(0, int(offset))
+        return await self._repo.list_filtered(
+            tenant_id,
+            workspace_id=workspace_id,
+            q=q,
+            name=name,
+            status=status,
+            limit=limit,
+            offset=offset,
+        )
+
     async def get(self, dataset_id: uuid.UUID) -> dict[str, Any] | None:
         return await self._repo.get(dataset_id)
+
+    async def get_by_name(
+        self,
+        tenant_id: str,
+        workspace_id: uuid.UUID,
+        name: str,
+    ) -> dict[str, Any] | None:
+        return await self._repo.get_by_name(tenant_id, workspace_id, name)
 
     async def update(self, dataset_id: uuid.UUID, body: DatasetUpdate) -> dict[str, Any]:
         fields = body.model_dump(exclude_unset=True, exclude_none=True)

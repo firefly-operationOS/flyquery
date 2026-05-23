@@ -16,7 +16,18 @@ from flyquery.interfaces.workspaces import WorkspaceCreate, WorkspaceUpdate
 class _Repo(Protocol):
     async def create(self, **fields: Any) -> dict[str, Any]: ...
     async def list_by_tenant(self, tenant_id: str) -> list[dict[str, Any]]: ...
+    async def list_filtered(
+        self,
+        tenant_id: str,
+        *,
+        q: str | None = None,
+        slug: str | None = None,
+        status: str | None = None,
+        limit: int = 100,
+        offset: int = 0,
+    ) -> tuple[list[dict[str, Any]], int]: ...
     async def get(self, workspace_id: uuid.UUID) -> dict[str, Any] | None: ...
+    async def get_by_slug(self, tenant_id: str, slug: str) -> dict[str, Any] | None: ...
     async def update(self, workspace_id: uuid.UUID, **fields: Any) -> dict[str, Any]: ...
     async def archive(self, workspace_id: uuid.UUID) -> None: ...
     async def mark_purging(self, workspace_id: uuid.UUID) -> None: ...
@@ -44,8 +55,33 @@ class WorkspaceService:
     async def list(self, tenant_id: str) -> list[dict[str, Any]]:
         return await self._repo.list_by_tenant(tenant_id)
 
+    async def list_filtered(
+        self,
+        tenant_id: str,
+        *,
+        q: str | None = None,
+        slug: str | None = None,
+        status: str | None = None,
+        limit: int = 100,
+        offset: int = 0,
+    ) -> tuple[list[dict[str, Any]], int]:
+        """Filtered + paginated list. ``limit`` is clamped to [1, 1000]."""
+        limit = max(1, min(1000, int(limit)))
+        offset = max(0, int(offset))
+        return await self._repo.list_filtered(
+            tenant_id,
+            q=q,
+            slug=slug,
+            status=status,
+            limit=limit,
+            offset=offset,
+        )
+
     async def get(self, workspace_id: uuid.UUID) -> dict[str, Any] | None:
         return await self._repo.get(workspace_id)
+
+    async def get_by_slug(self, tenant_id: str, slug: str) -> dict[str, Any] | None:
+        return await self._repo.get_by_slug(tenant_id, slug)
 
     async def update(self, workspace_id: uuid.UUID, body: WorkspaceUpdate) -> dict[str, Any]:
         fields = body.model_dump(exclude_unset=True, exclude_none=True)
