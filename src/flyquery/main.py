@@ -69,36 +69,11 @@ async def _lifespan(app: Any):
     rescan = getattr(app.state, "pyfly_install_health_indicators", None)
     if callable(rescan):
         rescan()
-    install_openapi(
-        app,
-        _pyfly.context,
-        title=_TITLE,
-        version=__version__,
-        description=_DESCRIPTION,
-    )
-
-    # Layer flyquery's tenant + workspace + agent-token + idempotency
-    # headers on top of pyfly's spec. This is flyquery-specific and lives
-    # in a sibling module (``openapi_headers``) so ``openapi_override.py``
-    # stays byte-equivalent to the canon lockstep pin.
-    #
-    # The pyfly override caches its result in ``app.openapi_schema`` --
-    # if anything called ``app.openapi()`` before this wrap was installed
-    # (e.g. the actuator startup banner), the cached schema would be
-    # served WITHOUT the headers. Clear the cache so the next ``openapi()``
-    # call re-runs the underlying generator + our enrichment.
-    _wrap_with_headers = app.openapi
-
-    def _custom_openapi_with_headers():
-        if getattr(app, "openapi_schema", None) is not None:
-            return app.openapi_schema
-        spec = _wrap_with_headers()
-        enrich_openapi_with_headers(spec)
-        app.openapi_schema = spec
-        return spec
-
-    app.openapi_schema = None  # invalidate any pre-wrap cached spec
-    app.openapi = _custom_openapi_with_headers  # type: ignore[method-assign]
+    # Note: install_openapi + the header wrap are installed eagerly at
+    # module-load (see below, just after ``app = create_app(...)``) so
+    # tests using ``ASGITransport(app=app)`` -- which doesn't run the
+    # lifespan by default in httpx 0.28+ -- still see the enriched
+    # OpenAPI spec. We don't re-install them here.
     yield
     await _pyfly.shutdown()
 
@@ -112,6 +87,41 @@ app = create_app(
     actuator_enabled=True,
     lifespan=_lifespan,
 )
+
+# Install the pyfly-driven OpenAPI generator + the flyquery header
+# enrichment EAGERLY at module-load time, NOT inside lifespan. Tests
+# under ``httpx.AsyncClient(transport=ASGITransport(app=app))`` don't
+# trigger the lifespan by default in httpx 0.28+, so a lifespan-only
+# install leaves the spec without our tenant + workspace + agent-token
+# header components for the entire test suite -- the OpenAPI header
+# assertions break and the SDK regen sees a bare spec.
+#
+# Both functions are safe to call multiple times: install_openapi
+# only registers ``app.openapi``; the actual schema generation is
+# lazy and idempotent.
+install_openapi(
+    app,
+    _pyfly.context,
+    title=_TITLE,
+    version=__version__,
+    description=_DESCRIPTION,
+)
+
+
+def _wrapped_openapi(
+    _pyfly_openapi=app.openapi,  # bind the install_openapi-set callable
+):
+    """Pyfly-generated spec + flyquery's header components."""
+    if getattr(app, "openapi_schema", None) is not None:
+        return app.openapi_schema
+    spec = _pyfly_openapi()
+    enrich_openapi_with_headers(spec)
+    app.openapi_schema = spec
+    return spec
+
+
+app.openapi_schema = None
+app.openapi = _wrapped_openapi  # type: ignore[method-assign]
 # pyfly's FastAPI adapter only walks controller-LOCAL @exception_handler
 # methods; the @controller_advice surface never fires. Register the
 # conventions handler table directly with FastAPI so every
