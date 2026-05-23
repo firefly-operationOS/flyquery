@@ -18,6 +18,7 @@ from flyquery.models.entities.table import Table  # noqa: F401,E402
 from flyquery.models.entities.schema import SchemaSnapshot, SchemaChange, SchemaObject, Relation  # noqa: F401,E402
 from flyquery.models.entities.semantic import SemanticMetric, SemanticDimension, SemanticVersion, GlossaryTerm  # noqa: F401,E402
 from flyquery.models.entities.examples import Example  # noqa: F401,E402
+from flyquery.models.entities.queries import Query, QueryResult, Conversation, ConversationTurn  # noqa: F401,E402
 
 __all__ = [
     "Base",
@@ -34,4 +35,8 @@ __all__ = [
     "SemanticVersion",
     "GlossaryTerm",
     "Example",
+    "Query",
+    "QueryResult",
+    "Conversation",
+    "ConversationTurn",
 ]
