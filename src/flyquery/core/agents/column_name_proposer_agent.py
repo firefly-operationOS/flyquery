@@ -38,6 +38,43 @@ from flyquery.core.agents.builder import build_agent
 
 _SYNTHETIC_NAME_RE = re.compile(r"^column\d+$", re.IGNORECASE)
 
+# Headers that DuckDB pulled from a data row instead of a real header row.
+# These regexes intentionally treat "looks like a value" conservatively:
+# false positives waste one LLM call per section; false negatives leave
+# unusable names like ``5302354.32`` in the schema.
+_NUMERIC_LITERAL_RE = re.compile(r"^\s*-?\d{1,3}(?:[,.\s]\d{3})*(?:[.,]\d+)?\s*$|^\s*-?\d+(?:[.,]\d+)?\s*$")
+_LONG_TEXT_THRESHOLD = 60  # chars -- captures address rows, sentences
+_MIN_COMMAS_FOR_ADDRESS = 2
+
+
+def _looks_like_data_value(name: str) -> bool:
+    """Return True when ``name`` looks like a value pulled from a data row.
+
+    Catches the three concrete failure modes seen on real Orbis/BvD XLSX:
+
+    * DuckDB synthetic ``columnNN`` -- no header row recognised.
+    * A row of numeric financial values used as headers
+      (``5,302,354.32`` -> not a meaningful column name).
+    * A long free-text row used as a header
+      (``Av. de los Pinos 23, 28042 Madrid, ES, Telf: ...``).
+
+    Does NOT trigger on legitimate-but-numeric-looking headers like
+    ``2020-12-31`` (period headers) -- those have hyphens, not commas
+    or decimals, and stay under the long-text threshold.
+    """
+    if not name:
+        return False
+    n = name.strip()
+    if not n:
+        return False
+    if _SYNTHETIC_NAME_RE.match(n):
+        return True
+    if _NUMERIC_LITERAL_RE.match(n):
+        return True
+    if len(n) >= _LONG_TEXT_THRESHOLD:
+        return True
+    return n.count(",") >= _MIN_COMMAS_FOR_ADDRESS
+
 
 class ProposedColumnNames(BaseModel):
     """Aligned 1:1 with the input column list."""
@@ -52,41 +89,57 @@ class ProposedColumnNames(BaseModel):
 
 
 _INSTRUCTIONS = """
-You are a column-name proposer. You receive a section label, a list of
-synthetic column names (column00, column01, ...), and a small sample
-of values from each column. Your job is to propose business-meaningful
-``snake_case`` replacement names.
+You are a column-name proposer. You receive a section label, the
+current column names, and a small sample of values from each column.
+The current names may be one of:
+
+* DuckDB synthetic placeholders (``column00``, ``column01``, ...) when
+  no header row was recognised at all.
+* Values pulled from a data row that DuckDB mistakenly treated as the
+  header (e.g. ``5302354.32`` -- a number; or
+  ``Av. de los Pinos 23, 28042 Madrid, ES`` -- an address).
+* A mix: some columns have meaningful names (``id``, ``country_code``)
+  while others were taken from data values.
+
+Your job is to propose business-meaningful ``snake_case`` replacement
+names for ALL columns, in the same order.
 
 Rules
 -----
 * Output exactly ``len(current_names)`` proposed names, aligned 1:1.
 * Each proposed name MUST be:
-  - lowercase ASCII (no accents -- convert "año" to "anio", "país" to "pais")
+  - lowercase ASCII (no accents -- convert "año" to "anio",
+    "país" to "pais")
   - snake_case (words joined by underscores)
   - <= 50 characters
   - starts with a letter
   - unique within the list
+* If a current name is ALREADY a meaningful business identifier
+  (``id``, ``country_code``, ``period_end_2024``, ``email``), echo it
+  back unchanged after lowercasing + snake_casing. Do not invent a
+  new name when the existing one is already good.
 * Prefer concise, descriptive names (``line_item``, ``year_2024``,
   ``total_assets``, ``country_code``) over generic ones (``col_a``,
   ``value``).
 * If the first column's sample values are clearly row labels (e.g.
-  "Activos fijos", "Activos totales" -- they label what each row
-  represents), name it ``line_item`` / ``label`` / ``metric`` /
-  ``category`` depending on what the section is about.
+  "Activos fijos", "Activos totales"), name it ``line_item`` /
+  ``label`` / ``metric`` / ``category`` per the section's subject.
 * If a column's sample values are all dates of the form YYYY-MM-DD,
-  name it ``period_<YYYY_MM_DD>`` or ``year_<YYYY>`` (collapsing the
-  date to a year is acceptable when the day component is always 12-31
-  / 06-30 -- "period_end_<YYYY>" is also fine).
+  name it ``period_end_<YYYY>`` or ``year_<YYYY>``.
 * If a column's sample values are all the same currency code (USD,
-  EUR), name it ``currency`` / ``currency_USD`` (sub-section context).
+  EUR), name it ``currency``.
+* If the section label is an address/contact block and a column
+  contains a phone number, an email, a street, etc., name it
+  ``phone`` / ``email`` / ``street_address`` / ``city`` / ``country``
+  per the actual content.
 * If you genuinely can't tell from the samples + section label, fall
   back to ``<section>_col_<n>`` (e.g. ``activos_col_3``) -- never
-  return literal ``column00``.
+  return literal ``column00`` or a numeric literal.
 * Do NOT add prefixes like ``the_`` or ``a_``.
-* Do NOT invent semantic content the samples don't support -- if a
-  column has values like 1.0389 / 1.105 / ..., it's a ratio, not
-  necessarily "eur_usd_rate" unless the section label or another
-  column makes that explicit.
+* Do NOT invent semantic content the samples don't support: a column
+  of values like 1.0389 / 1.105 / ... is a ratio, not necessarily
+  ``eur_usd_rate`` unless the section label or another column makes
+  that explicit.
 """
 
 
@@ -102,12 +155,32 @@ def build_column_name_proposer_agent(settings):
 
 
 def needs_proposal(current_names: list[str]) -> bool:
-    """Return True iff every name matches the synthetic ``columnNN`` pattern.
+    """Return True iff the headers look like values pulled from a data row.
 
-    Files that already arrive with real headers (a clean CSV, a sheet
-    whose first row is real column labels) keep their names verbatim.
+    Three triggers, in order of strength:
+
+    1. Every name is synthetic ``columnNN`` -- DuckDB couldn't find any
+       header row at all (the classic dashboard-XLSX case).
+    2. Every name looks like a data value (all numeric, all long-text,
+       etc.) -- DuckDB picked the wrong row as the header.
+    3. At least half of the names look like data values, including any
+       section with 1-3 columns where even one bad name is enough --
+       a single ``Av. de los Pinos 23, ES`` column among two others
+       is clearly a misdetected contact section.
+
+    Clean inputs -- a CSV with ``id, name, email``, an XLSX sheet whose
+    first row is ``Activos | 2024-12-31 | 2023-12-31`` -- pass through
+    untouched (no LLM call).
     """
-    return bool(current_names) and all(_SYNTHETIC_NAME_RE.match(n) for n in current_names)
+    if not current_names:
+        return False
+    if all(_SYNTHETIC_NAME_RE.match(n) for n in current_names):
+        return True
+    data_like = sum(1 for n in current_names if _looks_like_data_value(n))
+    if data_like == 0:
+        return False
+    threshold = max(1, len(current_names) // 2)
+    return data_like >= threshold
 
 
 def render_proposal_prompt(
