@@ -118,7 +118,11 @@ is the canonical reference. Copy to `.env` and edit.
 | `FLYQUERY_EXPLAINER_MODEL` | `anthropic:claude-haiku-4-5` | ExplainerAgent (cheaper model) |
 | `FLYQUERY_DESCRIBE_MODEL` | `anthropic:claude-haiku-4-5` | DescribeAgent |
 | `FLYQUERY_RELATION_PROPOSER_MODEL` | `anthropic:claude-sonnet-4-6` | RelationProposerAgent |
-| `FLYQUERY_EMBEDDING_MODEL` | `openai:text-embedding-3-small` | Schema embeddings |
+| `FLYQUERY_EMBEDDING_PROVIDER` | `ollama` | One of `ollama`, `openai`, `cohere`, `voyage`, `azure`, `google`, `mistral`, `bedrock`, `null`. See [embeddings.md](./embeddings.md). |
+| `FLYQUERY_EMBEDDING_MODEL` | `nomic-embed-text` | Provider-specific model identifier. |
+| `FLYQUERY_EMBEDDING_NATIVE_DIM` | `768` | Provider's native vector dim (zero-padded to the column dim). |
+| `FLYQUERY_EMBEDDING_DIMENSIONS` | `1536` | pgvector column dimension (lock-step with canon). |
+| `FLYQUERY_EMBEDDING_BASE_URL` | _unset_ | Set for Ollama (e.g. `http://localhost:11552`). |
 | `FLYQUERY_RERANKER_MODEL` | `cross-encoder/ms-marco-MiniLM-L-6-v2` | Cross-encoder reranker |
 
 ### DuckDB execution

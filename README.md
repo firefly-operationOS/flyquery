@@ -238,6 +238,11 @@ All docs live in [`docs/`](docs/). Start with:
 | [docs/eda-events.md](docs/eda-events.md) | Events published: flyquery.ingest + flyquery.schema |
 | [docs/glossary.md](docs/glossary.md) | Term definitions |
 | [docs/firefly-intelligence-system.md](docs/firefly-intelligence-system.md) | flycanon + flyradar + flyquery cross-narrative |
+| [docs/embeddings.md](docs/embeddings.md) | Provider-agnostic embedder (Ollama / OpenAI / Cohere / …) |
+| [docs/semantic-types.md](docs/semantic-types.md) | 49-label semantic-type taxonomy for ingested columns |
+| [docs/prompt-engine.md](docs/prompt-engine.md) | YAML + Jinja2 prompt files under `src/flyquery/resources/prompts/` |
+| [docs/cost-tracking.md](docs/cost-tracking.md) | Usage surfacing per agent stage in query / ingest responses |
+| [examples/README.md](examples/README.md) | Synthetic CSV / JSON / JSONL / XLSX / Parquet fixtures + smoke recipe |
 
 Full index with reading paths: [**docs/README.md →**](docs/README.md)
 
