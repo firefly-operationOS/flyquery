@@ -10,6 +10,40 @@ from typing import Literal
 from pydantic import BaseModel
 
 
+class SchemaObjectUpdate(BaseModel):
+    """Request body for PUT /schema-objects/{id}."""
+
+    description: str | None = None
+    pii_tag: str | None = None
+    business_owner: str | None = None
+    governance_json: dict | None = None
+    synonyms_json: list | None = None
+
+
+class SchemaObjectRead(BaseModel):
+    """Response for GET /schema-objects/{id} or PUT /schema-objects/{id}."""
+
+    id: uuid.UUID
+    tenant_id: str
+    workspace_id: uuid.UUID
+    table_id: uuid.UUID
+    snapshot_id: uuid.UUID
+    kind: str
+    qualified_name: str
+    data_type: str | None
+    is_nullable: bool | None
+    description: str | None
+    description_source: str | None
+    synonyms_json: list | None
+    pii_tag: str | None
+    pii_source: str | None
+    business_owner: str | None
+    governance_json: dict | None
+    is_active: bool
+    created_at: datetime
+    last_changed_at: datetime
+
+
 class TableSummary(BaseModel):
     """Summary of a table created/updated by an upload."""
 

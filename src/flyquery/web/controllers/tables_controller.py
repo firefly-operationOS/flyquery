@@ -17,7 +17,7 @@ from pyfly.web import PathVar, get_mapping, request_mapping
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from starlette.requests import Request
 
-from flyquery.interfaces.files import SchemaChangeRead, SnapshotRead, TableRead
+from flyquery.interfaces.files import SchemaChangeRead, SchemaObjectRead, SnapshotRead, TableRead
 from flyquery.web.conventions import ResourceNotFound, tenant_context_from_request
 
 
@@ -130,6 +130,60 @@ class TablesController:
                     parquet_byte_size=r.get("parquet_byte_size"),
                     status=r["status"],
                     triggered_by=r["triggered_by"],
+                ).model_dump(mode="json")
+                for r in rows
+            ]
+        }
+
+    # ------------------------------------------------------------------ #
+    # List schema objects (columns + table rows) for current snapshot    #
+    # ------------------------------------------------------------------ #
+
+    @get_mapping("/tables/{table_id}/objects")
+    async def list_objects(
+        self,
+        http_request: Request,
+        table_id: PathVar[uuid.UUID],
+    ) -> dict:
+        """List schema_objects for the table's current snapshot."""
+        ctx = tenant_context_from_request(http_request)
+        async with self._factory() as s:
+            result = await s.execute(
+                sa.text(
+                    """
+                    SELECT so.*
+                    FROM flyquery_schema_objects so
+                    JOIN flyquery_tables t ON t.current_snapshot_id = so.snapshot_id
+                    WHERE t.id = :tid AND t.tenant_id = :tenant
+                      AND so.tenant_id = :tenant
+                    ORDER BY so.kind DESC, so.qualified_name
+                    """
+                ),
+                {"tid": table_id, "tenant": ctx.tenant_id},
+            )
+            rows = [dict(r) for r in result.mappings().all()]
+        return {
+            "items": [
+                SchemaObjectRead(
+                    id=r["id"],
+                    tenant_id=r["tenant_id"],
+                    workspace_id=r["workspace_id"],
+                    table_id=r["table_id"],
+                    snapshot_id=r["snapshot_id"],
+                    kind=r["kind"],
+                    qualified_name=r["qualified_name"],
+                    data_type=r.get("data_type"),
+                    is_nullable=r.get("is_nullable"),
+                    description=r.get("description"),
+                    description_source=r.get("description_source"),
+                    synonyms_json=r.get("synonyms_json"),
+                    pii_tag=r.get("pii_tag"),
+                    pii_source=r.get("pii_source"),
+                    business_owner=r.get("business_owner"),
+                    governance_json=r.get("governance_json"),
+                    is_active=r.get("is_active", True),
+                    created_at=r["created_at"],
+                    last_changed_at=r["last_changed_at"],
                 ).model_dump(mode="json")
                 for r in rows
             ]
