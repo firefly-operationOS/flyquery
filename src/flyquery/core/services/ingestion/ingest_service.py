@@ -113,6 +113,7 @@ class IngestService:
             existing_table_id=None,
             dataset_name=dataset_name,
             workspace_locale=locale,
+            original_filename=filename,
         )
 
         # --- Stages 3, 9, 10 per table ---
@@ -213,6 +214,7 @@ class IngestService:
             existing_table_id=table_id,
             dataset_name=dataset_name,
             workspace_locale=locale,
+            original_filename=filename,
         )
 
         ingested: list[IngestedTable] = []

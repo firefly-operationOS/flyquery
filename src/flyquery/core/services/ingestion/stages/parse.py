@@ -65,6 +65,7 @@ async def run_parse(
     existing_table_id: uuid.UUID | None = None,
     dataset_name: str = "dataset",
     workspace_locale: str = "en-US",
+    original_filename: str | None = None,
 ) -> list[ParsedTable]:
     """Execute Stage 2: parse."""
     # 1. Decompress if needed
@@ -101,7 +102,14 @@ async def run_parse(
             else:
                 table_id = uuid.uuid4()
 
-            safe_name = _sanitise_name(pt.name)
+            # If there's only one table (CSV/TSV/single-sheet), prefer the
+            # original filename stem so the table is named "orders" not a
+            # temp path like "tmpXXXX".
+            if original_filename and len(proposed) == 1:
+                raw_name = Path(original_filename).stem
+            else:
+                raw_name = pt.name
+            safe_name = _sanitise_name(raw_name)
             qualified_name = f"{_sanitise_name(dataset_name)}.{safe_name}"
 
             # Build the Parquet key: determine version number
