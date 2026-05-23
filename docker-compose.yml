@@ -1,0 +1,48 @@
+# Copyright 2026 Firefly Software Solutions Inc
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_USER: flyquery
+      POSTGRES_PASSWORD: flyquery
+      POSTGRES_DB: flyquery
+    ports:
+      - "5552:5432"          # 55XX series per Firefly OS convention
+    volumes:
+      - flyquery_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U flyquery -d flyquery"]
+      interval: 2s
+      timeout: 2s
+      retries: 30
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6552:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 2s
+      timeout: 2s
+      retries: 30
+
+  minio:
+    image: minio/minio:latest
+    environment:
+      MINIO_ROOT_USER: flyquery
+      MINIO_ROOT_PASSWORD: flyqueryflyquery
+    command: server /data --console-address ":9001"
+    ports:
+      - "9552:9000"
+      - "9553:9001"
+    volumes:
+      - flyquery_minio:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+
+volumes:
+  flyquery_pgdata:
+  flyquery_minio:
