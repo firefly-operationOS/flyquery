@@ -66,9 +66,21 @@ async def test_mint_token_and_use_on_agent_route() -> None:
             json={"name": "bad", "scopes": ["flyquery.query:bogus"]},
             headers={"X-Tenant-Id": _TENANT, "X-Workspace-Id": _WS_ID},
         )
-        assert r.status_code == 400, r.text
+        # Pydantic field_validator raises pre-controller -> 422 (RFC 4918,
+        # standard for semantic validation failures). 400 is the legacy
+        # shape from before scope validation moved to the DTO.
+        assert r.status_code in (400, 422), r.text
         body = r.json()
-        assert body.get("code") in ("invalid_scope", "validation_error")
+        # RFC 7807 nests the envelope under ``error``; accept both shapes.
+        code = (
+            body.get("code")
+            or body.get("error", {}).get("code", "").lower()
+            or ""
+        )
+        assert code.lower() in ("invalid_scope", "validation_error"), body
+        # Per-field error code lives inside the validation context.
+        errors = body.get("error", {}).get("context", {}).get("errors", [])
+        assert any(e.get("type") == "invalid_scope" for e in errors), body
 
 
 @pytest.mark.integration

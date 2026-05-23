@@ -15,7 +15,9 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
+
+from flyquery.core.services.auth.scope_catalog import is_valid_scope
 
 
 class AgentTokenMintRequest(BaseModel):
@@ -27,6 +29,11 @@ class AgentTokenMintRequest(BaseModel):
     ``"*"`` as a wildcard. ``rate_limit_rpm`` is advisory metadata
     today and reserved for the per-token rate limiter we add
     later; ``expires_at`` is enforced by the verify path.
+
+    Every requested scope must be in
+    :data:`flyquery.core.services.auth.scope_catalog.ALL_SCOPES` --
+    Pydantic validates this before the mint hits the database and
+    surfaces an ``invalid_scope`` error envelope on the wire.
     """
 
     model_config = ConfigDict(frozen=True)
@@ -36,6 +43,25 @@ class AgentTokenMintRequest(BaseModel):
     scopes: list[str] = Field(default_factory=lambda: ["*"])
     rate_limit_rpm: int | None = Field(default=None, ge=1, le=10_000)
     expires_at: datetime | None = None
+
+    @field_validator("scopes")
+    @classmethod
+    def _scopes_must_be_known(cls, value: list[str]) -> list[str]:
+        unknown = [s for s in value if not is_valid_scope(s)]
+        if unknown:
+            # ``PydanticCustomError`` keeps the error JSON-serializable
+            # for the RFC 7807 envelope -- a bare ``ValueError`` puts a
+            # non-serializable ``ValueError`` instance in the error ctx
+            # which breaks the global error handler.
+            from pydantic_core import PydanticCustomError
+
+            raise PydanticCustomError(
+                "invalid_scope",
+                "unknown scope(s) {unknown}. See "
+                "``flyquery.core.services.auth.scope_catalog.ALL_SCOPES``.",
+                {"unknown": list(unknown)},
+            )
+        return value
 
 
 class AgentTokenSummaryDto(BaseModel):
