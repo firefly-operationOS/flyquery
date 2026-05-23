@@ -80,4 +80,9 @@ tasks:
   openapi:
     desc: Refresh openapi.json snapshot (run after route changes)
     cmds:
-      - uv run python -c "from flyquery.main import app; import json; print(json.dumps(app.openapi(), indent=2))" > openapi.json
+      - uv run python -c "from flyquery.main import app; import json; print(json.dumps(app.openapi(), indent=2, sort_keys=True))" > openapi.json
+
+  openapi-snapshot:
+    desc: Snapshot the current OpenAPI spec to openapi.json
+    cmds:
+      - uv run python -c "from flyquery.main import app; import json; print(json.dumps(app.openapi(), indent=2, sort_keys=True))" > openapi.json
