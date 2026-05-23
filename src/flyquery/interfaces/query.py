@@ -30,6 +30,41 @@ class ClarificationFrame(BaseModel):
     reasons: list[str] = Field(default_factory=list)
 
 
+class AgentUsage(BaseModel):
+    """LLM usage + cost for a single pipeline stage.
+
+    Surfaced inside :class:`UsageSummary` so callers see exactly
+    where the tokens went. ``cost_usd`` is computed by the
+    fireflyframework-agentic cost tracker (per-model rate table).
+    """
+
+    agent: str  # "grounding" | "generation" | "critic" | "explainer" | ...
+    model: str | None = None
+    input_tokens: int = 0
+    output_tokens: int = 0
+    total_tokens: int = 0
+    cost_usd: float = 0.0
+    latency_ms: float = 0.0
+    calls: int = 0
+
+
+class UsageSummary(BaseModel):
+    """Aggregated cost + latency across the whole pipeline.
+
+    Returned on every query / ingest response so clients can
+    show consumption to end users and stream into a billing
+    pipeline. The per-stage breakdown stays in ``by_agent`` for
+    debugging.
+    """
+
+    total_input_tokens: int = 0
+    total_output_tokens: int = 0
+    total_tokens: int = 0
+    total_cost_usd: float = 0.0
+    total_latency_ms: float = 0.0
+    by_agent: list[AgentUsage] = Field(default_factory=list)
+
+
 class AnswerResponse(BaseModel):
     """Response from POST /api/v1/query (sync)."""
 
@@ -45,6 +80,7 @@ class AnswerResponse(BaseModel):
     clarification: ClarificationFrame | None = None
     grounded_summary: dict | None = None
     snapshot_pins: dict[str, str] = Field(default_factory=dict)
+    usage: UsageSummary | None = None
 
 
 class ExplainResponse(BaseModel):

@@ -12,14 +12,99 @@ system: |
   samples (sample values), and table_context (other columns in the
   same table).
 
-  For each column, write:
+  For EACH column, output three fields:
 
-  1. a 1-2 sentence business-oriented description explaining what
-     the column stores and how it might be used by a business
-     analyst, and
-  2. 3-8 alternative business names (synonyms) that an analyst might
-     use to refer to this column.
+  1. ``description`` -- a 1-2 sentence business-oriented description
+     explaining what the column stores and how a business analyst
+     would use it. Be concise. Don't restate the column name.
+  2. ``synonyms`` -- 3-8 alternative business names an analyst
+     might use to refer to this column (e.g. for ``revenue``:
+     ``["sales", "turnover", "top line", "gross income"]``).
+  3. ``semantic_type`` -- ONE label from the taxonomy below. Pick by
+     reading the sample values + the column name, NOT the storage
+     data_type (two DOUBLE columns can be ``amount`` vs ``rate``).
 
-  Be concise and precise. Avoid restating the column name in the
-  description. Output every column from the input -- do not skip
-  any.
+     General text
+       - ``text``            -- short labels / captions / titles
+       - ``name``            -- person or organization name
+       - ``description``     -- long narrative text, multi-sentence
+       - ``tag``             -- open categorical labels
+       - ``enum``            -- closed set of categorical values
+       - ``language_code``   -- ISO 639 (``en``, ``es``)
+
+     Identifiers
+       - ``identifier``      -- UUID / surrogate / generic ID
+       - ``code``            -- business codes (SKU, ISIN, GICS)
+       - ``tax_id``          -- national tax / VAT / company-reg IDs
+       - ``iban``            -- IBAN bank-account identifiers
+       - ``version``         -- SemVer / CalVer / build numbers
+
+     Quantities (non-money)
+       - ``integer``         -- arbitrary integer values
+       - ``count``           -- counts of discrete things
+       - ``decimal``         -- arbitrary decimals (no meaning)
+       - ``score``           -- composite scores (risk / KPI)
+       - ``ratio``           -- 0-1 unitless fractions
+       - ``percentage``      -- 0-100 values labelled %
+       - ``rate``            -- interest / FX / discount rates
+
+     Money
+       - ``amount``          -- monetary WITHOUT currency column
+       - ``currency``        -- monetary WITH currency column
+       - ``currency_code``   -- ISO 4217 (``USD``, ``EUR``)
+
+     Time
+       - ``date``            -- calendar date, no time
+       - ``datetime``        -- timestamp with time
+       - ``time``            -- clock time without date
+       - ``year``            -- year only (``2024``)
+       - ``quarter``         -- ``Q1 2024`` / ``2024-Q1``
+       - ``month``           -- month bucket
+       - ``week``            -- ISO week bucket
+       - ``duration``        -- minutes / days / months span
+       - ``timezone``        -- IANA timezone string
+
+     Boolean
+       - ``boolean``         -- true/false, yes/no
+       - ``flag``            -- active/inactive, on/off
+
+     Contact
+       - ``email``           -- email address
+       - ``phone``           -- phone number
+       - ``url``             -- web URL
+       - ``image_url``       -- URL of an image
+       - ``file_path``       -- local FS / object-store path
+
+     Geo
+       - ``address``         -- multi-field street address
+       - ``city``            -- city name
+       - ``state``           -- state / province / region
+       - ``postal_code``     -- ZIP / postcode
+       - ``country``         -- country name (long form)
+       - ``country_code``    -- ISO 3166
+       - ``region``          -- multi-country (EMEA, APAC)
+       - ``industry_sector`` -- NACE / NAICS / GICS sector
+       - ``geo_coordinate``  -- lat / lon
+
+     Tech
+       - ``ip_address``      -- IPv4 / IPv6
+       - ``json``            -- structured JSON blob
+
+     Default
+       - ``unknown``         -- truly uncertain
+
+     IMPORTANT rules:
+     * Always prefer the **more specific** label (e.g. ``amount`` /
+       ``currency`` over ``decimal`` when monetary; ``count`` over
+       ``integer`` when counting discrete things; ``name`` over
+       ``text`` when it's a person / org name).
+     * Distinguish ``ratio`` (0-1) vs ``percentage`` (0-100) vs
+       ``rate`` (financial rate, often %).
+     * Distinguish ``date`` (no time) vs ``datetime`` (with time)
+       vs ``year`` / ``quarter`` / ``month`` / ``week`` (time
+       bucket label).
+     * Distinguish ``flag`` (active/inactive status) vs ``boolean``
+       (pure true/false) vs ``enum`` (closed multi-value set).
+     * Default to ``unknown`` only when you genuinely can't tell.
+
+  Output every column from the input -- do not skip any.

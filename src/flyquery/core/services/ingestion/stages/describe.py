@@ -109,6 +109,7 @@ async def run_describe(
                 col_id=col["id"],
                 description=described_col.description,
                 synonyms=described_col.synonyms,
+                semantic_type=getattr(described_col, "semantic_type", None),
                 tenant_id=tenant_id,
                 session_factory=session_factory,
             )
@@ -218,9 +219,16 @@ async def _persist_description(
     col_id: uuid.UUID,
     description: str,
     synonyms: list[str],
+    semantic_type: str | None,
     tenant_id: str,
     session_factory: async_sessionmaker[AsyncSession],
 ) -> None:
+    """Persist the AI description + synonyms + semantic type.
+
+    ``semantic_type`` lives inside ``governance_json`` (existing
+    JSONB column) so no schema migration is required. The
+    schema_objects controller reads it back from there.
+    """
     async with session_factory() as s, s.begin():
         await s.execute(
             sa.text(
@@ -228,7 +236,9 @@ async def _persist_description(
                 UPDATE flyquery_schema_objects
                 SET description = :description,
                     description_source = 'AGENT',
-                    synonyms_json = CAST(:synonyms AS jsonb)
+                    synonyms_json = CAST(:synonyms AS jsonb),
+                    governance_json = COALESCE(governance_json, '{}'::jsonb)
+                                      || CAST(:gov AS jsonb)
                 WHERE id = :id AND tenant_id = :tenant
                 """
             ),
@@ -237,5 +247,6 @@ async def _persist_description(
                 "tenant": tenant_id,
                 "description": description,
                 "synonyms": json.dumps(synonyms),
+                "gov": json.dumps({"semantic_type": semantic_type or "unknown"} if semantic_type else {}),
             },
         )
