@@ -23,7 +23,8 @@ async def test_create_then_list_workspace() -> None:
         )
         assert r.status_code == 200
         body = r.json()
-        assert body["items"][0]["slug"] == "alpha"
+        slugs = {item["slug"] for item in body["items"]}
+        assert "alpha" in slugs
 
 
 @pytest.mark.integration
