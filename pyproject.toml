@@ -1,0 +1,143 @@
+[project]
+name = "flyquery"
+# CalVer YY.MM.PP per memory `firefly_uses_calver`.
+version = "26.5.0"
+description = "Operational Structured-Data Intelligence (upload-driven) -- multi-tenant ingestion + Text-to-SQL service over user-uploaded structured files. Part of Firefly OperationOS."
+readme = "README.md"
+requires-python = ">=3.13,<3.14"
+authors = [
+    { name = "Firefly Software Solutions Inc" },
+]
+
+dependencies = [
+    # Firefly Framework runtime -- same extras canon uses so a fresh
+    # `uv sync` boots the full stack.
+    "pyfly[fastapi,observability,security,data-relational,postgresql,eda,redis,client,scheduling,cli]>=26.5.4",
+    # GenAI metaframework -- FireflyAgent over pydantic-ai + retrieval
+    # primitives (used in Plans 2-3; harmless to install in Plan 1).
+    "fireflyframework-agentic[rest,security,redis,corpus-search]>=26.5.11",
+
+    # HTTP + tenacity (outbound).
+    "httpx>=0.28.0",
+    "tenacity>=9.0.0",
+
+    # Configuration.
+    "pydantic>=2.10.0",
+    "pydantic-settings>=2.7.0",
+
+    # Persistence. asyncpg for runtime, psycopg for Alembic; alembic env
+    # rewrites +asyncpg -> +psycopg so one URL covers both.
+    "sqlalchemy[asyncio]>=2.0",
+    "asyncpg>=0.30",
+    "psycopg[binary]>=3.2",
+    "aiosqlite>=0.22",
+    "alembic>=1.14",
+    "redis>=5.2",
+    "pgvector>=0.3.6",
+
+    # DuckDB -- query engine; used in Plan 3 but pinned here so the
+    # extras boundary stays stable.
+    "duckdb>=1.1",
+    "pyarrow>=17.0",
+
+    # Logging.
+    "structlog>=25.5.0",
+]
+
+[project.scripts]
+flyquery = "flyquery.cli:main"
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "pytest-asyncio>=0.24",
+    "pytest-cov>=5.0",
+    "pytest-timeout>=2.3",
+    "ruff>=0.8",
+    "pyright>=1.1",
+    "testcontainers[postgres,redis,minio]>=4.0",
+    "respx>=0.21",
+    "httpx>=0.28",
+]
+
+# ObjectStore adapter extras (spec §9.1)
+s3 = [
+    "aiobotocore>=2.15",
+    "botocore>=1.35",
+]
+gcs = [
+    "gcloud-aio-storage>=9.3",
+]
+azure = [
+    "azure-storage-blob>=12.23",
+    "aiohttp>=3.10",
+]
+
+# PII (Plan 2)
+presidio = [
+    "presidio-analyzer>=2.2",
+    "presidio-anonymizer>=2.2",
+]
+
+# Cross-encoder reranker (Plan 3)
+ml-reranker = [
+    "sentence-transformers>=3.3",
+]
+
+# File-format readers (Plan 2)
+file-readers = [
+    "python-calamine>=0.3",
+    "openpyxl>=3.1",
+    "fastavro>=1.9",
+]
+
+[build-system]
+requires = ["hatchling>=1.18"]
+build-backend = "hatchling.build"
+
+[tool.uv.sources]
+# Sibling-repo path sources (same as canon).
+pyfly = { path = "../../fireflyframework/fireflyframework-pyfly", editable = true }
+fireflyframework-agentic = { path = "../../fireflyframework/fireflyframework-agentic", editable = true }
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/flyquery"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+pythonpath = ["src"]
+markers = [
+    "integration: requires docker compose stack (Postgres / Redis / MinIO)",
+    "s3: requires MinIO (covered by 'integration')",
+    "gcs: requires fake-gcs-server",
+    "azure_blob: requires Azurite",
+    "llm: requires a real LLM provider; skipped by default",
+]
+addopts = "-v --tb=short -m 'not llm'"
+
+[tool.ruff]
+target-version = "py313"
+line-length = 110
+extend-exclude = ["vendor"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "UP", "B", "SIM"]
+
+[tool.ruff.lint.per-file-ignores]
+"src/flyquery/interfaces/**" = ["N801", "N811", "N815", "N818"]
+"src/flyquery/core/services/**" = ["N818"]
+"src/flyquery/web/conventions/**" = ["N818"]
+"tests/**" = ["E501"]
+
+[tool.pyright]
+pythonVersion = "3.13"
+typeCheckingMode = "basic"
+include = ["src/flyquery"]
+exclude = ["tests/**", "**/__pycache__/**", "vendor/**"]
+
+[[tool.pyright.executionEnvironments]]
+root = "src/flyquery/web/controllers"
+reportArgumentType = "none"
+reportAttributeAccessIssue = "none"
+reportOperatorIssue = "none"
