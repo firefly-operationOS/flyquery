@@ -16,6 +16,8 @@ from flyquery.models.entities.dataset import Dataset  # noqa: F401,E402
 from flyquery.models.entities.file import File  # noqa: F401,E402
 from flyquery.models.entities.table import Table  # noqa: F401,E402
 from flyquery.models.entities.schema import SchemaSnapshot, SchemaChange, SchemaObject, Relation  # noqa: F401,E402
+from flyquery.models.entities.semantic import SemanticMetric, SemanticDimension, SemanticVersion, GlossaryTerm  # noqa: F401,E402
+from flyquery.models.entities.examples import Example  # noqa: F401,E402
 
 __all__ = [
     "Base",
@@ -27,4 +29,9 @@ __all__ = [
     "SchemaChange",
     "SchemaObject",
     "Relation",
+    "SemanticMetric",
+    "SemanticDimension",
+    "SemanticVersion",
+    "GlossaryTerm",
+    "Example",
 ]

@@ -24,4 +24,9 @@ def test_alembic_upgrade_head_creates_all_tables() -> None:
         "flyquery_schema_snapshots", "flyquery_schema_changes",
         "flyquery_schema_objects", "flyquery_relations",
     }
+    expected |= {
+        "flyquery_semantic_metrics", "flyquery_semantic_dimensions",
+        "flyquery_semantic_versions", "flyquery_glossary_terms",
+        "flyquery_examples",
+    }
     assert expected <= names
