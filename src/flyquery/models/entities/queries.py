@@ -22,7 +22,8 @@ class Query(Base):
             name="ck_queries_semantic_path",
         ),
         CheckConstraint(
-            "execution_status IS NULL OR execution_status IN ('OK','REFINED_OK','FAILED','REJECTED_BY_FIREWALL')",
+            "execution_status IS NULL OR "
+            "execution_status IN ('OK','REFINED_OK','FAILED','REJECTED_BY_FIREWALL')",
             name="ck_queries_status",
         ),
         CheckConstraint(

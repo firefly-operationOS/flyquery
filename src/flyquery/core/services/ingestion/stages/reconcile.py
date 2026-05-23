@@ -674,10 +674,7 @@ async def _invoke_rename_agent(
         return None
 
     try:
-        from flyquery.core.agents.rename_detection_agent import (
-            AUTO_CONFIRM_THRESHOLD,
-            build_rename_detection_agent,
-        )
+        from flyquery.core.agents.rename_detection_agent import build_rename_detection_agent
     except (ImportError, RuntimeError) as exc:
         logger.warning("rename_detection_agent unavailable (skip LLM): %s", exc)
         return None

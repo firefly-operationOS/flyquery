@@ -24,6 +24,7 @@ from flyquery.web.conventions import (
     TenantContextMiddleware,
     register_exception_handlers,
 )
+from flyquery.web.openapi_headers import enrich_openapi_with_headers
 from flyquery.web.openapi_override import install_openapi
 
 _TITLE = "flyquery"
@@ -75,6 +76,19 @@ async def _lifespan(app: Any):
         version=__version__,
         description=_DESCRIPTION,
     )
+
+    # Layer flyquery's tenant + workspace + agent-token + idempotency
+    # headers on top of pyfly's spec. This is flyquery-specific and lives
+    # in a sibling module (``openapi_headers``) so ``openapi_override.py``
+    # stays byte-equivalent to the canon lockstep pin.
+    _wrap_with_headers = app.openapi
+
+    def _custom_openapi_with_headers():
+        spec = _wrap_with_headers()
+        enrich_openapi_with_headers(spec)
+        return spec
+
+    app.openapi = _custom_openapi_with_headers  # type: ignore[method-assign]
     yield
     await _pyfly.shutdown()
 

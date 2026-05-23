@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import hashlib
 import logging
+import os
 import tempfile
 import uuid
 from dataclasses import dataclass
@@ -79,13 +80,11 @@ async def run_receive(
     await object_store.put(object_store_key, file_bytes, content_type)
 
     # --- 6. Write local temp copy for pipeline stages (avoids re-downloading) ---
-    tmp = tempfile.NamedTemporaryFile(suffix=ext, delete=False)
+    fd, local_temp_path = tempfile.mkstemp(suffix=ext)
     try:
-        tmp.write(file_bytes)
-        tmp.flush()
-        local_temp_path = tmp.name
+        os.write(fd, file_bytes)
     finally:
-        tmp.close()
+        os.close(fd)
 
     # --- 7. Insert flyquery_files row ---
     async with session_factory() as s, s.begin():
@@ -146,18 +145,20 @@ def _pick_ext(filename: str, file_format: str, compression: str) -> str:
     return suffix
 
 
+_CONTENT_TYPES: dict[str, str] = {
+    "csv": "text/csv",
+    "tsv": "text/tab-separated-values",
+    "json": "application/json",
+    "jsonl": "application/x-ndjson",
+    "parquet": "application/octet-stream",
+    "avro": "application/octet-stream",
+    "orc": "application/octet-stream",
+    "arrow": "application/octet-stream",
+    "xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    "xls": "application/vnd.ms-excel",
+    "ods": "application/vnd.oasis.opendocument.spreadsheet",
+}
+
+
 def _content_type(file_format: str) -> str:
-    _MAP = {
-        "csv": "text/csv",
-        "tsv": "text/tab-separated-values",
-        "json": "application/json",
-        "jsonl": "application/x-ndjson",
-        "parquet": "application/octet-stream",
-        "avro": "application/octet-stream",
-        "orc": "application/octet-stream",
-        "arrow": "application/octet-stream",
-        "xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        "xls": "application/vnd.ms-excel",
-        "ods": "application/vnd.oasis.opendocument.spreadsheet",
-    }
-    return _MAP.get(file_format, "application/octet-stream")
+    return _CONTENT_TYPES.get(file_format, "application/octet-stream")

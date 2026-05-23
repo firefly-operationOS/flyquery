@@ -46,25 +46,16 @@ from flyquery.core.services.auth.agent_token_service import (
     MintedAgentToken,
     MintRequest,
 )
-from flyquery.core.services.auth.scope_catalog import InvalidScopeError, validate_scopes
 from flyquery.interfaces.dtos.agent_token import (
     AgentTokenCreated,
     AgentTokenMintRequest,
     AgentTokenSummaryDto,
 )
 from flyquery.web.conventions import (
-    FireflyHTTPException,
     ResourceNotFound,
     TenantContext,
     tenant_context_from_request,
 )
-
-
-class InvalidScopeRequest(FireflyHTTPException):
-    status = 400
-    code = "invalid_scope"
-    title = "Invalid scope"
-
 
 logger = logging.getLogger(__name__)
 
@@ -98,10 +89,6 @@ class AgentTokensController:
         """
         ctx = tenant_context_from_request(http_request)
         _reject_agent_actor(ctx)
-        try:
-            validate_scopes(list(body.scopes))
-        except InvalidScopeError as exc:
-            raise InvalidScopeRequest(str(exc)) from exc
         minted = await self._service.mint(
             MintRequest(
                 tenant_id=ctx.tenant_id,

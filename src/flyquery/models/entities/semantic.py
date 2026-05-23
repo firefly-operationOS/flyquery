@@ -1,5 +1,9 @@
 # Copyright 2026 Firefly Software Solutions Inc
-"""flyquery semantic layer entities: semantic_metrics, semantic_dimensions, semantic_versions, glossary_terms."""
+"""flyquery semantic layer entities.
+
+Covers: semantic_metrics, semantic_dimensions, semantic_versions,
+glossary_terms.
+"""
 
 from __future__ import annotations
 

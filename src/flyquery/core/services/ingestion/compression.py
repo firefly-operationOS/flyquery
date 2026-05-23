@@ -6,6 +6,7 @@ from __future__ import annotations
 import asyncio
 import bz2
 import gzip
+import os
 import shutil
 import tempfile
 import zipfile
@@ -36,9 +37,11 @@ def _sync(source_path: str, compression: str) -> str:
     else:
         raise ValueError(f"unknown compression {compression!r}")
 
-    tmp = tempfile.NamedTemporaryFile(suffix=inner_ext, delete=False)
-    tmp.close()
-    out_path = tmp.name
+    # We only need the path, then we hand it to ``gzip.open`` / ``bz2.open`` /
+    # ``zipfile`` to populate. ``mkstemp`` gives us that without the open file
+    # handle that SIM115 would otherwise rightly complain about.
+    fd, out_path = tempfile.mkstemp(suffix=inner_ext)
+    os.close(fd)
 
     if compression == "gz":
         with gzip.open(source_path, "rb") as src, open(out_path, "wb") as dst:

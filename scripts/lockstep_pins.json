@@ -4,7 +4,7 @@
   "src/flyquery/core/services/auth/agent_token_service.py": "945ac53e88000d5cf7aafe8f7ea4f370228dd7b6a8a3c27f16ca7681af7a955e",
   "src/flyquery/core/services/auth/redis_rate_limiter.py": "aa4ac4e651e59aeddf5d9b9b9b85730a058ea230d02a8bdf3caee09e8584212a",
   "src/flyquery/web/agent_deps.py": "d786271cd17f2c6dfa0eb340ba87538f4c6f294241896c1fd4257f84f36fc285",
-  "src/flyquery/web/controllers/agent_tokens_controller.py": "d85422d7b67177c188aaef438684967da7a06945a2f1660e40bbcd2daf8a4f16",
+  "src/flyquery/web/controllers/agent_tokens_controller.py": "5983850bf9e5197e7a84c5e41f2a069a3acc7bbc13f4c67d13781897cf7ddea5",
   "src/flyquery/web/conventions/__init__.py": "a70006d7e1f710d81da415bddbf8ada157e2055e49b8a8b93669a7186bcea934",
   "src/flyquery/web/conventions/actor.py": "b5b9d02bfa9e52a7e906a7eeb2287f6ca993f2ec8eb3f29d8bd690dffc666438",
   "src/flyquery/web/conventions/context.py": "3bcef9c9988a3e2378bbef5f6fe1e6e49cbb2dad89bd35259e9ccf54336db2ec",
@@ -19,5 +19,5 @@
   "src/flyquery/web/conventions/middleware.py": "9a0c07e3c4352c5390229251917ffa993ea107e682f6c56fa0321a2cdb634cdc",
   "src/flyquery/web/conventions/redis_idempotency.py": "df7bd5aeee89f558d95d384d274e5bebe076d6d48ddd5e42ebe896d05ede22e4",
   "src/flyquery/web/conventions/validation.py": "a9570913b4f4e6fb8392e5728cf9b545c10b8f859801c14791240811598f51ad",
-  "src/flyquery/web/openapi_override.py": "a4b6600b56dac6e0999729d979e6bf2bac9582e9b408f02af4bdb26fbb8982a7"
+  "src/flyquery/web/openapi_override.py": "71669d64e95e4a06357a6bd3f155a21bb8a4198ee3f6ddd4fd5fb05efd2df208"
 }
