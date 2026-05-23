@@ -5,7 +5,7 @@ description = "flyquery"
 authors = [
   {name = "Firefly OperationOS",email = "team@openapitools.org"},
 ]
-license = { text = "Proprietary -- service" }
+license = { text = "Apache-2.0" }
 readme = "README.md"
 keywords = ["OpenAPI", "OpenAPI-Generator", "flyquery"]
 requires-python = ">=3.9"
