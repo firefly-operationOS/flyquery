@@ -6,6 +6,7 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 
+from pgvector.sqlalchemy import Vector
 from sqlalchemy import BigInteger, CheckConstraint, String, text
 from sqlalchemy.dialects.postgresql import JSONB, TIMESTAMP, UUID
 from sqlalchemy.orm import Mapped, mapped_column
@@ -35,7 +36,7 @@ class Example(Base):
     normalised_sql: Mapped[str] = mapped_column(String, nullable=False)
     source: Mapped[str] = mapped_column(String, nullable=False)
     quality: Mapped[str] = mapped_column(String, nullable=False, server_default=text("'PROPOSED'"))
-    # embedding column is added in migration 0006 (pgvector extension)
+    embedding: Mapped[list[float] | None] = mapped_column(Vector(1536), nullable=True)
     citations_json: Mapped[dict] = mapped_column(JSONB, nullable=False, server_default=text("'{}'::jsonb"))
     created_at: Mapped[datetime] = mapped_column(
         TIMESTAMP(timezone=True), nullable=False, server_default=text("now()")

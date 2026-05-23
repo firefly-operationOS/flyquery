@@ -6,8 +6,9 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 
+from pgvector.sqlalchemy import Vector
 from sqlalchemy import BigInteger, Boolean, CheckConstraint, Float, Integer, String, UniqueConstraint, text
-from sqlalchemy.dialects.postgresql import JSONB, TIMESTAMP, UUID
+from sqlalchemy.dialects.postgresql import JSONB, TIMESTAMP, TSVECTOR, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from flyquery.models.entities import Base
@@ -101,7 +102,8 @@ class SchemaObject(Base):
     sample_values_json: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
     sample_taken_at: Mapped[datetime | None] = mapped_column(TIMESTAMP(timezone=True), nullable=True)
     profile_json: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
-    # embedding and content_tsv columns are added in migration 0006 (pgvector extension)
+    embedding: Mapped[list[float] | None] = mapped_column(Vector(1536), nullable=True)
+    content_tsv: Mapped[str | None] = mapped_column(TSVECTOR, nullable=True)
     embedding_model: Mapped[str | None] = mapped_column(String, nullable=True)
     source_hash: Mapped[str] = mapped_column(String, nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("true"))
