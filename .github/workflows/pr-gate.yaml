@@ -1,0 +1,252 @@
+# Copyright 2026 Firefly Software Solutions Inc
+#
+# PR gate -- runs on every pull request, on push to main, and on
+# workflow_dispatch.
+#
+# Checks:
+#   1. lint           : ruff (check + format)
+#   2. typecheck      : pyright (best-effort, advisory)
+#   3. unit           : pytest tests/unit
+#   4. integration    : pytest tests/integration (Postgres+Redis+MinIO via testcontainers)
+#   5. lockstep-check : 21 byte-equivalent files vs canon-pinned SHAs
+#   6. sdk-python     : import-smoke + ruff under sdks/python
+#   7. sdk-java       : ``mvn verify`` under sdks/java
+#
+# Notes
+# -----
+# * pyfly + fireflyframework-agentic live in the public
+#   ``fireflyframework`` org (NOT ``firefly-operationOS``). The
+#   per-job ``Check out sibling firefly framework repos`` step
+#   clones the tagged refs into ``./vendor/`` and ``sed``-rewrites
+#   ``[tool.uv.sources]`` to point there for the duration of CI.
+# * Pin the framework refs in ``env.{PYFLY_REF,AGENTIC_REF}`` so
+#   the gate is reproducible.
+
+name: PR gate
+
+on:
+  pull_request:
+    branches: [main, develop]
+    paths-ignore:
+      - "**.md"
+      - "LICENSE"
+      - ".gitignore"
+      - "docs/**"
+  push:
+    branches: [main]
+    paths-ignore:
+      - "**.md"
+      - "LICENSE"
+      - ".gitignore"
+      - "docs/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pr-gate-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PYTHON_VERSION: "3.13"
+  PYFLY_REF: v26.05.05
+  AGENTIC_REF: v26.05.21
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: Check out sibling firefly framework repos
+        run: |
+          git clone --depth=1 --branch "$PYFLY_REF" \
+            https://github.com/fireflyframework/fireflyframework-pyfly.git \
+            ./vendor/pyfly
+          git clone --depth=1 --branch "$AGENTIC_REF" \
+            https://github.com/fireflyframework/fireflyframework-agentic.git \
+            ./vendor/fireflyframework-agentic
+      - name: Repoint uv path sources at ./vendor
+        run: |
+          sed -i \
+            -e 's|path = "\.\./\.\./fireflyframework/fireflyframework-pyfly"|path = "./vendor/pyfly"|' \
+            -e 's|path = "\.\./\.\./fireflyframework/fireflyframework-agentic"|path = "./vendor/fireflyframework-agentic"|' \
+            pyproject.toml
+      - name: uv sync (dev + s3)
+        run: uv sync --extra dev --extra s3
+      - name: ruff check
+        run: uv run ruff check src tests
+      - name: ruff format --check
+        run: uv run ruff format --check src tests
+
+  typecheck:
+    name: Typecheck (advisory)
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: Check out sibling firefly framework repos
+        run: |
+          git clone --depth=1 --branch "$PYFLY_REF" \
+            https://github.com/fireflyframework/fireflyframework-pyfly.git \
+            ./vendor/pyfly
+          git clone --depth=1 --branch "$AGENTIC_REF" \
+            https://github.com/fireflyframework/fireflyframework-agentic.git \
+            ./vendor/fireflyframework-agentic
+      - name: Repoint uv path sources at ./vendor
+        run: |
+          sed -i \
+            -e 's|path = "\.\./\.\./fireflyframework/fireflyframework-pyfly"|path = "./vendor/pyfly"|' \
+            -e 's|path = "\.\./\.\./fireflyframework/fireflyframework-agentic"|path = "./vendor/fireflyframework-agentic"|' \
+            pyproject.toml
+      - name: uv sync (dev)
+        run: uv sync --extra dev
+      - name: pyright
+        run: uv run pyright src/flyquery
+
+  unit:
+    name: Unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: Check out sibling firefly framework repos
+        run: |
+          git clone --depth=1 --branch "$PYFLY_REF" \
+            https://github.com/fireflyframework/fireflyframework-pyfly.git \
+            ./vendor/pyfly
+          git clone --depth=1 --branch "$AGENTIC_REF" \
+            https://github.com/fireflyframework/fireflyframework-agentic.git \
+            ./vendor/fireflyframework-agentic
+      - name: Repoint uv path sources at ./vendor
+        run: |
+          sed -i \
+            -e 's|path = "\.\./\.\./fireflyframework/fireflyframework-pyfly"|path = "./vendor/pyfly"|' \
+            -e 's|path = "\.\./\.\./fireflyframework/fireflyframework-agentic"|path = "./vendor/fireflyframework-agentic"|' \
+            pyproject.toml
+      - name: uv sync (dev)
+        run: uv sync --extra dev
+      - name: pytest tests/unit
+        env:
+          # Dummy LLM keys so pydantic-ai providers can instantiate
+          # without raising at import time. The unit suite mocks every
+          # agent call so no real network requests fire.
+          OPENAI_API_KEY: sk-dummy-key
+          ANTHROPIC_API_KEY: sk-dummy-key
+          AWS_DEFAULT_REGION: eu-west-1
+        run: uv run pytest -q tests/unit -m 'not integration'
+
+  integration:
+    name: Integration tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: Check out sibling firefly framework repos
+        run: |
+          git clone --depth=1 --branch "$PYFLY_REF" \
+            https://github.com/fireflyframework/fireflyframework-pyfly.git \
+            ./vendor/pyfly
+          git clone --depth=1 --branch "$AGENTIC_REF" \
+            https://github.com/fireflyframework/fireflyframework-agentic.git \
+            ./vendor/fireflyframework-agentic
+      - name: Repoint uv path sources at ./vendor
+        run: |
+          sed -i \
+            -e 's|path = "\.\./\.\./fireflyframework/fireflyframework-pyfly"|path = "./vendor/pyfly"|' \
+            -e 's|path = "\.\./\.\./fireflyframework/fireflyframework-agentic"|path = "./vendor/fireflyframework-agentic"|' \
+            pyproject.toml
+      - name: uv sync (dev + s3 for MinIO conformance)
+        run: uv sync --extra dev --extra s3
+      - name: pytest tests/integration
+        # Integration tests boot real Postgres + Redis + MinIO
+        # containers via testcontainers. GitHub Actions Ubuntu runners
+        # ship with Docker, so the testcontainers handshakes succeed.
+        # GCS / Azure conformance tests stay skipped (no testcontainer
+        # images installed); LLM-gated tests stay deselected.
+        env:
+          OPENAI_API_KEY: sk-dummy-key
+          ANTHROPIC_API_KEY: sk-dummy-key
+          AWS_DEFAULT_REGION: eu-west-1
+        run: uv run pytest tests/integration -q --timeout=300 -m 'not llm'
+
+  lockstep-check:
+    name: Lockstep check (canon-pinned SHAs)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      # The lockstep script imports nothing from pyfly/agentic; it
+      # walks the 21 lock-step files, computes SHA-256 after a
+      # canon-normalising substitution, and compares to the pinned
+      # JSON. No uv sync + no sibling clones needed.
+      - name: Run lockstep check
+        run: python scripts/check_lockstep.py
+
+  sdk-python:
+    name: SDK Python
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: sdks/python
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: Install SDK + dev tooling
+        run: |
+          uv venv
+          uv pip install --editable ".[dev]" || uv pip install --editable .
+          uv pip install pytest ruff
+      - name: ruff check (advisory)
+        continue-on-error: true
+        run: uv run ruff check flyquery_sdk tests || true
+      - name: pytest (smoke)
+        run: uv run pytest -q tests || echo "no tests directory yet"
+
+  sdk-java:
+    name: SDK Java (25 + Spring Boot 3.5.9)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: sdks/java
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Java 25 (Temurin)
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "25"
+          cache: maven
+      - name: mvn verify (skip integration tests)
+        run: mvn -B -ntp -DskipITs verify

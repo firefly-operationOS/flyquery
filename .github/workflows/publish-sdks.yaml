@@ -1,0 +1,176 @@
+# Copyright 2026 Firefly Software Solutions Inc
+#
+# Publish the Java + Python SDKs.
+#
+#   * Versioning: CalVer ``YY.MM.PP`` -- e.g. ``26.05.04`` for the
+#     fourth patch in May 2026. Tag form is ``v<version>`` so the
+#     pattern ``v*.*.*`` below catches both legacy SemVer tags and
+#     the new CalVer ones without special-casing.
+#
+#   * Triggers
+#       - push of a ``v*.*.*`` tag           -> publishes a release
+#       - workflow_dispatch                  -> manual re-publish
+#
+#   * Java SDK -> ``mvn deploy`` to GitHub Packages at
+#                  https://maven.pkg.github.com/firefly-operationOS/flyquery
+#
+#   * Python SDK -> build sdist + wheel with ``uv build`` and attach
+#                  both to the GitHub Release. We do NOT publish to
+#                  PyPI -- users install directly from the release URL:
+#
+#                      uv add https://github.com/firefly-operationOS/flyquery/releases/download/v26.05.04/flyquery_sdk-26.5.4-py3-none-any.whl
+#
+# Docs-only commits do not trigger this workflow (tags only).
+
+name: Publish SDKs
+
+on:
+  push:
+    tags: ["v*.*.*"]
+  workflow_dispatch:
+    inputs:
+      java:
+        description: "Publish the Java SDK to GitHub Packages?"
+        required: false
+        default: "true"
+      python:
+        description: "Publish the Python SDK?"
+        required: false
+        default: "true"
+
+permissions:
+  contents: write   # attach assets to the GitHub Release
+  packages: write   # push to GitHub Packages
+
+concurrency:
+  group: publish-sdks-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  # --------------------------------------------------------------------
+  # Java -> GitHub Packages
+  # --------------------------------------------------------------------
+  publish-java-sdk:
+    if: ${{ github.event_name == 'push' || github.event.inputs.java != 'false' }}
+    name: Publish flyquery-sdk (Java) to GitHub Packages
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: sdks/java
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Java 25 (Temurin) + Maven settings.xml
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "25"
+          server-id: github
+          server-username: GITHUB_ACTOR
+          server-password: GITHUB_TOKEN
+          cache: maven
+
+      - name: Override version from tag (if applicable)
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          TAG="${GITHUB_REF#refs/tags/v}"
+          echo "Setting Maven version to ${TAG}"
+          mvn -B -q versions:set -DnewVersion="${TAG}" -DgenerateBackupPoms=false
+
+      - name: Build + deploy to GitHub Packages
+        env:
+          GITHUB_ACTOR: ${{ github.actor }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: mvn -B -ntp deploy
+
+      - name: Summary
+        run: |
+          {
+            echo "### Published Java SDK"
+            echo
+            echo "**Coordinates**: \`com.firefly:flyquery-sdk:$(mvn -B -q -DforceStdout help:evaluate -Dexpression=project.version)\`"
+            echo "**Repository**: https://maven.pkg.github.com/firefly-operationOS/flyquery"
+            echo
+            echo "Add to your \`pom.xml\`:"
+            echo '```xml'
+            echo "<dependency>"
+            echo "  <groupId>com.firefly</groupId>"
+            echo "  <artifactId>flyquery-sdk</artifactId>"
+            echo "  <version>$(mvn -B -q -DforceStdout help:evaluate -Dexpression=project.version)</version>"
+            echo "</dependency>"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  # --------------------------------------------------------------------
+  # Python -> GitHub Release assets
+  # --------------------------------------------------------------------
+  publish-python-sdk:
+    if: ${{ github.event_name == 'push' || github.event.inputs.python != 'false' }}
+    name: Publish flyquery-sdk (Python)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: sdks/python
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.13
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+
+      - name: Override version from tag (if applicable)
+        # Keep ``project.version`` in pyproject.toml in sync with the
+        # git tag. ``flyquery_sdk/__init__.py`` ships under
+        # ``sdks/python/flyquery_sdk/`` (not under src/) per
+        # openapi-generator's Python layout.
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          TAG="${GITHUB_REF#refs/tags/v}"
+          echo "Setting Python SDK version to ${TAG}"
+          python - <<PY
+          import re, pathlib
+          tag = "${TAG}"
+          for p in (
+              pathlib.Path("pyproject.toml"),
+              pathlib.Path("flyquery_sdk/__init__.py"),
+          ):
+              if not p.exists():
+                  continue
+              text = p.read_text()
+              text = re.sub(r'^(version\s*=\s*")[^"]+(")', rf'\g<1>{tag}\g<2>', text, count=1, flags=re.MULTILINE)
+              text = re.sub(r'^(__version__\s*=\s*")[^"]+(")', rf'\g<1>{tag}\g<2>', text, count=1, flags=re.MULTILINE)
+              p.write_text(text)
+          PY
+
+      - name: Build sdist + wheel with uv
+        run: |
+          uv build
+          ls -lh dist/
+
+      - name: Upload wheel + sdist as Release assets
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            sdks/python/dist/*.whl
+            sdks/python/dist/*.tar.gz
+          fail_on_unmatched_files: true
+          generate_release_notes: true
+
+      - name: Summary
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          TAG="${GITHUB_REF#refs/tags/}"
+          TAG_VERSION="${TAG#v}"
+          {
+            echo "### Published Python SDK"
+            echo
+            echo "**PyPI-style install (from the GitHub Release):**"
+            echo '```bash'
+            echo "uv add https://github.com/${GITHUB_REPOSITORY}/releases/download/${TAG}/flyquery_sdk-${TAG_VERSION}-py3-none-any.whl"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"

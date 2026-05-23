@@ -43,6 +43,19 @@ dependencies = [
   "typing-extensions (>=4.7.1)",
 ]
 
+[project.optional-dependencies]
+# Surfaced as ``uv pip install ".[dev]"`` (or ``uv sync --extra dev``).
+# Mirrors the canon SDK dev extras so the CI pr-gate sdk-python job
+# has a consistent dev environment across both services.
+dev = [
+  "pytest>=7.2.1",
+  "pytest-cov>=2.8.1",
+  "pytest-asyncio>=0.21",
+  "ruff>=0.8",
+  "mypy>=1.5",
+  "types-python-dateutil>=2.8.19.14",
+]
+
 [project.urls]
 Homepage      = "https://github.com/firefly-operationOS/flyquery"
 Repository    = "https://github.com/firefly-operationOS/flyquery"
