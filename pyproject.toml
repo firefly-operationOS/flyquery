@@ -35,6 +35,9 @@ dependencies = [
     "redis>=5.2",
     "pgvector>=0.3.6",
 
+    # Object store
+    "aiofiles>=24",
+
     # DuckDB -- query engine; used in Plan 3 but pinned here so the
     # extras boundary stays stable.
     "duckdb>=1.1",

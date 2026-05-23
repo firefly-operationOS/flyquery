@@ -3,6 +3,12 @@ from flyquery.core.services.storage.object_store_factory import build_object_sto
 from flyquery.config import FlyquerySettings
 
 
+def test_factory_returns_local_fs_by_default() -> None:
+    s = FlyquerySettings(object_store="local", object_store_base="/tmp/flyquery-x")
+    store = build_object_store(s)
+    assert store.__class__.__name__ == "LocalFsObjectStore"
+
+
 def test_factory_raises_on_s3_without_extra(monkeypatch) -> None:
     s = FlyquerySettings(object_store="s3")
     monkeypatch.setattr("flyquery.core.services.storage.object_store_factory._HAS_S3", False)
