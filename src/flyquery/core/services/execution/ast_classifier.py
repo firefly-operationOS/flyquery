@@ -80,6 +80,16 @@ class AstClassifier:
     ) -> Literal["SELECT", "INSERT", "UPDATE", "DELETE", "DDL", "UNKNOWN"]:
         if isinstance(stmt, sqlglot.expressions.Select):
             return "SELECT"
+        # ``UNION ALL`` / ``UNION`` / ``INTERSECT`` / ``EXCEPT`` are
+        # also read-only set operations -- classify them as SELECT so
+        # the scope guard treats them like a read and the queries
+        # CHECK constraint (which only allows SELECT/INSERT/UPDATE/
+        # DELETE/DDL) doesn't reject them with UNKNOWN.
+        if isinstance(
+            stmt,
+            (sqlglot.expressions.Union, sqlglot.expressions.Intersect, sqlglot.expressions.Except),
+        ):
+            return "SELECT"
         if isinstance(stmt, sqlglot.expressions.Insert):
             return "INSERT"
         if isinstance(stmt, sqlglot.expressions.Update):

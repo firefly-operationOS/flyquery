@@ -27,7 +27,8 @@ class Query(Base):
             name="ck_queries_status",
         ),
         CheckConstraint(
-            "ast_classification IS NULL OR ast_classification IN ('SELECT','INSERT','UPDATE','DELETE','DDL')",
+            "ast_classification IS NULL OR "
+            "ast_classification IN ('SELECT','INSERT','UPDATE','DELETE','DDL','UNKNOWN')",
             name="ck_queries_ast",
         ),
     )

@@ -1,0 +1,352 @@
+[
+  {
+    "product_id": "PROD-000",
+    "name": "Pro Plan",
+    "category": "subscription",
+    "list_price_eur": 445.68,
+    "in_stock": 282
+  },
+  {
+    "product_id": "PROD-001",
+    "name": "Team Plan",
+    "category": "subscription",
+    "list_price_eur": 58.1,
+    "in_stock": 1070
+  },
+  {
+    "product_id": "PROD-002",
+    "name": "Enterprise",
+    "category": "subscription",
+    "list_price_eur": 543.04,
+    "in_stock": 984
+  },
+  {
+    "product_id": "PROD-003",
+    "name": "Add-on Seat",
+    "category": "addon",
+    "list_price_eur": 517.72,
+    "in_stock": 1107
+  },
+  {
+    "product_id": "PROD-004",
+    "name": "Storage GB",
+    "category": "addon",
+    "list_price_eur": 417.16,
+    "in_stock": 107
+  },
+  {
+    "product_id": "PROD-005",
+    "name": "Training",
+    "category": "service",
+    "list_price_eur": 771.83,
+    "in_stock": 1425
+  },
+  {
+    "product_id": "PROD-006",
+    "name": "Support",
+    "category": "service",
+    "list_price_eur": 413.1,
+    "in_stock": 917
+  },
+  {
+    "product_id": "PROD-007",
+    "name": "Onboarding Pack",
+    "category": "service",
+    "list_price_eur": 212.47,
+    "in_stock": 24
+  },
+  {
+    "product_id": "PROD-008",
+    "name": "API Quota +",
+    "category": "addon",
+    "list_price_eur": 784.9,
+    "in_stock": 163
+  },
+  {
+    "product_id": "PROD-009",
+    "name": "White Label",
+    "category": "addon",
+    "list_price_eur": 624.36,
+    "in_stock": 1479
+  },
+  {
+    "product_id": "PROD-010",
+    "name": "Pro Plan",
+    "category": "subscription",
+    "list_price_eur": 797.44,
+    "in_stock": 731
+  },
+  {
+    "product_id": "PROD-011",
+    "name": "Team Plan",
+    "category": "subscription",
+    "list_price_eur": 679.86,
+    "in_stock": 1237
+  },
+  {
+    "product_id": "PROD-012",
+    "name": "Enterprise",
+    "category": "subscription",
+    "list_price_eur": 60.73,
+    "in_stock": 184
+  },
+  {
+    "product_id": "PROD-013",
+    "name": "Add-on Seat",
+    "category": "addon",
+    "list_price_eur": 674.31,
+    "in_stock": 401
+  },
+  {
+    "product_id": "PROD-014",
+    "name": "Storage GB",
+    "category": "addon",
+    "list_price_eur": 341.7,
+    "in_stock": 936
+  },
+  {
+    "product_id": "PROD-015",
+    "name": "Training",
+    "category": "service",
+    "list_price_eur": 548.99,
+    "in_stock": 1440
+  },
+  {
+    "product_id": "PROD-016",
+    "name": "Support",
+    "category": "service",
+    "list_price_eur": 437.57,
+    "in_stock": 126
+  },
+  {
+    "product_id": "PROD-017",
+    "name": "Onboarding Pack",
+    "category": "service",
+    "list_price_eur": 411.4,
+    "in_stock": 858
+  },
+  {
+    "product_id": "PROD-018",
+    "name": "API Quota +",
+    "category": "addon",
+    "list_price_eur": 104.8,
+    "in_stock": 458
+  },
+  {
+    "product_id": "PROD-019",
+    "name": "White Label",
+    "category": "addon",
+    "list_price_eur": 485.49,
+    "in_stock": 1473
+  },
+  {
+    "product_id": "PROD-020",
+    "name": "Pro Plan",
+    "category": "subscription",
+    "list_price_eur": 762.42,
+    "in_stock": 373
+  },
+  {
+    "product_id": "PROD-021",
+    "name": "Team Plan",
+    "category": "subscription",
+    "list_price_eur": 125.57,
+    "in_stock": 566
+  },
+  {
+    "product_id": "PROD-022",
+    "name": "Enterprise",
+    "category": "subscription",
+    "list_price_eur": 80.15,
+    "in_stock": 239
+  },
+  {
+    "product_id": "PROD-023",
+    "name": "Add-on Seat",
+    "category": "addon",
+    "list_price_eur": 225.3,
+    "in_stock": 726
+  },
+  {
+    "product_id": "PROD-024",
+    "name": "Storage GB",
+    "category": "addon",
+    "list_price_eur": 758.01,
+    "in_stock": 619
+  },
+  {
+    "product_id": "PROD-025",
+    "name": "Training",
+    "category": "service",
+    "list_price_eur": 119.59,
+    "in_stock": 766
+  },
+  {
+    "product_id": "PROD-026",
+    "name": "Support",
+    "category": "service",
+    "list_price_eur": 202.59,
+    "in_stock": 1058
+  },
+  {
+    "product_id": "PROD-027",
+    "name": "Onboarding Pack",
+    "category": "service",
+    "list_price_eur": 633.19,
+    "in_stock": 1162
+  },
+  {
+    "product_id": "PROD-028",
+    "name": "API Quota +",
+    "category": "addon",
+    "list_price_eur": 653.58,
+    "in_stock": 757
+  },
+  {
+    "product_id": "PROD-029",
+    "name": "White Label",
+    "category": "addon",
+    "list_price_eur": 175.06,
+    "in_stock": 386
+  },
+  {
+    "product_id": "PROD-030",
+    "name": "Pro Plan",
+    "category": "subscription",
+    "list_price_eur": 50.62,
+    "in_stock": 906
+  },
+  {
+    "product_id": "PROD-031",
+    "name": "Team Plan",
+    "category": "subscription",
+    "list_price_eur": 386.01,
+    "in_stock": 210
+  },
+  {
+    "product_id": "PROD-032",
+    "name": "Enterprise",
+    "category": "subscription",
+    "list_price_eur": 758.49,
+    "in_stock": 820
+  },
+  {
+    "product_id": "PROD-033",
+    "name": "Add-on Seat",
+    "category": "addon",
+    "list_price_eur": 424.08,
+    "in_stock": 1073
+  },
+  {
+    "product_id": "PROD-034",
+    "name": "Storage GB",
+    "category": "addon",
+    "list_price_eur": 106.05,
+    "in_stock": 1119
+  },
+  {
+    "product_id": "PROD-035",
+    "name": "Training",
+    "category": "service",
+    "list_price_eur": 231.62,
+    "in_stock": 1160
+  },
+  {
+    "product_id": "PROD-036",
+    "name": "Support",
+    "category": "service",
+    "list_price_eur": 241.41,
+    "in_stock": 1466
+  },
+  {
+    "product_id": "PROD-037",
+    "name": "Onboarding Pack",
+    "category": "service",
+    "list_price_eur": 690.34,
+    "in_stock": 507
+  },
+  {
+    "product_id": "PROD-038",
+    "name": "API Quota +",
+    "category": "addon",
+    "list_price_eur": 639.38,
+    "in_stock": 106
+  },
+  {
+    "product_id": "PROD-039",
+    "name": "White Label",
+    "category": "addon",
+    "list_price_eur": 177.23,
+    "in_stock": 1042
+  },
+  {
+    "product_id": "PROD-040",
+    "name": "Pro Plan",
+    "category": "subscription",
+    "list_price_eur": 293.87,
+    "in_stock": 1163
+  },
+  {
+    "product_id": "PROD-041",
+    "name": "Team Plan",
+    "category": "subscription",
+    "list_price_eur": 506.11,
+    "in_stock": 732
+  },
+  {
+    "product_id": "PROD-042",
+    "name": "Enterprise",
+    "category": "subscription",
+    "list_price_eur": 140.41,
+    "in_stock": 47
+  },
+  {
+    "product_id": "PROD-043",
+    "name": "Add-on Seat",
+    "category": "addon",
+    "list_price_eur": 617.88,
+    "in_stock": 117
+  },
+  {
+    "product_id": "PROD-044",
+    "name": "Storage GB",
+    "category": "addon",
+    "list_price_eur": 348.05,
+    "in_stock": 711
+  },
+  {
+    "product_id": "PROD-045",
+    "name": "Training",
+    "category": "service",
+    "list_price_eur": 756.46,
+    "in_stock": 633
+  },
+  {
+    "product_id": "PROD-046",
+    "name": "Support",
+    "category": "service",
+    "list_price_eur": 64.23,
+    "in_stock": 931
+  },
+  {
+    "product_id": "PROD-047",
+    "name": "Onboarding Pack",
+    "category": "service",
+    "list_price_eur": 92.38,
+    "in_stock": 212
+  },
+  {
+    "product_id": "PROD-048",
+    "name": "API Quota +",
+    "category": "addon",
+    "list_price_eur": 748.96,
+    "in_stock": 384
+  },
+  {
+    "product_id": "PROD-049",
+    "name": "White Label",
+    "category": "addon",
+    "list_price_eur": 29.29,
+    "in_stock": 940
+  }
+]

@@ -376,9 +376,15 @@ async def run_parse(
                 Path(local_parquet).unlink(missing_ok=True)
                 raise
 
-            # Insert or verify flyquery_tables row
+            # Insert or verify flyquery_tables row. When a row already
+            # exists for ``(dataset_id, safe_name)`` (i.e. someone
+            # uploaded a same-named file before), the upsert returns
+            # the existing row's id and we re-use it -- otherwise
+            # downstream FKs (snapshot, schema_objects) would point at
+            # the freshly-generated UUID and fail with
+            # ``ForeignKeyViolationError``.
             if existing_table_id is None:
-                await _insert_table(
+                table_id = await _insert_table(
                     table_id=table_id,
                     tenant_id=tenant_id,
                     workspace_id=workspace_id,
@@ -450,9 +456,20 @@ async def _insert_table(
     qualified_name: str,
     sheet_or_json_path: str | None,
     session_factory: async_sessionmaker[AsyncSession],
-) -> None:
+) -> uuid.UUID:
+    """Insert a flyquery_tables row OR resolve an existing one.
+
+    Returns the effective ``table_id`` -- the freshly-inserted UUID
+    when this is a new (dataset_id, name) pair, or the existing row's
+    UUID when ON CONFLICT triggers. The caller MUST use this returned
+    id rather than the input ``table_id`` -- otherwise downstream
+    inserts (snapshot, schema_objects) would reference a UUID that
+    doesn't exist in flyquery_tables and trigger a foreign-key
+    violation (this was the cause of the dual-format re-upload bug
+    on 2026-05-24).
+    """
     async with session_factory() as s, s.begin():
-        await s.execute(
+        result = await s.execute(
             sa.text(
                 """
                 INSERT INTO flyquery_tables (
@@ -464,7 +481,10 @@ async def _insert_table(
                     :source_file_id, :name, :qualified_name,
                     :sheet_or_json_path, 'UPLOADED'
                 )
-                ON CONFLICT (dataset_id, name) DO NOTHING
+                ON CONFLICT (dataset_id, name) DO UPDATE
+                    SET source_file_id = EXCLUDED.source_file_id,
+                        updated_at = now()
+                RETURNING id
                 """
             ),
             {
@@ -478,6 +498,7 @@ async def _insert_table(
                 "sheet_or_json_path": sheet_or_json_path,
             },
         )
+        return result.scalar_one()
 
 
 async def _update_table_file(
