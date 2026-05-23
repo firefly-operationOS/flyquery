@@ -28,6 +28,9 @@
 The Docker image, env vars, and migration step are identical across all three.
 Differences are only in how dependencies are wired.
 
+For ASCII topology diagrams and HA considerations see
+[deployment-topology.md](deployment-topology.md).
+
 ---
 
 ## 2. Docker image
