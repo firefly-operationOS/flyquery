@@ -77,11 +77,44 @@ jobs:
           echo "Setting Maven version to ${TAG}"
           mvn -B -q versions:set -DnewVersion="${TAG}" -DgenerateBackupPoms=false
 
+      - name: Check whether this version is already published
+        id: check_published
+        env:
+          GITHUB_ACTOR: ${{ github.actor }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # GitHub Packages refuses to overwrite an existing version with
+          # 409 Conflict. That makes ``mvn deploy`` non-idempotent: if
+          # we ever re-tag the same version (e.g. a follow-up commit
+          # that only touches formatting), the second run blows up. We
+          # pre-check the .pom URL with a HEAD; a 200 means the version
+          # is already on Packages and we treat this run as a success.
+          VERSION=$(mvn -B -q -DforceStdout help:evaluate -Dexpression=project.version)
+          URL="https://maven.pkg.github.com/firefly-operationOS/flyquery/com/firefly/flyquery-sdk/${VERSION}/flyquery-sdk-${VERSION}.pom"
+          code=$(curl -s -o /dev/null -w "%{http_code}" -u "${GITHUB_ACTOR}:${GITHUB_TOKEN}" -I "$URL")
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "url=${URL}" >> "$GITHUB_OUTPUT"
+          echo "head_status=${code}" >> "$GITHUB_OUTPUT"
+          if [ "$code" = "200" ]; then
+            echo "already_published=true" >> "$GITHUB_OUTPUT"
+            echo "::notice title=Java SDK already published::flyquery-sdk:${VERSION} already exists on GitHub Packages; skipping deploy."
+          else
+            echo "already_published=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Build + deploy to GitHub Packages
+        if: steps.check_published.outputs.already_published != 'true'
         env:
           GITHUB_ACTOR: ${{ github.actor }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: mvn -B -ntp deploy
+
+      - name: Build only (publish skipped — version already on Packages)
+        if: steps.check_published.outputs.already_published == 'true'
+        env:
+          GITHUB_ACTOR: ${{ github.actor }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: mvn -B -ntp package -DskipTests
 
       - name: Summary
         run: |
