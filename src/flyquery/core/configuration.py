@@ -6,7 +6,6 @@ from __future__ import annotations
 from pyfly.container import bean, configuration
 
 from flyquery.config import FlyquerySettings
-from flyquery.core.eda.ingest_publisher import IngestPublisher
 from flyquery.core.services.auth.agent_token_service import (
     AgentTokenService,
     RateLimiter,
@@ -74,25 +73,14 @@ class FlyqueryConfiguration:
     # ------------------------------------------------------------------
     # EDA publisher
     # ------------------------------------------------------------------
-
-    @bean
-    def ingest_publisher(self, settings: FlyquerySettings) -> IngestPublisher:
-        """Wire the IngestPublisher with pyfly's EventPublisher bean.
-
-        The EventPublisher is auto-configured by pyfly when EDA is enabled
-        (pyfly.eda.enabled=true in pyfly.yaml). If it's not available in the
-        container (test isolation / single-process), we fall back to the
-        in-memory stub so unit tests don't need a live Postgres channel.
-        """
-        try:
-            from pyfly.eda import EventPublisher as _EventPublisher  # noqa: F401
-
-            # Attempt to resolve the EventPublisher from pyfly's context
-            # via a lazy import; falls through to None if unavailable.
-            event_publisher = _resolve_eda_publisher()
-        except Exception:  # noqa: BLE001
-            event_publisher = None
-        return IngestPublisher(event_publisher=event_publisher)
+    #
+    # ``IngestPublisher`` registers itself via ``@service`` (see
+    # ``flyquery.core.eda.ingest_publisher``). Do NOT add a @bean
+    # factory here: a factory shadows the @service registration and
+    # resolves ``EventPublisher`` at factory-evaluation time (before
+    # ``EdaAutoConfiguration`` has wired it), so the wrapper ends up
+    # with ``self._publisher = None`` and silently drops every publish
+    # into the in-memory branch -- workers never see the event.
 
     # ------------------------------------------------------------------
     # Retrieval infrastructure
@@ -129,26 +117,6 @@ class FlyqueryConfiguration:
 # ----------------------------------------------------------------------
 # Redis adapter helpers
 # ----------------------------------------------------------------------
-
-
-def _resolve_eda_publisher() -> object | None:
-    """Lazily resolve pyfly's EventPublisher from the running container.
-
-    Returns ``None`` when the container hasn't started yet (test isolation)
-    or when pyfly's EDA module is not fully wired. The IngestPublisher
-    falls back to in-memory mode in that case.
-    """
-    try:
-        from pyfly.context import ApplicationContext
-
-        ctx = ApplicationContext.current()
-        if ctx is None:
-            return None
-        from pyfly.eda import EventPublisher
-
-        return ctx.get_bean(EventPublisher)  # type: ignore[arg-type]
-    except Exception:  # noqa: BLE001
-        return None
 
 
 def _use_redis(settings: FlyquerySettings, backend_field: str) -> bool:

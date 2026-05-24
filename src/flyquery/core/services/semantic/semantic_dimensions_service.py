@@ -32,8 +32,9 @@ class _Repo(Protocol):
 class SemanticDimensionsService:
     """Business logic for the semantic layer (dimensions lifecycle)."""
 
-    def __init__(self, repo: SemanticDimensionsRepository) -> None:
-        self._repo: _Repo = repo
+    def __init__(self, semantic_dimensions_repository: SemanticDimensionsRepository) -> None:
+        # Parameter renamed from ``repo`` to match snake-cased bean name.
+        self._repo: _Repo = semantic_dimensions_repository
 
     async def create(
         self,

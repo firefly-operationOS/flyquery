@@ -31,7 +31,7 @@ import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import com.fasterxml.jackson.annotation.JsonTypeName;
 
 /**
- * Response for GET /schema-objects/{id} or PUT /schema-objects/{id}.
+ * Response for GET /schema-objects/{id} or PUT /schema-objects/{id}.  See :class:&#x60;SchemaObjectUpdate&#x60; for shape contract. Reads always return canonical shapes; the validators forgive a legacy row that has not yet been touched by migration 0012.
  */
 @JsonPropertyOrder({
   SchemaObjectRead.JSON_PROPERTY_BUSINESS_OWNER,
@@ -54,7 +54,7 @@ import com.fasterxml.jackson.annotation.JsonTypeName;
   SchemaObjectRead.JSON_PROPERTY_TENANT_ID,
   SchemaObjectRead.JSON_PROPERTY_WORKSPACE_ID
 })
-@jakarta.annotation.Generated(value = "org.openapitools.codegen.languages.JavaClientCodegen", date = "2026-05-24T14:41:07.623178+02:00[Europe/Madrid]", comments = "Generator version: 7.22.0")
+@jakarta.annotation.Generated(value = "org.openapitools.codegen.languages.JavaClientCodegen", date = "2026-05-24T17:01:34.733622+02:00[Europe/Madrid]", comments = "Generator version: 7.22.0")
 public class SchemaObjectRead {
   public static final String JSON_PROPERTY_BUSINESS_OWNER = "business_owner";
   @jakarta.annotation.Nullable
@@ -78,7 +78,7 @@ public class SchemaObjectRead {
 
   public static final String JSON_PROPERTY_GOVERNANCE_JSON = "governance_json";
   @jakarta.annotation.Nullable
-  private Map<String, Object> governanceJson;
+  private Map<String, Object> governanceJson = new HashMap<>();
 
   public static final String JSON_PROPERTY_ID = "id";
   @jakarta.annotation.Nonnull
@@ -118,7 +118,7 @@ public class SchemaObjectRead {
 
   public static final String JSON_PROPERTY_SYNONYMS_JSON = "synonyms_json";
   @jakarta.annotation.Nullable
-  private List<Object> synonymsJson;
+  private List<String> synonymsJson = new ArrayList<>();
 
   public static final String JSON_PROPERTY_TABLE_ID = "table_id";
   @jakarta.annotation.Nonnull
@@ -267,6 +267,9 @@ public class SchemaObjectRead {
   }
 
   public SchemaObjectRead putGovernanceJsonItem(String key, Object governanceJsonItem) {
+    if (this.governanceJson == null) {
+      this.governanceJson = new HashMap<>();
+    }
     this.governanceJson.put(key, governanceJsonItem);
     return this;
   }
@@ -277,7 +280,7 @@ public class SchemaObjectRead {
    */
   @jakarta.annotation.Nullable
   @JsonProperty(value = JSON_PROPERTY_GOVERNANCE_JSON, required = false)
-  @JsonInclude(content = JsonInclude.Include.ALWAYS, value = JsonInclude.Include.ALWAYS)
+  @JsonInclude(content = JsonInclude.Include.ALWAYS, value = JsonInclude.Include.USE_DEFAULTS)
 
   public Map<String, Object> getGovernanceJson() {
     return governanceJson;
@@ -285,7 +288,7 @@ public class SchemaObjectRead {
 
 
   @JsonProperty(value = JSON_PROPERTY_GOVERNANCE_JSON, required = false)
-  @JsonInclude(content = JsonInclude.Include.ALWAYS, value = JsonInclude.Include.ALWAYS)
+  @JsonInclude(content = JsonInclude.Include.ALWAYS, value = JsonInclude.Include.USE_DEFAULTS)
   public void setGovernanceJson(@jakarta.annotation.Nullable Map<String, Object> governanceJson) {
     this.governanceJson = governanceJson;
   }
@@ -515,13 +518,13 @@ public class SchemaObjectRead {
     this.snapshotId = snapshotId;
   }
 
-  public SchemaObjectRead synonymsJson(@jakarta.annotation.Nullable List<Object> synonymsJson) {
+  public SchemaObjectRead synonymsJson(@jakarta.annotation.Nullable List<String> synonymsJson) {
     
     this.synonymsJson = synonymsJson;
     return this;
   }
 
-  public SchemaObjectRead addSynonymsJsonItem(Object synonymsJsonItem) {
+  public SchemaObjectRead addSynonymsJsonItem(String synonymsJsonItem) {
     if (this.synonymsJson == null) {
       this.synonymsJson = new ArrayList<>();
     }
@@ -535,16 +538,16 @@ public class SchemaObjectRead {
    */
   @jakarta.annotation.Nullable
   @JsonProperty(value = JSON_PROPERTY_SYNONYMS_JSON, required = false)
-  @JsonInclude(value = JsonInclude.Include.ALWAYS)
+  @JsonInclude(value = JsonInclude.Include.USE_DEFAULTS)
 
-  public List<Object> getSynonymsJson() {
+  public List<String> getSynonymsJson() {
     return synonymsJson;
   }
 
 
   @JsonProperty(value = JSON_PROPERTY_SYNONYMS_JSON, required = false)
-  @JsonInclude(value = JsonInclude.Include.ALWAYS)
-  public void setSynonymsJson(@jakarta.annotation.Nullable List<Object> synonymsJson) {
+  @JsonInclude(value = JsonInclude.Include.USE_DEFAULTS)
+  public void setSynonymsJson(@jakarta.annotation.Nullable List<String> synonymsJson) {
     this.synonymsJson = synonymsJson;
   }
 

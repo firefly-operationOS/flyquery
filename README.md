@@ -25,7 +25,7 @@ JSONL, Parquet, Avro, ORC, Arrow and Feather, plus their `.gz`,
 [![OpenAPI](https://img.shields.io/badge/api-openapi%203.1-green)](docs/api-reference.md)
 [![DuckDB](https://img.shields.io/badge/query%20engine-duckdb-yellow)](docs/architecture.md)
 [![pgvector](https://img.shields.io/badge/vector--store-pgvector-336791)](docs/architecture.md)
-[![Version](https://img.shields.io/badge/version-26.5.10-green.svg)](#)
+[![Version](https://img.shields.io/badge/version-26.5.11-green.svg)](#)
 [![License](https://img.shields.io/badge/license-Proprietary-lightgrey.svg)](LICENSE)
 
 </div>

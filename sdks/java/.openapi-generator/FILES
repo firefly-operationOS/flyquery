@@ -30,6 +30,9 @@ docs/BillingBreakdownItem.md
 docs/BillingRollup.md
 docs/BulkFileResult.md
 docs/BulkFileUploadResponse.md
+docs/CallbackConfig.md
+docs/CallbackDeliveryListResponse.md
+docs/CallbackDeliveryRead.md
 docs/CancelResponse.md
 docs/ClarificationFrame.md
 docs/Confidence.md
@@ -62,6 +65,7 @@ docs/HTTPValidationError.md
 docs/IngestCostCents.md
 docs/IngestEventListResponse.md
 docs/IngestEventRead.md
+docs/IngestJobCreate.md
 docs/IngestJobListResponse.md
 docs/IngestJobRead.md
 docs/IngestJobsApi.md
@@ -196,6 +200,9 @@ src/main/java/com/firefly/flyquery/model/BillingBreakdownItem.java
 src/main/java/com/firefly/flyquery/model/BillingRollup.java
 src/main/java/com/firefly/flyquery/model/BulkFileResult.java
 src/main/java/com/firefly/flyquery/model/BulkFileUploadResponse.java
+src/main/java/com/firefly/flyquery/model/CallbackConfig.java
+src/main/java/com/firefly/flyquery/model/CallbackDeliveryListResponse.java
+src/main/java/com/firefly/flyquery/model/CallbackDeliveryRead.java
 src/main/java/com/firefly/flyquery/model/CancelResponse.java
 src/main/java/com/firefly/flyquery/model/ClarificationFrame.java
 src/main/java/com/firefly/flyquery/model/Confidence.java
@@ -222,6 +229,7 @@ src/main/java/com/firefly/flyquery/model/HTTPValidationError.java
 src/main/java/com/firefly/flyquery/model/IngestCostCents.java
 src/main/java/com/firefly/flyquery/model/IngestEventListResponse.java
 src/main/java/com/firefly/flyquery/model/IngestEventRead.java
+src/main/java/com/firefly/flyquery/model/IngestJobCreate.java
 src/main/java/com/firefly/flyquery/model/IngestJobListResponse.java
 src/main/java/com/firefly/flyquery/model/IngestJobRead.java
 src/main/java/com/firefly/flyquery/model/LocationInner.java
@@ -322,6 +330,9 @@ src/test/java/com/firefly/flyquery/model/BillingBreakdownItemTest.java
 src/test/java/com/firefly/flyquery/model/BillingRollupTest.java
 src/test/java/com/firefly/flyquery/model/BulkFileResultTest.java
 src/test/java/com/firefly/flyquery/model/BulkFileUploadResponseTest.java
+src/test/java/com/firefly/flyquery/model/CallbackConfigTest.java
+src/test/java/com/firefly/flyquery/model/CallbackDeliveryListResponseTest.java
+src/test/java/com/firefly/flyquery/model/CallbackDeliveryReadTest.java
 src/test/java/com/firefly/flyquery/model/CancelResponseTest.java
 src/test/java/com/firefly/flyquery/model/ClarificationFrameTest.java
 src/test/java/com/firefly/flyquery/model/ConfidenceTest.java
@@ -348,6 +359,7 @@ src/test/java/com/firefly/flyquery/model/HTTPValidationErrorTest.java
 src/test/java/com/firefly/flyquery/model/IngestCostCentsTest.java
 src/test/java/com/firefly/flyquery/model/IngestEventListResponseTest.java
 src/test/java/com/firefly/flyquery/model/IngestEventReadTest.java
+src/test/java/com/firefly/flyquery/model/IngestJobCreateTest.java
 src/test/java/com/firefly/flyquery/model/IngestJobListResponseTest.java
 src/test/java/com/firefly/flyquery/model/IngestJobReadTest.java
 src/test/java/com/firefly/flyquery/model/LocationInnerTest.java

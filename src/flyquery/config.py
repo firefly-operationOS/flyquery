@@ -10,6 +10,7 @@ from __future__ import annotations
 
 from typing import Literal
 
+from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -94,6 +95,45 @@ class FlyquerySettings(BaseSettings):
     # Anthropic's per-key RPM. The default of 8 keeps wall-clock low
     # while staying under standard rate limits.
     ingest_section_concurrency: int = 8
+
+    # Webhook-callback delivery (CallbackWorker drains the
+    # ``flyquery_callback_outbox`` table).
+    #
+    # ``callback_poll_interval_s`` -- how long the worker sleeps when
+    # the outbox is empty. Short values reduce delivery latency at the
+    # cost of more empty DB round-trips; 5s is a good default.
+    #
+    # ``callback_batch_size`` -- max rows claimed per poll. The claim
+    # uses ``FOR UPDATE SKIP LOCKED`` so a busy outbox won't starve
+    # peer workers; the batch cap prevents one tick from monopolising
+    # the event loop.
+    #
+    # ``callback_request_timeout_s`` -- per-attempt HTTP timeout.
+    # Receivers that take longer count as a transport failure and the
+    # row is retried with exponential backoff (5 attempts total).
+    callback_poll_interval_s: float = 5.0
+    callback_batch_size: int = 25
+    callback_request_timeout_s: float = 10.0
+
+    # Process-wide default webhook target -- a request that omits
+    # ``callback_url`` falls through to this, so an operator can wire
+    # every async ingest job to a central receiver (alerts hub,
+    # workflow engine, audit pipeline) without touching every caller.
+    #
+    # Precedence is per-bundle, not per-field: if the request provides
+    # ``callback_url``, the WHOLE request bundle wins (URL + secret +
+    # headers); the defaults are not merged into a request-supplied
+    # bundle. Mixing would leak the default secret to a different
+    # receiver the caller did not authorise.
+    #
+    # ``default_callback_headers`` is a JSON string env var (pydantic
+    # parses ``{"X-Tenant":"prod"}`` into a dict); the same reserved-
+    # header check applied to per-request headers fires at request
+    # time so a misconfigured default surfaces as a 4xx, not a silent
+    # broken delivery.
+    default_callback_url: str | None = None
+    default_callback_secret: str | None = None
+    default_callback_headers: dict[str, str] = Field(default_factory=dict)
 
     # Embeddings + retrieval (lock-step with canon)
     #

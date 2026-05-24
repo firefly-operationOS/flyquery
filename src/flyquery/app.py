@@ -22,7 +22,7 @@ from pyfly.starters.core import enable_core_stack
 @enable_core_stack
 @pyfly_application(
     name="flyquery",
-    version="26.5.0",
+    version="26.5.11",
     description=(
         "flyquery -- Operational Structured-Data Intelligence "
         "(upload-driven). Multi-tenant ingestion + Text-to-SQL "
@@ -32,6 +32,16 @@ from pyfly.starters.core import enable_core_stack
     scan_packages=[
         "flyquery.core",  # @configuration class
         "flyquery.core.services",  # CQRS handlers + @service beans
+        # @service beans for the EDA publisher wrapper. Without this,
+        # ``IngestPublisher`` is invisible to DI and the IngestService
+        # ends up with ``event_publisher=None`` -- every publish call
+        # silently falls into the in-memory branch and the worker
+        # never sees the IngestRequested event.
+        "flyquery.core.eda",
+        # CallbackWorker + CallbackOutboxRepository. Without this the
+        # callback path falls back to "no bean" and the worker can't
+        # enqueue terminal-state webhooks.
+        "flyquery.core.services.callbacks",
         "flyquery.web.controllers",  # REST controllers (user-tier)
         "flyquery.web.controllers.agent",  # REST controllers (agent-tier)
     ],

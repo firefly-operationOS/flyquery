@@ -2,7 +2,7 @@
 
 # SchemaObjectRead
 
-Response for GET /schema-objects/{id} or PUT /schema-objects/{id}.
+Response for GET /schema-objects/{id} or PUT /schema-objects/{id}.  See :class:`SchemaObjectUpdate` for shape contract. Reads always return canonical shapes; the validators forgive a legacy row that has not yet been touched by migration 0012.
 
 ## Properties
 
@@ -13,7 +13,7 @@ Response for GET /schema-objects/{id} or PUT /schema-objects/{id}.
 |**dataType** | **String** |  |  |
 |**description** | **String** |  |  |
 |**descriptionSource** | **String** |  |  |
-|**governanceJson** | **Map&lt;String, Object&gt;** |  |  |
+|**governanceJson** | **Map&lt;String, Object&gt;** |  |  [optional] |
 |**id** | **UUID** |  |  |
 |**isActive** | **Boolean** |  |  |
 |**isNullable** | **Boolean** |  |  |
@@ -23,7 +23,7 @@ Response for GET /schema-objects/{id} or PUT /schema-objects/{id}.
 |**piiTag** | **String** |  |  |
 |**qualifiedName** | **String** |  |  |
 |**snapshotId** | **UUID** |  |  |
-|**synonymsJson** | **List&lt;Object&gt;** |  |  |
+|**synonymsJson** | **List&lt;String&gt;** |  |  [optional] |
 |**tableId** | **UUID** |  |  |
 |**tenantId** | **String** |  |  |
 |**workspaceId** | **UUID** |  |  |

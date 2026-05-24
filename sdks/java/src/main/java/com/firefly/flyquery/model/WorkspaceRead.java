@@ -45,7 +45,7 @@ import com.fasterxml.jackson.annotation.JsonTypeName;
   WorkspaceRead.JSON_PROPERTY_TENANT_ID,
   WorkspaceRead.JSON_PROPERTY_UPDATED_AT
 })
-@jakarta.annotation.Generated(value = "org.openapitools.codegen.languages.JavaClientCodegen", date = "2026-05-24T14:41:07.623178+02:00[Europe/Madrid]", comments = "Generator version: 7.22.0")
+@jakarta.annotation.Generated(value = "org.openapitools.codegen.languages.JavaClientCodegen", date = "2026-05-24T17:01:34.733622+02:00[Europe/Madrid]", comments = "Generator version: 7.22.0")
 public class WorkspaceRead {
   public static final String JSON_PROPERTY_ALLOW_DIRECT_SQL = "allow_direct_sql";
   @jakarta.annotation.Nonnull

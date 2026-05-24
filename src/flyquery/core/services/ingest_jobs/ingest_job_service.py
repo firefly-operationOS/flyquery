@@ -30,11 +30,16 @@ class IngestJobService:
     def __init__(
         self,
         repository: IngestJobRepository,
-        publisher: IngestPublisher,
+        ingest_publisher: IngestPublisher,
         settings: FlyquerySettings,
     ) -> None:
         self._repo = repository
-        self._publisher = publisher
+        # Parameter is named ``ingest_publisher`` to match the pyfly
+        # bean name (snake_case of the class). Renaming this to
+        # ``publisher`` makes pyfly's name-first resolver construct a
+        # fresh IngestPublisher() bare (with ``event_publisher=None``)
+        # instead of injecting the @service-registered bean.
+        self._publisher = ingest_publisher
         self._settings = settings
 
     async def create_job(
@@ -47,6 +52,11 @@ class IngestJobService:
     ) -> IngestJobRead:
         """Create a PENDING job, emit queued event, publish IngestRequested."""
         body.validate_startable()
+        cb_url, cb_secret, cb_headers = self._resolve_callback_bundle(
+            request_callback_url=str(body.callback.url) if body.callback else None,
+            request_callback_secret=body.callback.secret if body.callback else None,
+            request_callback_headers=body.callback.headers if body.callback else None,
+        )
         return await self._enqueue(
             tenant_id=tenant_id,
             workspace_id=workspace_id,
@@ -56,6 +66,40 @@ class IngestJobService:
             job_kind=body.job_kind,
             request_json=body.request_json,
             session_factory=session_factory,
+            callback_url=cb_url,
+            callback_secret=cb_secret,
+            callback_headers=cb_headers,
+        )
+
+    def _resolve_callback_bundle(
+        self,
+        *,
+        request_callback_url: str | None,
+        request_callback_secret: str | None,
+        request_callback_headers: dict[str, str] | None,
+    ) -> tuple[str | None, str | None, dict[str, str] | None]:
+        """Apply request-then-default precedence for the callback bundle.
+
+        ``FLYQUERY_DEFAULT_CALLBACK_URL`` (and its secret/headers
+        siblings) provide a process-wide default receiver. The whole
+        bundle is per-request OR per-default -- we do NOT merge the
+        default's secret into a request that supplied a URL, because
+        the default secret was authored for the default URL and may
+        not be safe to share with another receiver.
+        """
+        if request_callback_url:
+            return (
+                request_callback_url,
+                request_callback_secret,
+                request_callback_headers,
+            )
+        default_url = self._settings.default_callback_url
+        if not default_url:
+            return (None, None, None)
+        return (
+            default_url,
+            self._settings.default_callback_secret,
+            self._settings.default_callback_headers or None,
         )
 
     async def mark_already_received(self, job_id: uuid.UUID) -> None:
@@ -77,7 +121,18 @@ class IngestJobService:
         actor: str,
         dataset_name: str,
         session_factory: Any,
+        callback_url: str | None = None,
+        callback_secret: str | None = None,
+        callback_headers: dict[str, str] | None = None,
     ) -> IngestJobRead:
+        # Apply the same request-OR-default precedence as ``create_job``
+        # so the async upload endpoint inherits ``FLYQUERY_DEFAULT_*``
+        # when the caller omits per-request callback fields.
+        callback_url, callback_secret, callback_headers = self._resolve_callback_bundle(
+            request_callback_url=callback_url,
+            request_callback_secret=callback_secret,
+            request_callback_headers=callback_headers,
+        )
         """Queue a PARSE_AND_INGEST job for the async upload endpoint.
 
         ``PARSE_AND_INGEST`` is intentionally excluded from
@@ -98,6 +153,9 @@ class IngestJobService:
             job_kind="PARSE_AND_INGEST",
             request_json={"actor": actor, "dataset_name": dataset_name},
             session_factory=session_factory,
+            callback_url=callback_url,
+            callback_secret=callback_secret,
+            callback_headers=callback_headers,
         )
 
     async def _enqueue(
@@ -111,6 +169,9 @@ class IngestJobService:
         job_kind: str,
         request_json: dict[str, Any] | None,
         session_factory: Any,
+        callback_url: str | None = None,
+        callback_secret: str | None = None,
+        callback_headers: dict[str, str] | None = None,
     ) -> IngestJobRead:
         """Shared implementation for both startable + internal job kinds."""
         row = await self._repo.create(
@@ -121,6 +182,9 @@ class IngestJobService:
             file_id=file_id,
             job_kind=job_kind,
             request_json=request_json or {},
+            callback_url=callback_url,
+            callback_secret=callback_secret,
+            callback_headers=callback_headers,
         )
 
         job_id = row["id"]

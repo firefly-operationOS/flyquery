@@ -27,6 +27,9 @@ from flyquery_sdk.models.billing_breakdown_item import BillingBreakdownItem
 from flyquery_sdk.models.billing_rollup import BillingRollup
 from flyquery_sdk.models.bulk_file_result import BulkFileResult
 from flyquery_sdk.models.bulk_file_upload_response import BulkFileUploadResponse
+from flyquery_sdk.models.callback_config import CallbackConfig
+from flyquery_sdk.models.callback_delivery_list_response import CallbackDeliveryListResponse
+from flyquery_sdk.models.callback_delivery_read import CallbackDeliveryRead
 from flyquery_sdk.models.cancel_response import CancelResponse
 from flyquery_sdk.models.clarification_frame import ClarificationFrame
 from flyquery_sdk.models.confidence import Confidence
@@ -53,6 +56,7 @@ from flyquery_sdk.models.http_validation_error import HTTPValidationError
 from flyquery_sdk.models.ingest_cost_cents import IngestCostCents
 from flyquery_sdk.models.ingest_event_list_response import IngestEventListResponse
 from flyquery_sdk.models.ingest_event_read import IngestEventRead
+from flyquery_sdk.models.ingest_job_create import IngestJobCreate
 from flyquery_sdk.models.ingest_job_list_response import IngestJobListResponse
 from flyquery_sdk.models.ingest_job_read import IngestJobRead
 from flyquery_sdk.models.location_inner import LocationInner

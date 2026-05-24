@@ -44,13 +44,20 @@ def _make_worker(settings: _StubSettings) -> IngestWorker:
 
     We never invoke ``_handle_ingest_requested`` in these tests --
     only the dispatcher + guard surface -- so a None session_factory
-    is harmless. The worker stores it on a private attribute that
-    we don't touch.
+    + a stub CallbackOutboxRepository are harmless. The worker
+    stores them on private attributes that we don't touch.
     """
+    from flyquery.core.eda.ingest_publisher import IngestPublisher
+
+    class _NoopCallbackRepo:
+        """Stand-in for CallbackOutboxRepository -- never called in these tests."""
+
     return IngestWorker(
         event_publisher=_NoopPublisher(),  # type: ignore[arg-type]
         settings=settings,  # type: ignore[arg-type]
         session=None,  # type: ignore[arg-type]
+        ingest_publisher=IngestPublisher.for_testing(),
+        callback_outbox_repository=_NoopCallbackRepo(),  # type: ignore[arg-type]
     )
 
 

@@ -289,6 +289,32 @@ class FilesController:
         filename: str = getattr(upload, "filename", None) or "upload.bin"
         file_bytes: bytes = await upload.read()
 
+        # Optional webhook callback: the caller may attach a delivery
+        # target either via multipart form fields or via the matching
+        # ``X-Flyquery-Callback-*`` request headers. Form fields take
+        # precedence (headers are a UA / SDK convenience). Custom
+        # downstream headers can be threaded as a JSON-encoded
+        # ``callback_headers`` form field; reserved keys are rejected
+        # at the CallbackConfig DTO so the dispatcher can own
+        # ``X-Flyquery-Signature`` etc.
+        callback_url = _form_or_header(form, http_request, "callback_url")
+        callback_secret = _form_or_header(form, http_request, "callback_secret")
+        callback_headers_raw = _form_or_header(form, http_request, "callback_headers")
+        callback_headers: dict[str, str] = {}
+        if callback_headers_raw:
+            import json as _json
+
+            try:
+                parsed = _json.loads(callback_headers_raw)
+                if isinstance(parsed, dict):
+                    callback_headers = {str(k): str(v) for k, v in parsed.items()}
+            except _json.JSONDecodeError as exc:
+                from flyquery.web.conventions.exceptions import InvalidRequest
+
+                raise InvalidRequest(
+                    "callback_headers must be valid JSON object string"
+                ) from exc
+
         ds = await self._datasets.get(dataset_id)
         if ds is None:
             raise ResourceNotFound(f"dataset {dataset_id!r} not found")
@@ -323,6 +349,9 @@ class FilesController:
             actor=actor,
             dataset_name=ds["name"],
             session_factory=self._session_factory,
+            callback_url=callback_url,
+            callback_secret=callback_secret,
+            callback_headers=callback_headers or None,
         )
         # The worker must know Stage 1 already ran to skip it.
         await self._ingest_jobs.mark_already_received(job.id)
@@ -386,6 +415,27 @@ class FilesController:
             n_columns=first.n_columns,
             n_rows_actual=first.n_rows_estimate,
         )
+
+
+def _form_or_header(form: Any, request: Any, name: str) -> str | None:
+    """Read ``name`` from the multipart form, falling back to the matching header.
+
+    Order:
+      1. Form field ``name`` (canonical -- explicit and visible in cURL).
+      2. ``X-Flyquery-Callback-{Name}`` request header (SDK convenience).
+
+    Returns ``None`` if neither is present so the caller branches on
+    "no callback configured" cleanly. We return ``None`` for empty
+    strings too so a stray ``-F callback_url=`` doesn't enqueue.
+    """
+    value = form.get(name)
+    if value is not None and isinstance(value, str) and value.strip():
+        return value.strip()
+    header_name = "X-Flyquery-Callback-" + name.removeprefix("callback_").replace("_", "-").title()
+    header_value = request.headers.get(header_name)
+    if header_value:
+        return header_value.strip() or None
+    return None
 
 
 def _parse_workspace_id(workspace_id_str: str) -> uuid.UUID:

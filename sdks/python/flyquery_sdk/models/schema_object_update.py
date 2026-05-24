@@ -25,13 +25,13 @@ from pydantic_core import to_jsonable_python
 
 class SchemaObjectUpdate(BaseModel):
     """
-    Request body for PUT /schema-objects/{id}.
+    Request body for PUT /schema-objects/{id}.  ``synonyms_json`` is canonically ``list[str]``; ``governance_json`` is canonically ``dict[str, Any]``. The validators coerce legacy shapes (a synonyms dict envelope, a governance array left behind by the ``NULL || dict`` jsonb-concat bug) so a malformed write payload still lands as the canonical shape.
     """ # noqa: E501
     business_owner: Optional[StrictStr] = None
     description: Optional[StrictStr] = None
     governance_json: Optional[Dict[str, Any]] = None
     pii_tag: Optional[StrictStr] = None
-    synonyms_json: Optional[List[Any]] = None
+    synonyms_json: Optional[List[StrictStr]] = None
     __properties: ClassVar[List[str]] = ["business_owner", "description", "governance_json", "pii_tag", "synonyms_json"]
 
     model_config = ConfigDict(

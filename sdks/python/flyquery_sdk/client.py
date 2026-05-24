@@ -133,7 +133,7 @@ class FlyqueryClient:
         self._files = FilesApi(self._api_client)
         self._tables = TablesApi(self._api_client)
         self._query = QueryApi(self._api_client)
-        # v1.0 (26.5.10) -- history + billing + stats + ops ledgers.
+        # v1.0 (26.5.11) -- history + billing + stats + ops ledgers.
         self._queries = QueriesApi(self._api_client)
         self._billing = BillingApi(self._api_client)
         self._stats = StatsApi(self._api_client)
@@ -192,7 +192,7 @@ class FlyqueryClient:
     def query(self) -> QueryApi:
         return self._query
 
-    # v1.0 (26.5.10) accessors -- raw generated API objects for the
+    # v1.0 (26.5.11) accessors -- raw generated API objects for the
     # new history / billing / stats / ops surfaces.
 
     @property
@@ -391,7 +391,7 @@ class FlyqueryClient:
         return asyncio.run(self.ask_batch(dataset_id, questions))
 
     # ------------------------------------------------------------------
-    # v1 history + observability helpers (26.5.10)
+    # v1 history + observability helpers (26.5.11)
     # ------------------------------------------------------------------
     #
     # Thin convenience wrappers around the generated history /
@@ -518,13 +518,17 @@ class FlyqueryClient:
         )
 
     # ------------------------------------------------------------------
-    # Async file upload (26.5.10 :async endpoint)
+    # Async file upload (26.5.11 :async endpoint)
     # ------------------------------------------------------------------
 
     async def upload_async(
         self,
         dataset_id: str,
         path: str | Path,
+        *,
+        callback_url: str | None = None,
+        callback_secret: str | None = None,
+        callback_headers: dict[str, str] | None = None,
     ) -> Any:
         """Upload + queue a PARSE_AND_INGEST job. Returns 202 envelope.
 
@@ -532,16 +536,69 @@ class FlyqueryClient:
         to risk an HTTP timeout (typically anything past a few MB
         with cold-cache describe calls). Poll ``GET /ingest-jobs/{job_id}``
         or stream ``GET /ingest-jobs/{job_id}/stream`` for progress.
+
+        :param callback_url: Optional webhook URL. The server POSTs
+            the terminal :class:`IngestJobRead` payload here (event
+            ``ingest.succeeded`` or ``ingest.failed``) once stages
+            2-10 finish. Setting this overrides any
+            ``FLYQUERY_DEFAULT_CALLBACK_URL`` process-wide default.
+        :param callback_secret: Optional shared secret. When set,
+            every callback request carries an
+            ``X-Flyquery-Signature: sha256=<hmac>`` header so the
+            receiver can verify authenticity. Min 8 chars.
+        :param callback_headers: Optional extra headers to append to
+            every callback request. Reserved keys
+            (``X-Flyquery-Signature``, ``X-Flyquery-Job-Id``,
+            ``X-Flyquery-Event``, ``Content-Type``) are rejected by
+            the server.
         """
+        import json as _json
+
         p = Path(path)
         content_type = mimetypes.guess_type(p.name)[0] or "application/octet-stream"
         files = {"file": (p.name, p.read_bytes(), content_type)}
+        data: dict[str, str] = {}
+        if callback_url:
+            data["callback_url"] = callback_url
+        if callback_secret:
+            data["callback_secret"] = callback_secret
+        if callback_headers:
+            data["callback_headers"] = _json.dumps(callback_headers)
         r = await self._http.post(
             f"/api/v1/datasets/{quote(dataset_id)}/files:async",
             files=files,
+            data=data or None,
         )
         r.raise_for_status()
         return r.json()  # {job_id, file_id, dataset_id, status}
+
+    async def list_job_callbacks(
+        self,
+        job_id: str,
+        *,
+        status: str | None = None,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> Any:
+        """Webhook delivery audit log for ``job_id``.
+
+        Returns the paginated ``CallbackDeliveryListResponse`` shape
+        with one row per delivery attempt: URL, event type
+        (``ingest.succeeded`` / ``ingest.failed``), status
+        (``PENDING`` / ``DELIVERED`` / ``FAILED`` / ``DEAD``),
+        attempt count, last HTTP status code + last error, and the
+        next scheduled retry. Use this to confirm a webhook drop has
+        cleared after a receiver outage.
+        """
+        params: dict[str, Any] = {"limit": limit, "offset": offset}
+        if status:
+            params["status"] = status
+        r = await self._http.get(
+            f"/api/v1/ingest-jobs/{quote(job_id)}/callbacks",
+            params=params,
+        )
+        r.raise_for_status()
+        return r.json()
 
     # Sync mirrors for the v1 helpers (notebooks / CLIs).
 
@@ -560,5 +617,24 @@ class FlyqueryClient:
     def workspace_stats_sync(self) -> Any:
         return asyncio.run(self.workspace_stats())
 
-    def upload_async_sync(self, dataset_id: str, path: str | Path) -> Any:
-        return asyncio.run(self.upload_async(dataset_id, path))
+    def upload_async_sync(
+        self,
+        dataset_id: str,
+        path: str | Path,
+        *,
+        callback_url: str | None = None,
+        callback_secret: str | None = None,
+        callback_headers: dict[str, str] | None = None,
+    ) -> Any:
+        return asyncio.run(
+            self.upload_async(
+                dataset_id,
+                path,
+                callback_url=callback_url,
+                callback_secret=callback_secret,
+                callback_headers=callback_headers,
+            )
+        )
+
+    def list_job_callbacks_sync(self, job_id: str, **kwargs: Any) -> Any:
+        return asyncio.run(self.list_job_callbacks(job_id, **kwargs))

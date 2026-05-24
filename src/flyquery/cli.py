@@ -1,13 +1,14 @@
 # Copyright 2026 Firefly Software Solutions Inc
 """flyquery CLI entry point.
 
-Three top-level commands:
+Four top-level commands:
 
 * ``flyquery serve``                -- API server (Uvicorn).
 * ``flyquery worker ingest``        -- IngestWorker (EDA-driven).
 * ``flyquery worker retention``     -- RetentionWorker (periodic sweep).
-* ``flyquery worker all``           -- single-process mode -- runs API +
-                                       both workers in one event loop
+* ``flyquery worker callback``      -- CallbackWorker (outbox drain).
+* ``flyquery worker all``           -- single-process mode -- runs all
+                                       workers in one event loop
                                        (dev / docker-compose convenience;
                                        NOT recommended for production).
 
@@ -86,13 +87,24 @@ def worker_retention() -> None:
     asyncio.run(_run_retention_worker())
 
 
+@worker.command("callback")
+def worker_callback() -> None:
+    """CallbackWorker -- drains flyquery_callback_outbox + delivers webhooks.
+
+    Horizontally scalable: the outbox row claim uses ``FOR UPDATE SKIP
+    LOCKED`` so N peers don't double-deliver. Typical deployment is
+    1-2 processes per region.
+    """
+    asyncio.run(_run_callback_worker())
+
+
 @worker.command("all")
 def worker_all() -> None:
-    """Run BOTH workers in a single process (dev / docker-compose only).
+    """Run all workers (ingest + retention + callback) in one process.
 
-    Production should split this into separate `flyquery worker
-    ingest` and `flyquery worker retention` processes so they can be
-    scaled and restarted independently.
+    Dev / docker-compose only. Production should split into separate
+    `flyquery worker {ingest|retention|callback}` processes so each
+    scales + restarts independently.
     """
     asyncio.run(_run_all())
 
@@ -120,7 +132,7 @@ async def _run_ingest_worker() -> None:
     pyfly = PyFlyApplication(FlyqueryApplication)
     await pyfly.startup()
     try:
-        ingest_worker: IngestWorker = pyfly.context.get(IngestWorker)
+        ingest_worker: IngestWorker = pyfly.context.get_bean(IngestWorker)
         _install_signal_handlers(stop_fn=ingest_worker.stop)
         await ingest_worker.run_forever()
     finally:
@@ -137,35 +149,56 @@ async def _run_retention_worker() -> None:
     pyfly = PyFlyApplication(FlyqueryApplication)
     await pyfly.startup()
     try:
-        retention: RetentionWorker = pyfly.context.get(RetentionWorker)
+        retention: RetentionWorker = pyfly.context.get_bean(RetentionWorker)
         _install_signal_handlers(stop_fn=retention.request_stop)
         await retention.run_forever()
     finally:
         await pyfly.shutdown()
 
 
-async def _run_all() -> None:
-    """Run IngestWorker + RetentionWorker concurrently. Dev only."""
+async def _run_callback_worker() -> None:
+    """Bootstrap the DI context, resolve CallbackWorker, run until SIGTERM."""
     from pyfly.core import PyFlyApplication
 
     from flyquery.app import FlyqueryApplication
+    from flyquery.core.services.callbacks.callback_worker import CallbackWorker
+
+    pyfly = PyFlyApplication(FlyqueryApplication)
+    await pyfly.startup()
+    try:
+        callback: CallbackWorker = pyfly.context.get_bean(CallbackWorker)
+        _install_signal_handlers(stop_fn=lambda: asyncio.create_task(callback.stop()))
+        await callback.run_forever()
+    finally:
+        await pyfly.shutdown()
+
+
+async def _run_all() -> None:
+    """Run IngestWorker + RetentionWorker + CallbackWorker concurrently. Dev only."""
+    from pyfly.core import PyFlyApplication
+
+    from flyquery.app import FlyqueryApplication
+    from flyquery.core.services.callbacks.callback_worker import CallbackWorker
     from flyquery.core.services.ingestion.workers import IngestWorker
     from flyquery.core.services.retention.retention_worker import RetentionWorker
 
     pyfly = PyFlyApplication(FlyqueryApplication)
     await pyfly.startup()
     try:
-        ingest_worker: IngestWorker = pyfly.context.get(IngestWorker)
-        retention: RetentionWorker = pyfly.context.get(RetentionWorker)
+        ingest_worker: IngestWorker = pyfly.context.get_bean(IngestWorker)
+        retention: RetentionWorker = pyfly.context.get_bean(RetentionWorker)
+        callback: CallbackWorker = pyfly.context.get_bean(CallbackWorker)
 
         def _stop_all() -> None:
             ingest_worker.stop()
             retention.request_stop()
+            asyncio.create_task(callback.stop())
 
         _install_signal_handlers(stop_fn=_stop_all)
         await asyncio.gather(
             ingest_worker.run_forever(),
             retention.run_forever(),
+            callback.run_forever(),
             return_exceptions=True,
         )
     finally:

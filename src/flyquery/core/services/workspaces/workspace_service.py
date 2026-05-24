@@ -36,8 +36,9 @@ class _Repo(Protocol):
 
 @service_bean
 class WorkspaceService:
-    def __init__(self, repo: WorkspaceRepository) -> None:
-        self._repo: _Repo = repo
+    def __init__(self, workspace_repository: WorkspaceRepository) -> None:
+        # Parameter renamed from ``repo`` to match snake-cased bean name.
+        self._repo: _Repo = workspace_repository
 
     async def create(self, tenant_id: str, body: WorkspaceCreate) -> dict[str, Any]:
         return await self._repo.create(

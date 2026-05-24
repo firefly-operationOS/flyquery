@@ -28,8 +28,12 @@ from flyquery.interfaces.files import SchemaObjectUpdate
 class SchemaObjectService:
     """Domain operations for ``flyquery_schema_objects``."""
 
-    def __init__(self, repository: SchemaObjectRepository) -> None:
-        self._repo = repository
+    def __init__(self, schema_object_repository: SchemaObjectRepository) -> None:
+        # Parameter renamed from ``repository`` to match the snake-cased
+        # bean name so pyfly's name-first resolver finds the bean before
+        # falling back to bare construction (which would crash because
+        # the repository's own constructor takes a session_factory).
+        self._repo = schema_object_repository
 
     async def get(
         self,

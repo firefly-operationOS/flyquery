@@ -42,7 +42,7 @@ import com.fasterxml.jackson.annotation.JsonTypeName;
   PaginatedSchemaChangeRead.JSON_PROPERTY_TOTAL
 })
 @JsonTypeName("Paginated[SchemaChangeRead]")
-@jakarta.annotation.Generated(value = "org.openapitools.codegen.languages.JavaClientCodegen", date = "2026-05-24T14:41:07.623178+02:00[Europe/Madrid]", comments = "Generator version: 7.22.0")
+@jakarta.annotation.Generated(value = "org.openapitools.codegen.languages.JavaClientCodegen", date = "2026-05-24T17:01:34.733622+02:00[Europe/Madrid]", comments = "Generator version: 7.22.0")
 public class PaginatedSchemaChangeRead {
   public static final String JSON_PROPERTY_HAS_MORE = "has_more";
   @jakarta.annotation.Nullable

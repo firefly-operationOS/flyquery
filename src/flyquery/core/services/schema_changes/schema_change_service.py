@@ -36,8 +36,9 @@ class ConfirmedChange:
 class SchemaChangeService:
     """Domain operations for ``flyquery_schema_changes``."""
 
-    def __init__(self, repository: SchemaChangeRepository) -> None:
-        self._repo = repository
+    def __init__(self, schema_change_repository: SchemaChangeRepository) -> None:
+        # Parameter renamed from ``repository`` to match snake-cased bean name.
+        self._repo = schema_change_repository
 
     async def confirm(
         self,

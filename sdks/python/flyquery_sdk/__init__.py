@@ -14,7 +14,7 @@
 """  # noqa: E501
 
 
-__version__ = "26.5.10"
+__version__ = "26.5.11"
 
 # Define package exports
 __all__ = [
@@ -73,6 +73,9 @@ __all__ = [
     "BillingRollup",
     "BulkFileResult",
     "BulkFileUploadResponse",
+    "CallbackConfig",
+    "CallbackDeliveryListResponse",
+    "CallbackDeliveryRead",
     "CancelResponse",
     "ClarificationFrame",
     "Confidence",
@@ -99,6 +102,7 @@ __all__ = [
     "IngestCostCents",
     "IngestEventListResponse",
     "IngestEventRead",
+    "IngestJobCreate",
     "IngestJobListResponse",
     "IngestJobRead",
     "LocationInner",
@@ -215,6 +219,9 @@ from flyquery_sdk.models.billing_breakdown_item import BillingBreakdownItem as B
 from flyquery_sdk.models.billing_rollup import BillingRollup as BillingRollup
 from flyquery_sdk.models.bulk_file_result import BulkFileResult as BulkFileResult
 from flyquery_sdk.models.bulk_file_upload_response import BulkFileUploadResponse as BulkFileUploadResponse
+from flyquery_sdk.models.callback_config import CallbackConfig as CallbackConfig
+from flyquery_sdk.models.callback_delivery_list_response import CallbackDeliveryListResponse as CallbackDeliveryListResponse
+from flyquery_sdk.models.callback_delivery_read import CallbackDeliveryRead as CallbackDeliveryRead
 from flyquery_sdk.models.cancel_response import CancelResponse as CancelResponse
 from flyquery_sdk.models.clarification_frame import ClarificationFrame as ClarificationFrame
 from flyquery_sdk.models.confidence import Confidence as Confidence
@@ -241,6 +248,7 @@ from flyquery_sdk.models.http_validation_error import HTTPValidationError as HTT
 from flyquery_sdk.models.ingest_cost_cents import IngestCostCents as IngestCostCents
 from flyquery_sdk.models.ingest_event_list_response import IngestEventListResponse as IngestEventListResponse
 from flyquery_sdk.models.ingest_event_read import IngestEventRead as IngestEventRead
+from flyquery_sdk.models.ingest_job_create import IngestJobCreate as IngestJobCreate
 from flyquery_sdk.models.ingest_job_list_response import IngestJobListResponse as IngestJobListResponse
 from flyquery_sdk.models.ingest_job_read import IngestJobRead as IngestJobRead
 from flyquery_sdk.models.location_inner import LocationInner as LocationInner

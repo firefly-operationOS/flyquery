@@ -22,6 +22,10 @@ import sqlalchemy as sa
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from flyquery.core.services.ingestion.stages.parse import ParsedTable
+from flyquery.core.services.storage.jsonb_normalize import (
+    normalize_governance_json,
+    normalize_synonyms_json,
+)
 
 # Rename auto-confirm threshold (passed from settings when available)
 _DEFAULT_AUTO_CONFIRM_THRESHOLD = 0.8
@@ -250,15 +254,19 @@ async def run_reconcile(
                     "source_hash": col_hash,
                     "description": annotation.get("description"),
                     "description_source": annotation.get("description_source"),
-                    "synonyms_json": json.dumps(annotation["synonyms_json"])
-                    if annotation.get("synonyms_json")
-                    else "null",
+                    # Always insert canonical shapes (list for synonyms,
+                    # dict for governance) -- annotation may have been
+                    # transplanted from a legacy row whose JSONB was the
+                    # wrong shape; the normalisers heal that on the way in.
+                    "synonyms_json": json.dumps(
+                        normalize_synonyms_json(annotation.get("synonyms_json"))
+                    ),
                     "pii_tag": annotation.get("pii_tag"),
                     "pii_source": annotation.get("pii_source"),
                     "business_owner": annotation.get("business_owner"),
-                    "governance_json": json.dumps(annotation["governance_json"])
-                    if annotation.get("governance_json")
-                    else "null",
+                    "governance_json": json.dumps(
+                        normalize_governance_json(annotation.get("governance_json"))
+                    ),
                 },
             )
 

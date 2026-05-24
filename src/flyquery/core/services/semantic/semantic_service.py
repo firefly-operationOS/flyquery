@@ -30,8 +30,9 @@ class _Repo(Protocol):
 class SemanticService:
     """Business logic for the semantic layer (metrics lifecycle)."""
 
-    def __init__(self, repo: SemanticRepository) -> None:
-        self._repo: _Repo = repo
+    def __init__(self, semantic_repository: SemanticRepository) -> None:
+        # Parameter renamed from ``repo`` to match snake-cased bean name.
+        self._repo: _Repo = semantic_repository
 
     async def create(
         self,

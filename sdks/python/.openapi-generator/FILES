@@ -28,6 +28,9 @@ docs/BillingBreakdownItem.md
 docs/BillingRollup.md
 docs/BulkFileResult.md
 docs/BulkFileUploadResponse.md
+docs/CallbackConfig.md
+docs/CallbackDeliveryListResponse.md
+docs/CallbackDeliveryRead.md
 docs/CancelResponse.md
 docs/ClarificationFrame.md
 docs/Confidence.md
@@ -60,6 +63,7 @@ docs/HTTPValidationError.md
 docs/IngestCostCents.md
 docs/IngestEventListResponse.md
 docs/IngestEventRead.md
+docs/IngestJobCreate.md
 docs/IngestJobListResponse.md
 docs/IngestJobRead.md
 docs/IngestJobsApi.md
@@ -181,6 +185,9 @@ flyquery_sdk/models/billing_breakdown_item.py
 flyquery_sdk/models/billing_rollup.py
 flyquery_sdk/models/bulk_file_result.py
 flyquery_sdk/models/bulk_file_upload_response.py
+flyquery_sdk/models/callback_config.py
+flyquery_sdk/models/callback_delivery_list_response.py
+flyquery_sdk/models/callback_delivery_read.py
 flyquery_sdk/models/cancel_response.py
 flyquery_sdk/models/clarification_frame.py
 flyquery_sdk/models/confidence.py
@@ -207,6 +214,7 @@ flyquery_sdk/models/http_validation_error.py
 flyquery_sdk/models/ingest_cost_cents.py
 flyquery_sdk/models/ingest_event_list_response.py
 flyquery_sdk/models/ingest_event_read.py
+flyquery_sdk/models/ingest_job_create.py
 flyquery_sdk/models/ingest_job_list_response.py
 flyquery_sdk/models/ingest_job_read.py
 flyquery_sdk/models/location_inner.py

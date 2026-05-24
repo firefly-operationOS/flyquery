@@ -14,6 +14,9 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import Any
 
+from pyfly.container import service as service_bean
+from pyfly.eda import EventPublisher
+
 logger = logging.getLogger(__name__)
 
 # Topic-level event type identifiers (align with flycanon's pattern)
@@ -63,21 +66,40 @@ class IngestRequestedEvent:
         }
 
 
+@service_bean
 class IngestPublisher:
     """EDA publisher for flyquery ingestion events.
 
-    Constructor-injected with pyfly's ``EventPublisher`` bean (Phase C).
-    Falls back to in-memory mode when ``event_publisher`` is ``None``
-    (test isolation, single-process deployments).
+    Follows the flycanon ``AuditService`` / ``AsyncIngestService``
+    pattern: ``@service`` decorated, takes the
+    :class:`EventPublisher` bean as a typed-and-required constructor
+    parameter. Pyfly DI resolves the bean by exact type -- a Union
+    with ``None`` or a default value would make the resolver
+    short-circuit and pass ``None``, dropping every publish into the
+    in-memory branch silently (worker never sees the event).
 
-    The interface is intentionally thin: two publish methods mirror the
-    two event types the ingestion pipeline emits.
+    For tests that need an in-memory publisher, use
+    :meth:`for_testing` which builds the instance with a no-op
+    publisher rather than relying on a default parameter.
     """
 
-    def __init__(self, event_publisher: Any = None) -> None:
+    def __init__(self, event_publisher: EventPublisher) -> None:
         self._publisher = event_publisher
         # In-memory fallback storage (test assertions + single-process mode)
         self._published: list[dict[str, Any]] = []
+
+    @classmethod
+    def for_testing(cls) -> IngestPublisher:
+        """Construct an instance whose publish calls are no-ops.
+
+        Tests that just want to assert "publish was called with X"
+        should use this -- it captures publishes into the
+        ``_published`` list without going through a real EDA bus.
+        """
+        inst = cls.__new__(cls)
+        inst._publisher = None  # type: ignore[assignment]
+        inst._published = []
+        return inst
 
     async def publish_ingest_requested(
         self,

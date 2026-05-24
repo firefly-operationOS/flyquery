@@ -16,8 +16,9 @@ from flyquery.core.services.relations.relation_repository import RelationReposit
 class RelationService:
     """Domain operations for ``flyquery_relations``."""
 
-    def __init__(self, repository: RelationRepository) -> None:
-        self._repo = repository
+    def __init__(self, relation_repository: RelationRepository) -> None:
+        # Parameter renamed from ``repository`` to match snake-cased bean name.
+        self._repo = relation_repository
 
     async def list_for_dataset(
         self,

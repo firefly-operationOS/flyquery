@@ -13,8 +13,11 @@
 
 package com.firefly.flyquery.api;
 
+import com.firefly.flyquery.model.CallbackDeliveryListResponse;
 import com.firefly.flyquery.model.CancelResponse;
+import com.firefly.flyquery.model.HTTPValidationError;
 import com.firefly.flyquery.model.IngestEventListResponse;
+import com.firefly.flyquery.model.IngestJobCreate;
 import com.firefly.flyquery.model.IngestJobListResponse;
 import com.firefly.flyquery.model.IngestJobRead;
 import java.util.UUID;
@@ -58,16 +61,17 @@ public class IngestJobsApiTest {
     /**
      * Start a background ingestion job (REPARSE/SAMPLE_REFRESH/DESCRIBE_PASS/RELATION_PASS).
      *
-     * 
+     * &#x60;&#x60;body&#x60;&#x60; is declared as &#x60;&#x60;Valid[Body[IngestJobCreate]]&#x60;&#x60; (not read from &#x60;&#x60;http_request.json()&#x60;&#x60;) so FastAPI / pyfly publish the request schema into &#x60;&#x60;openapi.json&#x60;&#x60; -- the older manual decode kept &#x60;&#x60;IngestJobCreate&#x60;&#x60; (and now the nested &#x60;&#x60;CallbackConfig&#x60;&#x60; field) invisible to SDK generators.
      */
     @Test
     public void createJobTest()  {
         // uncomment below to test the function
         //String xTenantId = null;
         //String xWorkspaceId = null;
+        //IngestJobCreate ingestJobCreate = null;
         //UUID xCorrelationId = null;
         //String idempotencyKey = null;
-        //IngestJobRead response = api.createJob(xTenantId, xWorkspaceId, xCorrelationId, idempotencyKey).block();
+        //IngestJobRead response = api.createJob(xTenantId, xWorkspaceId, ingestJobCreate, xCorrelationId, idempotencyKey).block();
 
         // TODO: test validations
     }
@@ -85,6 +89,23 @@ public class IngestJobsApiTest {
         //String xWorkspaceId = null;
         //UUID xCorrelationId = null;
         //IngestJobRead response = api.getJob(jobId, xTenantId, xWorkspaceId, xCorrelationId).block();
+
+        // TODO: test validations
+    }
+    
+    /**
+     * Audit log of webhook delivery attempts for this job.
+     *
+     * Returns one row per outbox entry: the URL we posted to, the terminal event we tried to deliver (&#x60;&#x60;ingest.succeeded&#x60;&#x60; or &#x60;&#x60;ingest.failed&#x60;&#x60;), the current status (&#x60;&#x60;PENDING&#x60;&#x60;, &#x60;&#x60;DELIVERED&#x60;&#x60;, &#x60;&#x60;FAILED&#x60;&#x60;, &#x60;&#x60;DEAD&#x60;&#x60;), the attempt count + the last HTTP status code / error, and the next scheduled retry.  Callers SHOULD poll this endpoint after a webhook outage to confirm that the in-flight retry storm has cleared (DEAD rows require manual replay or a follow-up REPARSE job).
+     */
+    @Test
+    public void listCallbacksTest()  {
+        // uncomment below to test the function
+        //String jobId = null;
+        //String xTenantId = null;
+        //String xWorkspaceId = null;
+        //UUID xCorrelationId = null;
+        //CallbackDeliveryListResponse response = api.listCallbacks(jobId, xTenantId, xWorkspaceId, xCorrelationId).block();
 
         // TODO: test validations
     }

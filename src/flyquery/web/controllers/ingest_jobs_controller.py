@@ -19,14 +19,17 @@ from collections.abc import AsyncIterator
 from typing import Any
 
 from pyfly.container import rest_controller
-from pyfly.web import PathVar, get_mapping, post_mapping, request_mapping
+from pyfly.web import Body, PathVar, Valid, get_mapping, post_mapping, request_mapping
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from starlette.requests import Request
 from starlette.responses import StreamingResponse
 
+from flyquery.core.services.callbacks.callback_repository import CallbackOutboxRepository
 from flyquery.core.services.ingest_jobs.ingest_job_repository import IngestJobRepository
 from flyquery.core.services.ingest_jobs.ingest_job_service import IngestJobService
 from flyquery.interfaces.ingest_jobs import (
+    CallbackDeliveryListResponse,
+    CallbackDeliveryRead,
     CancelResponse,
     IngestEventListResponse,
     IngestJobCreate,
@@ -54,22 +57,30 @@ class IngestJobsController:
         self,
         ingest_job_service: IngestJobService,
         ingest_job_repository: IngestJobRepository,
+        callback_outbox_repository: CallbackOutboxRepository,
         session: async_sessionmaker[AsyncSession],
     ) -> None:
         self._service = ingest_job_service
         self._repo = ingest_job_repository
+        self._callbacks = callback_outbox_repository
         self._session_factory = session
 
     @post_mapping("", status_code=201)
-    async def create_job(self, http_request: Request) -> IngestJobRead:
-        """Start a background ingestion job (REPARSE/SAMPLE_REFRESH/DESCRIBE_PASS/RELATION_PASS)."""
+    async def create_job(
+        self,
+        http_request: Request,
+        body: Valid[Body[IngestJobCreate]],
+    ) -> IngestJobRead:
+        """Start a background ingestion job (REPARSE/SAMPLE_REFRESH/DESCRIBE_PASS/RELATION_PASS).
+
+        ``body`` is declared as ``Valid[Body[IngestJobCreate]]`` (not
+        read from ``http_request.json()``) so FastAPI / pyfly publish
+        the request schema into ``openapi.json`` -- the older manual
+        decode kept ``IngestJobCreate`` (and now the nested
+        ``CallbackConfig`` field) invisible to SDK generators.
+        """
         ctx = tenant_context_from_request(http_request)
         workspace_id = _parse_workspace_id(ctx.workspace_id)
-        body_json = await http_request.json()
-        try:
-            body = IngestJobCreate.model_validate(body_json)
-        except Exception as exc:
-            raise InvalidRequest(str(exc)) from exc
 
         try:
             return await self._service.create_job(
@@ -115,6 +126,70 @@ class IngestJobsController:
         if job is None:
             raise ResourceNotFound(f"ingest job {job_id!r} not found")
         return job
+
+    @get_mapping("/{job_id}/callbacks")
+    async def list_callbacks(
+        self,
+        http_request: Request,
+        job_id: PathVar[uuid.UUID],
+    ) -> CallbackDeliveryListResponse:
+        """Audit log of webhook delivery attempts for this job.
+
+        Returns one row per outbox entry: the URL we posted to, the
+        terminal event we tried to deliver (``ingest.succeeded`` or
+        ``ingest.failed``), the current status (``PENDING``,
+        ``DELIVERED``, ``FAILED``, ``DEAD``), the attempt count + the
+        last HTTP status code / error, and the next scheduled retry.
+
+        Callers SHOULD poll this endpoint after a webhook outage to
+        confirm that the in-flight retry storm has cleared (DEAD rows
+        require manual replay or a follow-up REPARSE job).
+        """
+        ctx = tenant_context_from_request(http_request)
+        workspace_id = _parse_workspace_id(ctx.workspace_id)
+
+        # Verify job exists -- so we 404 instead of returning an empty list
+        # for a wrong job_id (silent empty results are a classic source of
+        # client-side confusion).
+        job = await self._service.get_job(
+            job_id, tenant_id=ctx.tenant_id, workspace_id=workspace_id
+        )
+        if job is None:
+            raise ResourceNotFound(f"ingest job {job_id!r} not found")
+
+        params = http_request.query_params
+        statuses = _split_param(params.get("status"))
+        limit = min(int(params.get("limit", "50")), 200)
+        offset = int(params.get("offset", "0"))
+
+        items, total = await self._callbacks.list_for_job(
+            job_id,
+            tenant_id=ctx.tenant_id,
+            workspace_id=workspace_id,
+            statuses=statuses,
+            limit=limit,
+            offset=offset,
+        )
+        reads = [
+            CallbackDeliveryRead(
+                id=row["id"],
+                ingest_job_id=row["ingest_job_id"],
+                callback_url=row["callback_url"],
+                event_type=row["event_type"],
+                status=row["status"],
+                attempts=row["attempts"],
+                last_attempt_at=row["last_attempt_at"],
+                last_status_code=row["last_status_code"],
+                last_error=row["last_error"],
+                next_attempt_at=row["next_attempt_at"],
+                created_at=row["created_at"],
+                finished_at=row["finished_at"],
+            )
+            for row in items
+        ]
+        return CallbackDeliveryListResponse(
+            items=reads, total=total, limit=limit, offset=offset
+        )
 
     @get_mapping("/{job_id}/events")
     async def list_events(self, http_request: Request, job_id: PathVar[uuid.UUID]) -> IngestEventListResponse:

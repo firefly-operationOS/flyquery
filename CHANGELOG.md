@@ -5,6 +5,127 @@ follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and
 the project uses [CalVer](https://calver.org/) (YY.MM.PP) per the
 Firefly Framework convention (memory: `firefly_uses_calver`).
 
+## [26.5.11] - 2026-05-24
+
+### Added — Webhook callbacks for every async ingest job
+
+A receiver-side push channel for the async ingest pipeline. The
+caller attaches `callback_url` (+ optional `secret` + custom
+`headers`) to `POST /api/v1/ingest-jobs` or to
+`POST /api/v1/datasets/{ds}/files:async`; on terminal status
+(`SUCCEEDED` / `FAILED` / `CANCELLED`) the worker POSTs the
+canonical `IngestJobRead` payload to the configured URL.
+
+- **Transactional outbox** -- a new `flyquery_callback_outbox` table
+  (migration `0013_job_callbacks`) is written in the SAME transaction
+  as the job's status flip. A process crash between the two writes is
+  impossible, so a "succeeded" job ALWAYS has its callback queued.
+- **`CallbackWorker`** drains the outbox with `FOR UPDATE SKIP LOCKED`
+  so N peer workers scale horizontally without colliding. Five-attempt
+  exponential backoff (0s, 30s, 5m, 1h, 6h), then `DEAD`. New CLI
+  subcommand `flyquery worker callback` and `flyquery worker all` now
+  includes it alongside ingest + retention.
+- **HMAC-SHA256 signing** -- when a `secret` is provided, every
+  request carries `X-Flyquery-Signature: sha256=<hmac>` computed over
+  the raw body. Dispatcher applies reserved headers (`Content-Type`,
+  `X-Flyquery-Event`, `X-Flyquery-Job-Id`, `X-Flyquery-Signature`)
+  LAST so a misconfigured or malicious extra-header bag cannot shadow
+  the signature header.
+- **Per-request OR per-configuration** -- the per-request bundle takes
+  precedence, but `FLYQUERY_DEFAULT_CALLBACK_URL` /
+  `FLYQUERY_DEFAULT_CALLBACK_SECRET` /
+  `FLYQUERY_DEFAULT_CALLBACK_HEADERS` provide a process-wide default
+  receiver so an operator can wire every async job to a central hub
+  without touching every caller. Whole-bundle precedence (URL +
+  secret + headers move together) prevents accidentally leaking the
+  default secret to a different receiver.
+- **`GET /api/v1/ingest-jobs/{id}/callbacks`** -- paginated audit
+  trail. One row per delivery attempt with URL, event type
+  (`ingest.succeeded` / `ingest.failed`), status (`PENDING` /
+  `DELIVERED` / `FAILED` / `DEAD`), attempt count, last HTTP status
+  code + last error, and next scheduled retry. Supports `?status=`
+  filter.
+- **SDK helpers**:
+  - Python: `client.upload_async(..., callback_url=, callback_secret=,
+    callback_headers=)` + `client.list_job_callbacks(job_id, ...)`
+    (and `_sync` mirrors). The auto-generated `IngestJobsApi.list_callbacks`
+    + `CallbackConfig` / `CallbackDeliveryRead` /
+    `CallbackDeliveryListResponse` models are also exposed.
+  - Java: `client.ingestJobs().listCallbacks(...)` from the
+    regenerated `IngestJobsApi`. `CallbackConfig` model can be set
+    on `IngestJobCreate.callback` for `createJob(...)`.
+- **New docs**: [`docs/callbacks.md`](docs/callbacks.md) -- full
+  contract, receiver example with signature verification, retry
+  schedule, ops runbook for DEAD rows. Cross-linked from
+  `docs/async-ingest.md` + `docs/workers.md`.
+
+### Fixed — Critical correctness bugs surfaced by end-to-end testing
+
+- **Publisher DI was silently in-memory** -- `core/configuration.py`
+  had a stale `@bean ingest_publisher` factory that called
+  `_resolve_eda_publisher()` at factory-eval time (before
+  `EdaAutoConfiguration` wired the EventPublisher). The factory won
+  precedence over the `@service` registration on `IngestPublisher`,
+  so every running process held `self._publisher = None` and every
+  `publish_ingest_requested` silently hit the in-memory branch.
+  Workers never received `IngestRequested` events; async jobs sat in
+  `PENDING` forever and were only rescued by the orphan-PENDING
+  reaper 10 minutes later. Factory deleted; the `@service`
+  registration now resolves `EventPublisher` via constructor
+  injection like flycanon / flyradar.
+- **Pyfly DI param-name mismatches** -- pyfly's resolver is name-first
+  with type-fallback. `IngestService(publisher: IngestPublisher, ...)`
+  did not match the snake-cased bean name `ingest_publisher`. Renamed
+  to `ingest_publisher` on `IngestService` + `IngestJobService`. Also
+  renamed `repository` / `repo` -> snake-cased bean name on
+  `SchemaObjectService`, `SchemaChangeService`, `RelationService`,
+  `SemanticService`, `SemanticDimensionsService`, `WorkspaceService`
+  for forward-safety.
+- **`triggered_by="WORKER"` violated `ck_snapshots_trigger`** -- the
+  CHECK constraint accepts only `USER` / `AGENT` / `SCHEDULED` /
+  `REPARSE`. Every async PARSE_AND_INGEST job failed at reconcile
+  with `CheckViolationError`. Worker now writes `REPARSE` for the
+  by-worker path (`workers.py:488`).
+- **`governance_json` / `synonyms_json` DTO polymorphism** -- legacy
+  rows from a prior `NULL || dict` jsonb-concat bug stored
+  `governance_json` as `[null, {...}]`. The DTO had been widened to
+  `dict | list | None` as a band-aid; that ambiguity leaked into
+  every consumer and broke `GET /tables/{id}/objects` with a Pydantic
+  422. Fixed properly:
+  - DTOs tightened to `synonyms_json: list[str]` /
+    `governance_json: dict[str, Any]`.
+  - New normaliser `core/services/storage/jsonb_normalize.py` coerces
+    any historical shape to canonical at every consumer + producer
+    seam (DTO `field_validator` + `reconcile` stage write path).
+  - Migration `0012_normalize_jsonb_shapes` heals existing polluted
+    rows.
+- **`flyquery_examples` insert syntax** -- `:embedding::vector`
+  confused SQLAlchemy's bind parser (text parsed the second `:` as a
+  new bind), so asyncpg received a literal `:embedding` token and
+  raised `PostgresSyntaxError`. Every successful NL query crashed
+  with a 500 after the SQL executed (auto-learning save path).
+  Changed to `CAST(:embedding AS vector)`.
+- **CallbackWorker triggered pyfly's ApplicationRunner convention**
+  -- a bean method named `run()` is auto-invoked at API startup with
+  a positional `args` parameter. Renamed to `run_forever()` so the
+  callback drain runs ONLY under the dedicated CLI command.
+- **Callback dispatcher header ordering** -- caller-supplied extra
+  headers were applied AFTER our reserved keys, allowing
+  `extra_headers={"X-Flyquery-Signature": "evil"}` to shadow the real
+  signature. Reversed: reserved keys are applied LAST.
+
+### Changed
+
+- `POST /api/v1/ingest-jobs` now declares its request body via
+  `Valid[Body[IngestJobCreate]]` (was: manual `request.json()` decode).
+  This publishes `IngestJobCreate` + the nested `CallbackConfig`
+  schemas into `openapi.json` so SDK generators see them. Wire
+  contract unchanged; existing 200/422 behaviour identical.
+- `pyfly.yaml`, `pyproject.toml`, `Taskfile.yml`, both SDK
+  `pyproject.toml` / `setup.py` / `pom.xml` / `build.gradle`, README
+  badge, and `app.py` decorator all now read `26.5.11`. (Also fixed
+  the `app.py` drift from `26.5.0`.)
+
 ## [26.5.10] - 2026-05-24
 
 ### Added — Release-quality polish (final pass)

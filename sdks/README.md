@@ -27,7 +27,7 @@ firefly four-header wire contract
 |---|---|---|
 | **Path** | [`sdks/python/`](./python/) | [`sdks/java/`](./java/) |
 | **Coordinates** | `flyquery-sdk` on PyPI | `com.firefly:flyquery-sdk` (Maven) |
-| **Latest version** | `26.5.4` | `26.5.4` |
+| **Latest version** | `26.5.11` | `26.5.11` |
 | **Runtime** | Python 3.9+ | Java 25 (LTS) + Spring Boot 3.5.9 |
 | **HTTP client** | `aiohttp` + `aiohttp-retry` (asyncio) | Spring WebFlux `WebClient` + Reactor Netty (reactive) |
 | **Model layer** | Pydantic v2 | Jackson |
@@ -41,8 +41,8 @@ firefly four-header wire contract
 **Python**
 
 ```bash
-uv add flyquery-sdk==26.5.4
-# or: pip install flyquery-sdk==26.5.4
+uv add flyquery-sdk==26.5.11
+# or: pip install flyquery-sdk==26.5.11
 ```
 
 **Java (Maven)**
@@ -51,7 +51,7 @@ uv add flyquery-sdk==26.5.4
 <dependency>
     <groupId>com.firefly</groupId>
     <artifactId>flyquery-sdk</artifactId>
-    <version>26.5.4</version>
+    <version>26.5.11</version>
 </dependency>
 ```
 

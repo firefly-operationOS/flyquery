@@ -39,7 +39,8 @@ class ExamplesRepository:
                         VALUES
                             (:tenant_id, :workspace_id, :dataset_id, :question, :generated_sql,
                              :normalised_sql, :source, :quality,
-                             CAST(:citations_json AS jsonb), :created_by, :embedding::vector)
+                             CAST(:citations_json AS jsonb), :created_by,
+                             CAST(:embedding AS vector))
                         RETURNING id, tenant_id, workspace_id, dataset_id, question,
                                   generated_sql, normalised_sql, source, quality,
                                   citations_json, created_at, created_by, last_used_at, usage_count

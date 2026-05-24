@@ -5,22 +5,50 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime
+from typing import Any
 
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
+
+from flyquery.core.services.storage.jsonb_normalize import (
+    normalize_governance_json,
+    normalize_synonyms_json,
+)
 
 
 class SchemaObjectUpdate(BaseModel):
-    """Request body for PUT /schema-objects/{id}."""
+    """Request body for PUT /schema-objects/{id}.
+
+    ``synonyms_json`` is canonically ``list[str]``; ``governance_json``
+    is canonically ``dict[str, Any]``. The validators coerce legacy
+    shapes (a synonyms dict envelope, a governance array left behind
+    by the ``NULL || dict`` jsonb-concat bug) so a malformed write
+    payload still lands as the canonical shape.
+    """
 
     description: str | None = None
     pii_tag: str | None = None
     business_owner: str | None = None
-    governance_json: dict | None = None
-    synonyms_json: list | None = None
+    governance_json: dict[str, Any] | None = None
+    synonyms_json: list[str] | None = None
+
+    @field_validator("synonyms_json", mode="before")
+    @classmethod
+    def _coerce_synonyms(cls, v: Any) -> list[str] | None:
+        return None if v is None else normalize_synonyms_json(v)
+
+    @field_validator("governance_json", mode="before")
+    @classmethod
+    def _coerce_governance(cls, v: Any) -> dict[str, Any] | None:
+        return None if v is None else normalize_governance_json(v)
 
 
 class SchemaObjectRead(BaseModel):
-    """Response for GET /schema-objects/{id} or PUT /schema-objects/{id}."""
+    """Response for GET /schema-objects/{id} or PUT /schema-objects/{id}.
+
+    See :class:`SchemaObjectUpdate` for shape contract. Reads always
+    return canonical shapes; the validators forgive a legacy row that
+    has not yet been touched by migration 0012.
+    """
 
     id: uuid.UUID
     tenant_id: str
@@ -33,14 +61,24 @@ class SchemaObjectRead(BaseModel):
     is_nullable: bool | None
     description: str | None
     description_source: str | None
-    synonyms_json: list | None
+    synonyms_json: list[str] = []
     pii_tag: str | None
     pii_source: str | None
     business_owner: str | None
-    governance_json: dict | None
+    governance_json: dict[str, Any] = {}
     is_active: bool
     created_at: datetime
     last_changed_at: datetime
+
+    @field_validator("synonyms_json", mode="before")
+    @classmethod
+    def _coerce_synonyms(cls, v: Any) -> list[str]:
+        return normalize_synonyms_json(v)
+
+    @field_validator("governance_json", mode="before")
+    @classmethod
+    def _coerce_governance(cls, v: Any) -> dict[str, Any]:
+        return normalize_governance_json(v)
 
 
 class TableSummary(BaseModel):

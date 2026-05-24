@@ -1108,6 +1108,187 @@
         "title": "BulkFileUploadResponse",
         "type": "object"
       },
+      "CallbackConfig": {
+        "description": "Webhook delivery target attached to an async ingest job.\n\nSet on job creation (``IngestJobCreate.callback`` or the\n``callback_*`` query params on ``POST /datasets/{id}/files:async``).\nOn every terminal status transition the worker writes one row to\n``flyquery_callback_outbox``; the ``CallbackWorker`` POSTs the\ncanonical :class:`IngestJobRead` to ``url`` with header\n``X-Flyquery-Signature: sha256=<hmac>`` if ``secret`` is provided.\n\nDelivery is at-least-once with exponential backoff (5 attempts:\n0s, 30s, 5m, 1h, 6h). After the last failed attempt the row is\nmarked ``DEAD`` and surfaced via ``GET /ingest-jobs/{id}/callbacks``.",
+        "properties": {
+          "headers": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "Extra HTTP headers merged onto every callback request.",
+            "title": "Headers",
+            "type": "object"
+          },
+          "secret": {
+            "anyOf": [
+              {
+                "maxLength": 512,
+                "minLength": 8,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Shared secret for HMAC-SHA256 over the request body.",
+            "title": "Secret"
+          },
+          "url": {
+            "format": "uri",
+            "maxLength": 2083,
+            "minLength": 1,
+            "title": "Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "url"
+        ],
+        "title": "CallbackConfig",
+        "type": "object"
+      },
+      "CallbackDeliveryListResponse": {
+        "description": "Paginated callback-delivery audit log.",
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/CallbackDeliveryRead"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "limit": {
+            "title": "Limit",
+            "type": "integer"
+          },
+          "offset": {
+            "title": "Offset",
+            "type": "integer"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "total",
+          "limit",
+          "offset"
+        ],
+        "title": "CallbackDeliveryListResponse",
+        "type": "object"
+      },
+      "CallbackDeliveryRead": {
+        "description": "One row from flyquery_callback_outbox.\n\nReturned by ``GET /api/v1/ingest-jobs/{id}/callbacks`` so the\ncaller can audit webhook delivery without inspecting the DB.",
+        "properties": {
+          "attempts": {
+            "title": "Attempts",
+            "type": "integer"
+          },
+          "callback_url": {
+            "title": "Callback Url",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "event_type": {
+            "title": "Event Type",
+            "type": "string"
+          },
+          "finished_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Finished At"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "ingest_job_id": {
+            "format": "uuid",
+            "title": "Ingest Job Id",
+            "type": "string"
+          },
+          "last_attempt_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Attempt At"
+          },
+          "last_error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Error"
+          },
+          "last_status_code": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Status Code"
+          },
+          "next_attempt_at": {
+            "format": "date-time",
+            "title": "Next Attempt At",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "PENDING",
+              "DELIVERED",
+              "FAILED",
+              "DEAD"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "ingest_job_id",
+          "callback_url",
+          "event_type",
+          "status",
+          "attempts",
+          "last_attempt_at",
+          "last_status_code",
+          "last_error",
+          "next_attempt_at",
+          "created_at",
+          "finished_at"
+        ],
+        "title": "CallbackDeliveryRead",
+        "type": "object"
+      },
       "CancelResponse": {
         "description": "Response for POST /ingest-jobs/{id}:cancel.",
         "properties": {
@@ -2226,6 +2407,84 @@
           "created_at"
         ],
         "title": "IngestEventRead",
+        "type": "object"
+      },
+      "IngestJobCreate": {
+        "description": "Request body for POST /api/v1/ingest-jobs.",
+        "properties": {
+          "callback": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CallbackConfig"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Optional webhook delivered after the job reaches a terminal status (SUCCEEDED, FAILED, or CANCELLED). See :class:`CallbackConfig` for the at-least-once delivery contract."
+          },
+          "dataset_id": {
+            "format": "uuid",
+            "title": "Dataset Id",
+            "type": "string"
+          },
+          "file_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "File Id"
+          },
+          "job_kind": {
+            "enum": [
+              "PARSE_AND_INGEST",
+              "REPARSE",
+              "SAMPLE_REFRESH",
+              "DESCRIBE_PASS",
+              "RELATION_PASS"
+            ],
+            "title": "Job Kind",
+            "type": "string"
+          },
+          "request_json": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Request Json"
+          },
+          "table_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Table Id"
+          }
+        },
+        "required": [
+          "dataset_id",
+          "job_kind"
+        ],
+        "title": "IngestJobCreate",
         "type": "object"
       },
       "IngestJobListResponse": {
@@ -4271,7 +4530,7 @@
         "type": "object"
       },
       "SchemaObjectRead": {
-        "description": "Response for GET /schema-objects/{id} or PUT /schema-objects/{id}.",
+        "description": "Response for GET /schema-objects/{id} or PUT /schema-objects/{id}.\n\nSee :class:`SchemaObjectUpdate` for shape contract. Reads always\nreturn canonical shapes; the validators forgive a legacy row that\nhas not yet been touched by migration 0012.",
         "properties": {
           "business_owner": {
             "anyOf": [
@@ -4323,16 +4582,10 @@
             "title": "Description Source"
           },
           "governance_json": {
-            "anyOf": [
-              {
-                "additionalProperties": true,
-                "type": "object"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Governance Json"
+            "additionalProperties": true,
+            "default": {},
+            "title": "Governance Json",
+            "type": "object"
           },
           "id": {
             "format": "uuid",
@@ -4395,16 +4648,12 @@
             "type": "string"
           },
           "synonyms_json": {
-            "anyOf": [
-              {
-                "items": {},
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Synonyms Json"
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Synonyms Json",
+            "type": "array"
           },
           "table_id": {
             "format": "uuid",
@@ -4433,11 +4682,9 @@
           "is_nullable",
           "description",
           "description_source",
-          "synonyms_json",
           "pii_tag",
           "pii_source",
           "business_owner",
-          "governance_json",
           "is_active",
           "created_at",
           "last_changed_at"
@@ -4446,7 +4693,7 @@
         "type": "object"
       },
       "SchemaObjectUpdate": {
-        "description": "Request body for PUT /schema-objects/{id}.",
+        "description": "Request body for PUT /schema-objects/{id}.\n\n``synonyms_json`` is canonically ``list[str]``; ``governance_json``\nis canonically ``dict[str, Any]``. The validators coerce legacy\nshapes (a synonyms dict envelope, a governance array left behind\nby the ``NULL || dict`` jsonb-concat bug) so a malformed write\npayload still lands as the canonical shape.",
         "properties": {
           "business_owner": {
             "anyOf": [
@@ -4500,7 +4747,9 @@
           "synonyms_json": {
             "anyOf": [
               {
-                "items": {},
+                "items": {
+                  "type": "string"
+                },
                 "type": "array"
               },
               {
@@ -9485,6 +9734,7 @@
         ]
       },
       "post": {
+        "description": "``body`` is declared as ``Valid[Body[IngestJobCreate]]`` (not\nread from ``http_request.json()``) so FastAPI / pyfly publish\nthe request schema into ``openapi.json`` -- the older manual\ndecode kept ``IngestJobCreate`` (and now the nested\n``CallbackConfig`` field) invisible to SDK generators.",
         "operationId": "create_job",
         "parameters": [
           {
@@ -9500,6 +9750,16 @@
             "$ref": "#/components/parameters/IdempotencyKeyHeader"
           }
         ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/IngestJobCreate"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
           "201": {
             "content": {
@@ -9510,6 +9770,16 @@
               }
             },
             "description": "Successful response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
           }
         },
         "security": [
@@ -9565,6 +9835,53 @@
           }
         ],
         "summary": "Get a single ingest job.",
+        "tags": [
+          "IngestJobs"
+        ]
+      }
+    },
+    "/api/v1/ingest-jobs/{job_id}/callbacks": {
+      "get": {
+        "description": "Returns one row per outbox entry: the URL we posted to, the\nterminal event we tried to deliver (``ingest.succeeded`` or\n``ingest.failed``), the current status (``PENDING``,\n``DELIVERED``, ``FAILED``, ``DEAD``), the attempt count + the\nlast HTTP status code / error, and the next scheduled retry.\n\nCallers SHOULD poll this endpoint after a webhook outage to\nconfirm that the in-flight retry storm has cleared (DEAD rows\nrequire manual replay or a follow-up REPARSE job).",
+        "operationId": "list_callbacks",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "job_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/TenantIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/WorkspaceIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/CorrelationIdHeader"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CallbackDeliveryListResponse"
+                }
+              }
+            },
+            "description": "Successful response"
+          }
+        },
+        "security": [
+          {
+            "TenantContext": [],
+            "WorkspaceContext": []
+          }
+        ],
+        "summary": "Audit log of webhook delivery attempts for this job.",
         "tags": [
           "IngestJobs"
         ]

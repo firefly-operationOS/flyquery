@@ -27,14 +27,14 @@ from pydantic_core import to_jsonable_python
 
 class SchemaObjectRead(BaseModel):
     """
-    Response for GET /schema-objects/{id} or PUT /schema-objects/{id}.
+    Response for GET /schema-objects/{id} or PUT /schema-objects/{id}.  See :class:`SchemaObjectUpdate` for shape contract. Reads always return canonical shapes; the validators forgive a legacy row that has not yet been touched by migration 0012.
     """ # noqa: E501
     business_owner: Optional[StrictStr]
     created_at: datetime
     data_type: Optional[StrictStr]
     description: Optional[StrictStr]
     description_source: Optional[StrictStr]
-    governance_json: Optional[Dict[str, Any]]
+    governance_json: Optional[Dict[str, Any]] = None
     id: UUID
     is_active: StrictBool
     is_nullable: Optional[StrictBool]
@@ -44,7 +44,7 @@ class SchemaObjectRead(BaseModel):
     pii_tag: Optional[StrictStr]
     qualified_name: StrictStr
     snapshot_id: UUID
-    synonyms_json: Optional[List[Any]]
+    synonyms_json: Optional[List[Optional[StrictStr]]] = None
     table_id: UUID
     tenant_id: StrictStr
     workspace_id: UUID
@@ -109,11 +109,6 @@ class SchemaObjectRead(BaseModel):
         if self.description_source is None and "description_source" in self.model_fields_set:
             _dict['description_source'] = None
 
-        # set to None if governance_json (nullable) is None
-        # and model_fields_set contains the field
-        if self.governance_json is None and "governance_json" in self.model_fields_set:
-            _dict['governance_json'] = None
-
         # set to None if is_nullable (nullable) is None
         # and model_fields_set contains the field
         if self.is_nullable is None and "is_nullable" in self.model_fields_set:
@@ -128,11 +123,6 @@ class SchemaObjectRead(BaseModel):
         # and model_fields_set contains the field
         if self.pii_tag is None and "pii_tag" in self.model_fields_set:
             _dict['pii_tag'] = None
-
-        # set to None if synonyms_json (nullable) is None
-        # and model_fields_set contains the field
-        if self.synonyms_json is None and "synonyms_json" in self.model_fields_set:
-            _dict['synonyms_json'] = None
 
         return _dict
 

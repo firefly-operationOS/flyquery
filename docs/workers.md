@@ -169,6 +169,63 @@ When **any** value is non-zero the worker emits one `retention_sweep_completed`
 log line at INFO with the full breakdown -- silent sweeps stay at DEBUG so the
 log volume scales with cleanup pressure, not wall-clock time.
 
+### 1.4 CallbackWorker (NEW in 26.5.11)
+
+**Entry point**: `flyquery worker callback`. Also bundled into
+`flyquery worker all` for dev / docker-compose.
+
+**Class**: `flyquery.core.services.callbacks.callback_worker.CallbackWorker`.
+Drains `flyquery_callback_outbox` -- the transactional outbox that
+captures one row per terminal-state ingest job whose request (or the
+process-wide `FLYQUERY_DEFAULT_CALLBACK_URL` default) attached a
+webhook target. Outbox writes happen in the SAME txn as the job's
+status flip, so a crash can never leave a "succeeded" job without
+its callback queued.
+
+**Driving model**: periodic claim loop (default poll 5s). Each poll
+runs:
+
+```sql
+SELECT … FROM flyquery_callback_outbox
+WHERE status='PENDING' AND next_attempt_at <= now()
+ORDER BY next_attempt_at
+LIMIT :batch
+FOR UPDATE SKIP LOCKED
+```
+
+`FOR UPDATE SKIP LOCKED` is the critical primitive: N peer
+`CallbackWorker` processes never grab the same row. This is the
+postgres-native equivalent of the `IngestWorker`'s EDA fan-out
+(see Section 3 below).
+
+For each claimed row the worker:
+
+1. Calls `CallbackDispatcher.deliver()` -- HTTP POST with reserved
+   headers + optional `X-Flyquery-Signature: sha256=<hmac>` from
+   the shared secret.
+2. Marks `DELIVERED` on 2xx, or schedules the next attempt with
+   exponential backoff (0s, 30s, 5m, 1h, 6h then `DEAD`).
+
+**Settings**:
+
+| Setting | Default | Purpose |
+|---|---|---|
+| `FLYQUERY_CALLBACK_POLL_INTERVAL_S` | `5.0` | Sleep between empty-outbox polls. |
+| `FLYQUERY_CALLBACK_BATCH_SIZE` | `25` | Max rows claimed per poll. |
+| `FLYQUERY_CALLBACK_REQUEST_TIMEOUT_S` | `10.0` | Per-attempt HTTP timeout. |
+| `FLYQUERY_DEFAULT_CALLBACK_URL` | _unset_ | Process-wide default receiver. |
+| `FLYQUERY_DEFAULT_CALLBACK_SECRET` | _unset_ | Default shared secret. |
+| `FLYQUERY_DEFAULT_CALLBACK_HEADERS` | `{}` | Default extra headers (JSON). |
+
+Per-request callback fields on `IngestJobCreate.callback` and the
+`callback_*` multipart form fields on the async upload endpoint
+override the defaults as a **whole bundle** (URL + secret + headers
+move together; we do not merge the default secret into a
+request-supplied URL).
+
+See [`callbacks.md`](callbacks.md) for the full wire contract +
+receiver example.
+
 ---
 
 ## 2. The concurrency primitives

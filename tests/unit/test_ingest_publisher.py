@@ -17,7 +17,7 @@ from flyquery.core.eda.ingest_publisher import (
 
 @pytest.mark.asyncio
 async def test_publish_ingest_requested_records_event() -> None:
-    pub = IngestPublisher()
+    pub = IngestPublisher.for_testing()
     job_id = uuid.uuid4()
     event = IngestRequestedEvent(ingest_job_id=job_id)
     await pub.publish_ingest_requested(event, ingest_topic="flyquery.ingest")
@@ -29,7 +29,7 @@ async def test_publish_ingest_requested_records_event() -> None:
 
 @pytest.mark.asyncio
 async def test_publish_schema_updated_records_event() -> None:
-    pub = IngestPublisher()
+    pub = IngestPublisher.for_testing()
     event = SchemaUpdatedEvent(
         tenant_id="t1",
         workspace_id=str(uuid.uuid4()),
@@ -49,7 +49,7 @@ async def test_publish_schema_updated_records_event() -> None:
 
 @pytest.mark.asyncio
 async def test_publish_multiple_events() -> None:
-    pub = IngestPublisher()
+    pub = IngestPublisher.for_testing()
     for i in range(3):
         await pub.publish_schema_updated(
             SchemaUpdatedEvent(

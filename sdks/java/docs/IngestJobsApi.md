@@ -7,6 +7,7 @@ All URIs are relative to *http://localhost*
 | [**cancelJob**](IngestJobsApi.md#cancelJob) | **POST** /api/v1/ingest-jobs/{job_id}:cancel | Cooperatively cancel a job (idempotent for terminal jobs). |
 | [**createJob**](IngestJobsApi.md#createJob) | **POST** /api/v1/ingest-jobs | Start a background ingestion job (REPARSE/SAMPLE_REFRESH/DESCRIBE_PASS/RELATION_PASS). |
 | [**getJob**](IngestJobsApi.md#getJob) | **GET** /api/v1/ingest-jobs/{job_id} | Get a single ingest job. |
+| [**listCallbacks**](IngestJobsApi.md#listCallbacks) | **GET** /api/v1/ingest-jobs/{job_id}/callbacks | Audit log of webhook delivery attempts for this job. |
 | [**listEvents**](IngestJobsApi.md#listEvents) | **GET** /api/v1/ingest-jobs/{job_id}/events | Paginated event ledger for a job. |
 | [**listJobs**](IngestJobsApi.md#listJobs) | **GET** /api/v1/ingest-jobs | List ingest jobs with optional filters. |
 | [**streamJob**](IngestJobsApi.md#streamJob) | **GET** /api/v1/ingest-jobs/{job_id}/stream | SSE stream for real-time job progress. |
@@ -100,9 +101,11 @@ public class Example {
 
 ## createJob
 
-> IngestJobRead createJob(xTenantId, xWorkspaceId, xCorrelationId, idempotencyKey)
+> IngestJobRead createJob(xTenantId, xWorkspaceId, ingestJobCreate, xCorrelationId, idempotencyKey)
 
 Start a background ingestion job (REPARSE/SAMPLE_REFRESH/DESCRIBE_PASS/RELATION_PASS).
+
+&#x60;&#x60;body&#x60;&#x60; is declared as &#x60;&#x60;Valid[Body[IngestJobCreate]]&#x60;&#x60; (not read from &#x60;&#x60;http_request.json()&#x60;&#x60;) so FastAPI / pyfly publish the request schema into &#x60;&#x60;openapi.json&#x60;&#x60; -- the older manual decode kept &#x60;&#x60;IngestJobCreate&#x60;&#x60; (and now the nested &#x60;&#x60;CallbackConfig&#x60;&#x60; field) invisible to SDK generators.
 
 ### Example
 
@@ -135,10 +138,11 @@ public class Example {
         IngestJobsApi apiInstance = new IngestJobsApi(defaultClient);
         String xTenantId = "acme-corp"; // String | Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present.
         String xWorkspaceId = "00000000-0000-0000-0000-000000000001"; // String | Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation.
+        IngestJobCreate ingestJobCreate = new IngestJobCreate(); // IngestJobCreate | 
         UUID xCorrelationId = UUID.fromString("550e8400-e29b-41d4-a716-446655440000"); // UUID | Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.
         String idempotencyKey = "ingest-2026-05-23-abc123"; // String | Optional client-supplied idempotency key for mutating operations. The first request with a key persists its result; subsequent requests with the same key + same tenant return the cached response. Keys expire after 24h.
         try {
-            IngestJobRead result = apiInstance.createJob(xTenantId, xWorkspaceId, xCorrelationId, idempotencyKey);
+            IngestJobRead result = apiInstance.createJob(xTenantId, xWorkspaceId, ingestJobCreate, xCorrelationId, idempotencyKey);
             System.out.println(result);
         } catch (ApiException e) {
             System.err.println("Exception when calling IngestJobsApi#createJob");
@@ -158,6 +162,7 @@ public class Example {
 |------------- | ------------- | ------------- | -------------|
 | **xTenantId** | **String**| Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present. | |
 | **xWorkspaceId** | **String**| Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation. | |
+| **ingestJobCreate** | [**IngestJobCreate**](IngestJobCreate.md)|  | |
 | **xCorrelationId** | **UUID**| Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header. | [optional] |
 | **idempotencyKey** | **String**| Optional client-supplied idempotency key for mutating operations. The first request with a key persists its result; subsequent requests with the same key + same tenant return the cached response. Keys expire after 24h. | [optional] |
 
@@ -171,7 +176,7 @@ public class Example {
 
 ### HTTP request headers
 
-- **Content-Type**: Not defined
+- **Content-Type**: application/json
 - **Accept**: application/json
 
 
@@ -179,6 +184,7 @@ public class Example {
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
 | **201** | Successful response |  -  |
+| **422** | Validation Error |  -  |
 
 
 ## getJob
@@ -247,6 +253,91 @@ public class Example {
 ### Return type
 
 [**IngestJobRead**](IngestJobRead.md)
+
+### Authorization
+
+[WorkspaceContext](../README.md#WorkspaceContext), [TenantContext](../README.md#TenantContext)
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: application/json
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** | Successful response |  -  |
+
+
+## listCallbacks
+
+> CallbackDeliveryListResponse listCallbacks(jobId, xTenantId, xWorkspaceId, xCorrelationId)
+
+Audit log of webhook delivery attempts for this job.
+
+Returns one row per outbox entry: the URL we posted to, the terminal event we tried to deliver (&#x60;&#x60;ingest.succeeded&#x60;&#x60; or &#x60;&#x60;ingest.failed&#x60;&#x60;), the current status (&#x60;&#x60;PENDING&#x60;&#x60;, &#x60;&#x60;DELIVERED&#x60;&#x60;, &#x60;&#x60;FAILED&#x60;&#x60;, &#x60;&#x60;DEAD&#x60;&#x60;), the attempt count + the last HTTP status code / error, and the next scheduled retry.  Callers SHOULD poll this endpoint after a webhook outage to confirm that the in-flight retry storm has cleared (DEAD rows require manual replay or a follow-up REPARSE job).
+
+### Example
+
+```java
+// Import classes:
+import com.firefly.flyquery.ApiClient;
+import com.firefly.flyquery.ApiException;
+import com.firefly.flyquery.Configuration;
+import com.firefly.flyquery.auth.*;
+import com.firefly.flyquery.models.*;
+import com.firefly.flyquery.api.IngestJobsApi;
+
+public class Example {
+    public static void main(String[] args) {
+        ApiClient defaultClient = Configuration.getDefaultApiClient();
+        defaultClient.setBasePath("http://localhost");
+        
+        // Configure API key authorization: WorkspaceContext
+        ApiKeyAuth WorkspaceContext = (ApiKeyAuth) defaultClient.getAuthentication("WorkspaceContext");
+        WorkspaceContext.setApiKey("YOUR API KEY");
+        // Uncomment the following line to set a prefix for the API key, e.g. "Token" (defaults to null)
+        //WorkspaceContext.setApiKeyPrefix("Token");
+
+        // Configure API key authorization: TenantContext
+        ApiKeyAuth TenantContext = (ApiKeyAuth) defaultClient.getAuthentication("TenantContext");
+        TenantContext.setApiKey("YOUR API KEY");
+        // Uncomment the following line to set a prefix for the API key, e.g. "Token" (defaults to null)
+        //TenantContext.setApiKeyPrefix("Token");
+
+        IngestJobsApi apiInstance = new IngestJobsApi(defaultClient);
+        String jobId = "jobId_example"; // String | 
+        String xTenantId = "acme-corp"; // String | Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present.
+        String xWorkspaceId = "00000000-0000-0000-0000-000000000001"; // String | Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation.
+        UUID xCorrelationId = UUID.fromString("550e8400-e29b-41d4-a716-446655440000"); // UUID | Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.
+        try {
+            CallbackDeliveryListResponse result = apiInstance.listCallbacks(jobId, xTenantId, xWorkspaceId, xCorrelationId);
+            System.out.println(result);
+        } catch (ApiException e) {
+            System.err.println("Exception when calling IngestJobsApi#listCallbacks");
+            System.err.println("Status code: " + e.getCode());
+            System.err.println("Reason: " + e.getResponseBody());
+            System.err.println("Response headers: " + e.getResponseHeaders());
+            e.printStackTrace();
+        }
+    }
+}
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **jobId** | **String**|  | |
+| **xTenantId** | **String**| Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present. | |
+| **xWorkspaceId** | **String**| Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation. | |
+| **xCorrelationId** | **UUID**| Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header. | [optional] |
+
+### Return type
+
+[**CallbackDeliveryListResponse**](CallbackDeliveryListResponse.md)
 
 ### Authorization
 

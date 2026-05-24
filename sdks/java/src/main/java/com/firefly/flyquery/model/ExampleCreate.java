@@ -39,7 +39,7 @@ import com.fasterxml.jackson.annotation.JsonTypeName;
   ExampleCreate.JSON_PROPERTY_GENERATED_SQL,
   ExampleCreate.JSON_PROPERTY_QUESTION
 })
-@jakarta.annotation.Generated(value = "org.openapitools.codegen.languages.JavaClientCodegen", date = "2026-05-24T14:41:07.623178+02:00[Europe/Madrid]", comments = "Generator version: 7.22.0")
+@jakarta.annotation.Generated(value = "org.openapitools.codegen.languages.JavaClientCodegen", date = "2026-05-24T17:01:34.733622+02:00[Europe/Madrid]", comments = "Generator version: 7.22.0")
 public class ExampleCreate {
   public static final String JSON_PROPERTY_CITATIONS_JSON = "citations_json";
   @jakarta.annotation.Nullable

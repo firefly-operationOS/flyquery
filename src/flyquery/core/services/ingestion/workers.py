@@ -34,7 +34,10 @@ from pyfly.eda import EventPublisher
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from flyquery.config import FlyquerySettings
-from flyquery.core.eda.ingest_publisher import INGEST_REQUESTED_EVENT
+from flyquery.core.eda.ingest_publisher import INGEST_REQUESTED_EVENT, IngestPublisher
+from flyquery.core.services.callbacks.callback_repository import (
+    CallbackOutboxRepository,
+)
 from flyquery.core.services.ingestion.events import (
     emit_error,
     emit_final,
@@ -59,8 +62,15 @@ class IngestWorker:
         event_publisher: EventPublisher,
         settings: FlyquerySettings,
         session: async_sessionmaker[AsyncSession],
+        ingest_publisher: IngestPublisher,
+        callback_outbox_repository: CallbackOutboxRepository,
     ) -> None:
         self._publisher = event_publisher
+        # The high-level wrapper used to publish SchemaUpdated from
+        # within the per-table loop. DI-injected so it shares the same
+        # real EventPublisher as the rest of the service.
+        self._ingest_publisher = ingest_publisher
+        self._callback_outbox_repository = callback_outbox_repository
         self._settings = settings
         self._session_factory = session
         self._stop_event = asyncio.Event()
@@ -465,10 +475,10 @@ class IngestWorker:
             session_factory=self._session_factory,
         )
 
-        # Stages 3, 9, 10 per table
-        from flyquery.core.eda.ingest_publisher import IngestPublisher
-
-        publisher = IngestPublisher()  # in-memory; real bus not needed in worker path
+        # Stages 3, 9, 10 per table -- use the DI-injected publisher
+        # so SchemaUpdated reaches other consumers (flycanon's KB,
+        # flyradar's relation harvester) instead of dying in-memory.
+        publisher = self._ingest_publisher
 
         for pt in parsed_tables:
             await self._check_cancelled(job_id)
@@ -480,7 +490,11 @@ class IngestWorker:
                 dataset_id=dataset_id,
                 parsed=pt,
                 actor=request_json.get("actor", "worker"),
-                triggered_by="WORKER",
+                # ``ck_snapshots_trigger`` only allows
+                # ('USER','AGENT','SCHEDULED','REPARSE'). A
+                # PARSE_AND_INGEST job is, by definition, the
+                # worker re-parsing an already-uploaded file -> REPARSE.
+                triggered_by="REPARSE",
                 session_factory=self._session_factory,
             )
             await emit_stage(
@@ -712,6 +726,16 @@ class IngestWorker:
                 ),
                 {"id": job_id},
             )
+            # Same txn as the status flip: either both happen and the
+            # callback is durably queued, or both roll back. Without
+            # this atomicity a process crash between the two writes
+            # would silently drop the webhook for a "succeeded" job.
+            await self._enqueue_callback_terminal(
+                session=s,
+                job_id=job_id,
+                status="SUCCEEDED",
+                result_json={},
+            )
 
     async def _mark_failed(self, job_id: uuid.UUID, exc: BaseException) -> None:
         error_json = {"error_type": type(exc).__name__, "message": str(exc)}
@@ -724,6 +748,68 @@ class IngestWorker:
                 ),
                 {"id": job_id, "err": _json_dumps(error_json)},
             )
+            await self._enqueue_callback_terminal(
+                session=s,
+                job_id=job_id,
+                status="FAILED",
+                result_json=error_json,
+            )
+
+    async def _enqueue_callback_terminal(
+        self,
+        *,
+        session: AsyncSession,
+        job_id: uuid.UUID,
+        status: str,
+        result_json: dict[str, Any],
+    ) -> None:
+        """Enqueue one outbox row when the job's row has a ``callback_url``.
+
+        Shares ``session`` so the outbox insert commits with the status
+        flip. No-op when the job has no callback configured.
+        """
+        result = await session.execute(
+            sa.text(
+                """
+                SELECT id, tenant_id, workspace_id, dataset_id, table_id,
+                       file_id, snapshot_id, job_kind, attempts,
+                       request_json, callback_url, callback_secret,
+                       callback_headers
+                FROM flyquery_ingest_jobs
+                WHERE id = :id
+                """
+            ),
+            {"id": job_id},
+        )
+        row = result.mappings().first()
+        if row is None or not row["callback_url"]:
+            return
+
+        payload = {
+            "ingest_job_id": str(row["id"]),
+            "tenant_id": row["tenant_id"],
+            "workspace_id": str(row["workspace_id"]),
+            "dataset_id": str(row["dataset_id"]) if row["dataset_id"] else None,
+            "table_id": str(row["table_id"]) if row["table_id"] else None,
+            "file_id": str(row["file_id"]) if row["file_id"] else None,
+            "snapshot_id": str(row["snapshot_id"]) if row["snapshot_id"] else None,
+            "job_kind": row["job_kind"],
+            "status": status,
+            "attempts": row["attempts"],
+            "request_json": row["request_json"] or {},
+            "result_json": result_json,
+        }
+        await self._callback_outbox_repository.enqueue_terminal(
+            session=session,
+            ingest_job_id=uuid.UUID(str(row["id"])),
+            tenant_id=row["tenant_id"],
+            workspace_id=uuid.UUID(str(row["workspace_id"])),
+            callback_url=row["callback_url"],
+            callback_secret=row["callback_secret"],
+            callback_headers=row["callback_headers"] or {},
+            event_type=f"ingest.{status.lower()}",
+            payload=payload,
+        )
 
     # ------------------------------------------------------------------
     async def _load_current_snapshot(

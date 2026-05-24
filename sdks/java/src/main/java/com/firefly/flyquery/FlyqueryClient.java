@@ -255,7 +255,15 @@ public final class FlyqueryClient {
   }
 
   // ----------------------------------------------------------------------
-  // v1.0 (26.5.10) -- history + billing + stats + ops ledger accessors
+  // v1 surface (26.5.10) -- history + billing + stats + ops ledger accessors
+  //
+  // 26.5.11: the {@link #ingestJobs()} accessor above also surfaces the
+  // new {@code GET /api/v1/ingest-jobs/{id}/callbacks} audit endpoint
+  // (call {@code client.ingestJobs().listCallbacks(...)} for the
+  // webhook-delivery log) plus the {@code callback} field on the
+  // {@code IngestJobCreate} body (set via the {@link
+  // com.firefly.flyquery.model.CallbackConfig} model when calling
+  // {@code client.ingestJobs().createJob(...)}). See {@code docs/callbacks.md}.
   // ----------------------------------------------------------------------
 
   /** History reader -- {@code GET /api/v1/queries{,/{id},/{id}/result}}. */

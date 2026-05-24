@@ -109,7 +109,7 @@ def test_api_client_can_be_constructed():
 
 
 def test_flyquery_client_exposes_v1_accessors():
-    """The hand-written FlyqueryClient must surface every v1.0 (26.5.10) API."""
+    """The hand-written FlyqueryClient must surface every v1.0 (26.5.11) API."""
     from flyquery_sdk.client import FlyqueryClient
 
     fc = FlyqueryClient(

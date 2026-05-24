@@ -2511,12 +2511,24 @@ paths:
       x-accepts:
       - application/json
     post:
+      description: |-
+        ``body`` is declared as ``Valid[Body[IngestJobCreate]]`` (not
+        read from ``http_request.json()``) so FastAPI / pyfly publish
+        the request schema into ``openapi.json`` -- the older manual
+        decode kept ``IngestJobCreate`` (and now the nested
+        ``CallbackConfig`` field) invisible to SDK generators.
       operationId: create_job
       parameters:
       - $ref: "#/components/parameters/TenantIdHeader"
       - $ref: "#/components/parameters/WorkspaceIdHeader"
       - $ref: "#/components/parameters/CorrelationIdHeader"
       - $ref: "#/components/parameters/IdempotencyKeyHeader"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/IngestJobCreate"
+        required: true
       responses:
         "201":
           content:
@@ -2524,12 +2536,19 @@ paths:
               schema:
                 $ref: "#/components/schemas/IngestJobRead"
           description: Successful response
+        "422":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HTTPValidationError"
+          description: Validation Error
       security:
       - TenantContext: []
         WorkspaceContext: []
       summary: Start a background ingestion job (REPARSE/SAMPLE_REFRESH/DESCRIBE_PASS/RELATION_PASS).
       tags:
       - IngestJobs
+      x-content-type: application/json
       x-accepts:
       - application/json
   /api/v1/ingest-jobs/{job_id}:
@@ -2557,6 +2576,45 @@ paths:
       - TenantContext: []
         WorkspaceContext: []
       summary: Get a single ingest job.
+      tags:
+      - IngestJobs
+      x-accepts:
+      - application/json
+  /api/v1/ingest-jobs/{job_id}/callbacks:
+    get:
+      description: |-
+        Returns one row per outbox entry: the URL we posted to, the
+        terminal event we tried to deliver (``ingest.succeeded`` or
+        ``ingest.failed``), the current status (``PENDING``,
+        ``DELIVERED``, ``FAILED``, ``DEAD``), the attempt count + the
+        last HTTP status code / error, and the next scheduled retry.
+
+        Callers SHOULD poll this endpoint after a webhook outage to
+        confirm that the in-flight retry storm has cleared (DEAD rows
+        require manual replay or a follow-up REPARSE job).
+      operationId: list_callbacks
+      parameters:
+      - explode: false
+        in: path
+        name: job_id
+        required: true
+        schema:
+          type: string
+        style: simple
+      - $ref: "#/components/parameters/TenantIdHeader"
+      - $ref: "#/components/parameters/WorkspaceIdHeader"
+      - $ref: "#/components/parameters/CorrelationIdHeader"
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CallbackDeliveryListResponse"
+          description: Successful response
+      security:
+      - TenantContext: []
+        WorkspaceContext: []
+      summary: Audit log of webhook delivery attempts for this job.
       tags:
       - IngestJobs
       x-accepts:
@@ -5199,6 +5257,174 @@ components:
       - succeeded
       - total_files
       title: BulkFileUploadResponse
+    CallbackConfig:
+      description: |-
+        Webhook delivery target attached to an async ingest job.
+
+        Set on job creation (``IngestJobCreate.callback`` or the
+        ``callback_*`` query params on ``POST /datasets/{id}/files:async``).
+        On every terminal status transition the worker writes one row to
+        ``flyquery_callback_outbox``; the ``CallbackWorker`` POSTs the
+        canonical :class:`IngestJobRead` to ``url`` with header
+        ``X-Flyquery-Signature: sha256=<hmac>`` if ``secret`` is provided.
+
+        Delivery is at-least-once with exponential backoff (5 attempts:
+        0s, 30s, 5m, 1h, 6h). After the last failed attempt the row is
+        marked ``DEAD`` and surfaced via ``GET /ingest-jobs/{id}/callbacks``.
+      properties:
+        headers:
+          additionalProperties:
+            type: string
+          description: Extra HTTP headers merged onto every callback request.
+          title: Headers
+        secret:
+          description: Shared secret for HMAC-SHA256 over the request body.
+          maxLength: 512
+          minLength: 8
+          nullable: true
+          type: string
+        url:
+          format: uri
+          maxLength: 2083
+          minLength: 1
+          title: Url
+          type: string
+      required:
+      - url
+      title: CallbackConfig
+    CallbackDeliveryListResponse:
+      description: Paginated callback-delivery audit log.
+      example:
+        total: 5
+        offset: 5
+        limit: 1
+        items:
+        - callback_url: callback_url
+          last_status_code: 6
+          event_type: event_type
+          finished_at: 2000-01-23T04:56:07.000+00:00
+          next_attempt_at: 2000-01-23T04:56:07.000+00:00
+          created_at: 2000-01-23T04:56:07.000+00:00
+          last_attempt_at: 2000-01-23T04:56:07.000+00:00
+          ingest_job_id: 046b6c7f-0b8a-43b9-b35d-6489e6daee91
+          id: 046b6c7f-0b8a-43b9-b35d-6489e6daee91
+          last_error: last_error
+          attempts: 0
+          status: PENDING
+        - callback_url: callback_url
+          last_status_code: 6
+          event_type: event_type
+          finished_at: 2000-01-23T04:56:07.000+00:00
+          next_attempt_at: 2000-01-23T04:56:07.000+00:00
+          created_at: 2000-01-23T04:56:07.000+00:00
+          last_attempt_at: 2000-01-23T04:56:07.000+00:00
+          ingest_job_id: 046b6c7f-0b8a-43b9-b35d-6489e6daee91
+          id: 046b6c7f-0b8a-43b9-b35d-6489e6daee91
+          last_error: last_error
+          attempts: 0
+          status: PENDING
+      properties:
+        items:
+          items:
+            $ref: "#/components/schemas/CallbackDeliveryRead"
+          title: Items
+          type: array
+        limit:
+          title: Limit
+          type: integer
+        offset:
+          title: Offset
+          type: integer
+        total:
+          title: Total
+          type: integer
+      required:
+      - items
+      - limit
+      - offset
+      - total
+      title: CallbackDeliveryListResponse
+    CallbackDeliveryRead:
+      description: |-
+        One row from flyquery_callback_outbox.
+
+        Returned by ``GET /api/v1/ingest-jobs/{id}/callbacks`` so the
+        caller can audit webhook delivery without inspecting the DB.
+      example:
+        callback_url: callback_url
+        last_status_code: 6
+        event_type: event_type
+        finished_at: 2000-01-23T04:56:07.000+00:00
+        next_attempt_at: 2000-01-23T04:56:07.000+00:00
+        created_at: 2000-01-23T04:56:07.000+00:00
+        last_attempt_at: 2000-01-23T04:56:07.000+00:00
+        ingest_job_id: 046b6c7f-0b8a-43b9-b35d-6489e6daee91
+        id: 046b6c7f-0b8a-43b9-b35d-6489e6daee91
+        last_error: last_error
+        attempts: 0
+        status: PENDING
+      properties:
+        attempts:
+          title: Attempts
+          type: integer
+        callback_url:
+          title: Callback Url
+          type: string
+        created_at:
+          format: date-time
+          title: Created At
+          type: string
+        event_type:
+          title: Event Type
+          type: string
+        finished_at:
+          format: date-time
+          nullable: true
+          type: string
+        id:
+          format: uuid
+          title: Id
+          type: string
+        ingest_job_id:
+          format: uuid
+          title: Ingest Job Id
+          type: string
+        last_attempt_at:
+          format: date-time
+          nullable: true
+          type: string
+        last_error:
+          nullable: true
+          type: string
+        last_status_code:
+          nullable: true
+          type: integer
+        next_attempt_at:
+          format: date-time
+          title: Next Attempt At
+          type: string
+        status:
+          enum:
+          - PENDING
+          - DELIVERED
+          - FAILED
+          - DEAD
+          title: Status
+          type: string
+      required:
+      - attempts
+      - callback_url
+      - created_at
+      - event_type
+      - finished_at
+      - id
+      - ingest_job_id
+      - last_attempt_at
+      - last_error
+      - last_status_code
+      - next_attempt_at
+      - status
+      title: CallbackDeliveryRead
     CancelResponse:
       description: "Response for POST /ingest-jobs/{id}:cancel."
       example:
@@ -6107,6 +6333,53 @@ components:
       - stage
       - status
       title: IngestEventRead
+    IngestJobCreate:
+      description: Request body for POST /api/v1/ingest-jobs.
+      example:
+        request_json:
+          key: ""
+        dataset_id: 046b6c7f-0b8a-43b9-b35d-6489e6daee91
+        file_id: 046b6c7f-0b8a-43b9-b35d-6489e6daee91
+        callback: ""
+        table_id: 046b6c7f-0b8a-43b9-b35d-6489e6daee91
+        job_kind: PARSE_AND_INGEST
+      properties:
+        callback:
+          allOf:
+          - $ref: "#/components/schemas/CallbackConfig"
+          description: "Optional webhook delivered after the job reaches a terminal\
+            \ status (SUCCEEDED, FAILED, or CANCELLED). See :class:`CallbackConfig`\
+            \ for the at-least-once delivery contract."
+          nullable: true
+        dataset_id:
+          format: uuid
+          title: Dataset Id
+          type: string
+        file_id:
+          format: uuid
+          nullable: true
+          type: string
+        job_kind:
+          enum:
+          - PARSE_AND_INGEST
+          - REPARSE
+          - SAMPLE_REFRESH
+          - DESCRIBE_PASS
+          - RELATION_PASS
+          title: Job Kind
+          type: string
+        request_json:
+          additionalProperties: true
+          nullable: true
+          type: object
+        table_id:
+          format: uuid
+          nullable: true
+          type: string
+      required:
+      - dataset_id
+      - job_kind
+      title: IngestJobCreate
     IngestJobListResponse:
       description: Paginated list of ingest jobs.
       example:
@@ -6842,8 +7115,8 @@ components:
           description_source: description_source
           data_type: data_type
           synonyms_json:
-          - ""
-          - ""
+          - synonyms_json
+          - synonyms_json
           id: 046b6c7f-0b8a-43b9-b35d-6489e6daee91
         - tenant_id: tenant_id
           business_owner: business_owner
@@ -6864,8 +7137,8 @@ components:
           description_source: description_source
           data_type: data_type
           synonyms_json:
-          - ""
-          - ""
+          - synonyms_json
+          - synonyms_json
           id: 046b6c7f-0b8a-43b9-b35d-6489e6daee91
       properties:
         has_more:
@@ -7752,7 +8025,12 @@ components:
       - table_id
       title: SchemaChangeRead
     SchemaObjectRead:
-      description: "Response for GET /schema-objects/{id} or PUT /schema-objects/{id}."
+      description: |-
+        Response for GET /schema-objects/{id} or PUT /schema-objects/{id}.
+
+        See :class:`SchemaObjectUpdate` for shape contract. Reads always
+        return canonical shapes; the validators forgive a legacy row that
+        has not yet been touched by migration 0012.
       example:
         tenant_id: tenant_id
         business_owner: business_owner
@@ -7773,8 +8051,8 @@ components:
         description_source: description_source
         data_type: data_type
         synonyms_json:
-        - ""
-        - ""
+        - synonyms_json
+        - synonyms_json
         id: 046b6c7f-0b8a-43b9-b35d-6489e6daee91
       properties:
         business_owner:
@@ -7795,7 +8073,8 @@ components:
           type: string
         governance_json:
           additionalProperties: true
-          nullable: true
+          default: {}
+          title: Governance Json
           type: object
         id:
           format: uuid
@@ -7828,8 +8107,11 @@ components:
           title: Snapshot Id
           type: string
         synonyms_json:
-          items: {}
-          nullable: true
+          default: []
+          items:
+            nullable: true
+            type: string
+          title: Synonyms Json
           type: array
         table_id:
           format: uuid
@@ -7848,7 +8130,6 @@ components:
       - data_type
       - description
       - description_source
-      - governance_json
       - id
       - is_active
       - is_nullable
@@ -7858,21 +8139,27 @@ components:
       - pii_tag
       - qualified_name
       - snapshot_id
-      - synonyms_json
       - table_id
       - tenant_id
       - workspace_id
       title: SchemaObjectRead
     SchemaObjectUpdate:
-      description: "Request body for PUT /schema-objects/{id}."
+      description: |-
+        Request body for PUT /schema-objects/{id}.
+
+        ``synonyms_json`` is canonically ``list[str]``; ``governance_json``
+        is canonically ``dict[str, Any]``. The validators coerce legacy
+        shapes (a synonyms dict envelope, a governance array left behind
+        by the ``NULL || dict`` jsonb-concat bug) so a malformed write
+        payload still lands as the canonical shape.
       example:
         pii_tag: pii_tag
         business_owner: business_owner
         governance_json:
           key: ""
         synonyms_json:
-        - ""
-        - ""
+        - synonyms_json
+        - synonyms_json
         description: description
       properties:
         business_owner:
@@ -7889,7 +8176,8 @@ components:
           nullable: true
           type: string
         synonyms_json:
-          items: {}
+          items:
+            type: string
           nullable: true
           type: array
       title: SchemaObjectUpdate

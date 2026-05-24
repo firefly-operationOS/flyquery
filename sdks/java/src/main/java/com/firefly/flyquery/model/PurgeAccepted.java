@@ -30,7 +30,7 @@ import com.fasterxml.jackson.annotation.JsonTypeName;
   PurgeAccepted.JSON_PROPERTY_STATUS,
   PurgeAccepted.JSON_PROPERTY_TOMBSTONE_EXPIRES_AT
 })
-@jakarta.annotation.Generated(value = "org.openapitools.codegen.languages.JavaClientCodegen", date = "2026-05-24T14:41:07.623178+02:00[Europe/Madrid]", comments = "Generator version: 7.22.0")
+@jakarta.annotation.Generated(value = "org.openapitools.codegen.languages.JavaClientCodegen", date = "2026-05-24T17:01:34.733622+02:00[Europe/Madrid]", comments = "Generator version: 7.22.0")
 public class PurgeAccepted {
   public static final String JSON_PROPERTY_STATUS = "status";
   @jakarta.annotation.Nullable

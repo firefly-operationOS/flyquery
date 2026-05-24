@@ -1,6 +1,6 @@
 # SchemaObjectUpdate
 
-Request body for PUT /schema-objects/{id}.
+Request body for PUT /schema-objects/{id}.  ``synonyms_json`` is canonically ``list[str]``; ``governance_json`` is canonically ``dict[str, Any]``. The validators coerce legacy shapes (a synonyms dict envelope, a governance array left behind by the ``NULL || dict`` jsonb-concat bug) so a malformed write payload still lands as the canonical shape.
 
 ## Properties
 
@@ -10,7 +10,7 @@ Name | Type | Description | Notes
 **description** | **str** |  | [optional] 
 **governance_json** | **Dict[str, object]** |  | [optional] 
 **pii_tag** | **str** |  | [optional] 
-**synonyms_json** | **List[object]** |  | [optional] 
+**synonyms_json** | **List[str]** |  | [optional] 
 
 ## Example
 

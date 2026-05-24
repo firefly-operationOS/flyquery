@@ -33,7 +33,7 @@ import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import com.fasterxml.jackson.annotation.JsonTypeName;
 
 /**
- * Request body for PUT /schema-objects/{id}.
+ * Request body for PUT /schema-objects/{id}.  &#x60;&#x60;synonyms_json&#x60;&#x60; is canonically &#x60;&#x60;list[str]&#x60;&#x60;; &#x60;&#x60;governance_json&#x60;&#x60; is canonically &#x60;&#x60;dict[str, Any]&#x60;&#x60;. The validators coerce legacy shapes (a synonyms dict envelope, a governance array left behind by the &#x60;&#x60;NULL || dict&#x60;&#x60; jsonb-concat bug) so a malformed write payload still lands as the canonical shape.
  */
 @JsonPropertyOrder({
   SchemaObjectUpdate.JSON_PROPERTY_BUSINESS_OWNER,
@@ -42,7 +42,7 @@ import com.fasterxml.jackson.annotation.JsonTypeName;
   SchemaObjectUpdate.JSON_PROPERTY_PII_TAG,
   SchemaObjectUpdate.JSON_PROPERTY_SYNONYMS_JSON
 })
-@jakarta.annotation.Generated(value = "org.openapitools.codegen.languages.JavaClientCodegen", date = "2026-05-24T14:41:07.623178+02:00[Europe/Madrid]", comments = "Generator version: 7.22.0")
+@jakarta.annotation.Generated(value = "org.openapitools.codegen.languages.JavaClientCodegen", date = "2026-05-24T17:01:34.733622+02:00[Europe/Madrid]", comments = "Generator version: 7.22.0")
 public class SchemaObjectUpdate {
   public static final String JSON_PROPERTY_BUSINESS_OWNER = "business_owner";
   @jakarta.annotation.Nullable
@@ -62,7 +62,7 @@ public class SchemaObjectUpdate {
 
   public static final String JSON_PROPERTY_SYNONYMS_JSON = "synonyms_json";
   @jakarta.annotation.Nullable
-  private JsonNullable<List<Object>> synonymsJson = JsonNullable.<List<Object>>undefined();
+  private JsonNullable<List<String>> synonymsJson = JsonNullable.<List<String>>undefined();
 
   public SchemaObjectUpdate() {
   }
@@ -211,15 +211,15 @@ public class SchemaObjectUpdate {
     this.piiTag = JsonNullable.<String>of(piiTag);
   }
 
-  public SchemaObjectUpdate synonymsJson(@jakarta.annotation.Nullable List<Object> synonymsJson) {
-    this.synonymsJson = JsonNullable.<List<Object>>of(synonymsJson);
+  public SchemaObjectUpdate synonymsJson(@jakarta.annotation.Nullable List<String> synonymsJson) {
+    this.synonymsJson = JsonNullable.<List<String>>of(synonymsJson);
     
     return this;
   }
 
-  public SchemaObjectUpdate addSynonymsJsonItem(Object synonymsJsonItem) {
+  public SchemaObjectUpdate addSynonymsJsonItem(String synonymsJsonItem) {
     if (this.synonymsJson == null || !this.synonymsJson.isPresent()) {
-      this.synonymsJson = JsonNullable.<List<Object>>of(new ArrayList<>());
+      this.synonymsJson = JsonNullable.<List<String>>of(new ArrayList<>());
     }
     try {
       this.synonymsJson.get().add(synonymsJsonItem);
@@ -236,24 +236,24 @@ public class SchemaObjectUpdate {
   @jakarta.annotation.Nullable
   @JsonIgnore
 
-  public List<Object> getSynonymsJson() {
+  public List<String> getSynonymsJson() {
         return synonymsJson.orElse(null);
   }
 
   @JsonProperty(value = JSON_PROPERTY_SYNONYMS_JSON, required = false)
   @JsonInclude(value = JsonInclude.Include.USE_DEFAULTS)
 
-  public JsonNullable<List<Object>> getSynonymsJson_JsonNullable() {
+  public JsonNullable<List<String>> getSynonymsJson_JsonNullable() {
     return synonymsJson;
   }
   
   @JsonProperty(JSON_PROPERTY_SYNONYMS_JSON)
-  public void setSynonymsJson_JsonNullable(JsonNullable<List<Object>> synonymsJson) {
+  public void setSynonymsJson_JsonNullable(JsonNullable<List<String>> synonymsJson) {
     this.synonymsJson = synonymsJson;
   }
 
-  public void setSynonymsJson(@jakarta.annotation.Nullable List<Object> synonymsJson) {
-    this.synonymsJson = JsonNullable.<List<Object>>of(synonymsJson);
+  public void setSynonymsJson(@jakarta.annotation.Nullable List<String> synonymsJson) {
+    this.synonymsJson = JsonNullable.<List<String>>of(synonymsJson);
   }
 
 

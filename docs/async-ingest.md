@@ -10,6 +10,7 @@
 6. [Dead-letter handling](#6-dead-letter-handling)
 7. [Sequencing guarantees](#7-sequencing-guarantees)
 8. [Configuration reference](#8-configuration-reference)
+9. [Webhook callbacks](#9-webhook-callbacks)
 
 ---
 
@@ -353,3 +354,36 @@ disable that sweep entirely.
 | `FLYQUERY_RETENTION_AUDIT_EVENTS_DAYS` | `365` | TTL for `flyquery_audit_events`; `0` disables |
 | `FLYQUERY_RETENTION_COST_EVENTS_DAYS` | `365` | TTL for `flyquery_cost_events`; `0` disables |
 | `FLYQUERY_DATASET_PURGE_TOMBSTONE_DAYS` | `90` | PURGING dataset hard-delete delay |
+
+---
+
+## 9. Webhook callbacks
+
+Both async entry points -- `POST /api/v1/ingest-jobs` and
+`POST /api/v1/datasets/{ds}/files:async` -- accept an optional
+webhook target that the worker POSTs to on every terminal status
+transition (`SUCCEEDED` / `FAILED` / `CANCELLED`).
+
+The minimum to opt in:
+
+```bash
+curl -X POST "https://flyquery/api/v1/datasets/$DS/files:async" \
+  -H "X-Tenant-Id: $TENANT" -H "X-Workspace-Id: $WS" \
+  -F "file=@orders.xlsx" \
+  -F "callback_url=https://hooks.example.com/flyquery" \
+  -F "callback_secret=$WEBHOOK_SECRET"
+```
+
+The receiver gets a signed `POST` with the canonical
+`IngestJobRead` body, an `X-Flyquery-Event` header
+(`ingest.succeeded` or `ingest.failed`), and an HMAC-SHA256
+signature when `callback_secret` is set. Delivery is at-least-once
+with 5-attempt exponential backoff; a separate `CallbackWorker`
+drains the durable outbox so a process crash never loses a
+callback.
+
+For the full contract -- header table, signature verification,
+retry schedule, ops runbook for DEAD rows, the
+`FLYQUERY_DEFAULT_CALLBACK_*` process-wide defaults, and the
+`GET /api/v1/ingest-jobs/{id}/callbacks` audit endpoint -- see
+[`callbacks.md`](callbacks.md).

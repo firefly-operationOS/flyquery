@@ -56,12 +56,20 @@ class IngestService:
         object_store: ObjectStore,
         workspace_service: WorkspaceService,
         session: async_sessionmaker[AsyncSession],
+        ingest_publisher: IngestPublisher,
     ) -> None:
         self._settings = settings
         self._object_store = object_store
         self._workspace_service = workspace_service
         self._session_factory = session
-        self._publisher = IngestPublisher()
+        # Parameter name MUST be ``ingest_publisher`` (snake-cased bean
+        # name) -- pyfly resolves by parameter name first and falls
+        # back to bare construction, not type lookup. With ``publisher``
+        # the resolver invoked ``IngestPublisher()`` (no
+        # ``event_publisher`` arg) and crashed -- or, worse, with the
+        # old kw-default it succeeded silently with self._publisher=None
+        # and every publish dropped into the in-memory branch.
+        self._publisher = ingest_publisher
         # Cap concurrent per-section LLM calls (describe + column naming).
         # A 60-section dashboard XLSX runs ~120 LLM calls; serialising
         # them takes ~4 min, firing all at once trips Anthropic's per-key

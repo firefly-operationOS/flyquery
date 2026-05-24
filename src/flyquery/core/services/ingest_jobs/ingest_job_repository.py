@@ -39,6 +39,9 @@ class IngestJobRepository:
         file_id: uuid.UUID | None,
         job_kind: str,
         request_json: dict[str, Any] | None = None,
+        callback_url: str | None = None,
+        callback_secret: str | None = None,
+        callback_headers: dict[str, str] | None = None,
     ) -> dict[str, Any]:
         import json
 
@@ -48,10 +51,12 @@ class IngestJobRepository:
                     """
                     INSERT INTO flyquery_ingest_jobs
                         (tenant_id, workspace_id, dataset_id, table_id, file_id,
-                         job_kind, request_json, status)
+                         job_kind, request_json, status,
+                         callback_url, callback_secret, callback_headers)
                     VALUES
                         (:tenant, :ws, :dataset, :table_id, :file_id,
-                         :kind, CAST(:req AS jsonb), 'PENDING')
+                         :kind, CAST(:req AS jsonb), 'PENDING',
+                         :cb_url, :cb_secret, CAST(:cb_headers AS jsonb))
                     RETURNING
                         id, tenant_id, workspace_id, dataset_id, table_id, file_id,
                         snapshot_id, job_kind, status, attempts,
@@ -67,6 +72,9 @@ class IngestJobRepository:
                     "file_id": file_id,
                     "kind": job_kind,
                     "req": json.dumps(request_json or {}),
+                    "cb_url": callback_url,
+                    "cb_secret": callback_secret,
+                    "cb_headers": json.dumps(callback_headers or {}),
                 },
             )
             row = result.mappings().first()

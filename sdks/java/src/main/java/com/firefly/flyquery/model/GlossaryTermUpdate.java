@@ -40,7 +40,7 @@ import com.fasterxml.jackson.annotation.JsonTypeName;
   GlossaryTermUpdate.JSON_PROPERTY_SYNONYMS_JSON,
   GlossaryTermUpdate.JSON_PROPERTY_TAGS_JSON
 })
-@jakarta.annotation.Generated(value = "org.openapitools.codegen.languages.JavaClientCodegen", date = "2026-05-24T14:41:07.623178+02:00[Europe/Madrid]", comments = "Generator version: 7.22.0")
+@jakarta.annotation.Generated(value = "org.openapitools.codegen.languages.JavaClientCodegen", date = "2026-05-24T17:01:34.733622+02:00[Europe/Madrid]", comments = "Generator version: 7.22.0")
 public class GlossaryTermUpdate {
   public static final String JSON_PROPERTY_DEFINITION = "definition";
   @jakarta.annotation.Nullable
