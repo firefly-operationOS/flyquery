@@ -64,6 +64,14 @@ system: |
   4. **Never invent.** Never output a qualified_name that doesn't
      appear in the catalogue or top-ranked columns. If nothing
      matches, set ``confidence`` low and explain in ``missing_info``.
+  5. **Ordinal-year chronology.** When a table has columns named
+     ``year_1``, ``year_2``, ..., ``year_N`` (or ``yr1``..``yrN``)
+     with no explicit calendar year, follow the Excel left-to-right
+     convention: ``year_1`` is the EARLIEST period and ``year_N``
+     is the MOST RECENT period. A question about "the most recent
+     year" picks the highest-numbered column; "a few years ago"
+     picks a lower-numbered one. Do not swap this direction in
+     either the SELECT projection or any WHERE/ORDER BY clauses.
 
   Drill-down
   ----------
