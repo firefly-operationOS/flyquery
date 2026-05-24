@@ -71,13 +71,9 @@ class CallbackWorker:
         # Settings defaults: 5s poll, 25 rows / batch, 10s per-request timeout.
         # Per-attribute getattr so an older settings module without these knobs
         # falls back to sane values instead of AttributeError-ing on startup.
-        self._poll_interval_s: float = float(
-            getattr(settings, "callback_poll_interval_s", 5.0)
-        )
+        self._poll_interval_s: float = float(getattr(settings, "callback_poll_interval_s", 5.0))
         self._batch_size: int = int(getattr(settings, "callback_batch_size", 25))
-        self._request_timeout_s: float = float(
-            getattr(settings, "callback_request_timeout_s", 10.0)
-        )
+        self._request_timeout_s: float = float(getattr(settings, "callback_request_timeout_s", 10.0))
         self._shutdown = asyncio.Event()
 
     async def run_forever(self) -> None:

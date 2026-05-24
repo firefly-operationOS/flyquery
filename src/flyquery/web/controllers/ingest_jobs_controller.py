@@ -151,9 +151,7 @@ class IngestJobsController:
         # Verify job exists -- so we 404 instead of returning an empty list
         # for a wrong job_id (silent empty results are a classic source of
         # client-side confusion).
-        job = await self._service.get_job(
-            job_id, tenant_id=ctx.tenant_id, workspace_id=workspace_id
-        )
+        job = await self._service.get_job(job_id, tenant_id=ctx.tenant_id, workspace_id=workspace_id)
         if job is None:
             raise ResourceNotFound(f"ingest job {job_id!r} not found")
 
@@ -187,9 +185,7 @@ class IngestJobsController:
             )
             for row in items
         ]
-        return CallbackDeliveryListResponse(
-            items=reads, total=total, limit=limit, offset=offset
-        )
+        return CallbackDeliveryListResponse(items=reads, total=total, limit=limit, offset=offset)
 
     @get_mapping("/{job_id}/events")
     async def list_events(self, http_request: Request, job_id: PathVar[uuid.UUID]) -> IngestEventListResponse:

@@ -258,9 +258,7 @@ async def run_reconcile(
                     # dict for governance) -- annotation may have been
                     # transplanted from a legacy row whose JSONB was the
                     # wrong shape; the normalisers heal that on the way in.
-                    "synonyms_json": json.dumps(
-                        normalize_synonyms_json(annotation.get("synonyms_json"))
-                    ),
+                    "synonyms_json": json.dumps(normalize_synonyms_json(annotation.get("synonyms_json"))),
                     "pii_tag": annotation.get("pii_tag"),
                     "pii_source": annotation.get("pii_source"),
                     "business_owner": annotation.get("business_owner"),

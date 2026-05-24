@@ -311,9 +311,7 @@ class FilesController:
             except _json.JSONDecodeError as exc:
                 from flyquery.web.conventions.exceptions import InvalidRequest
 
-                raise InvalidRequest(
-                    "callback_headers must be valid JSON object string"
-                ) from exc
+                raise InvalidRequest("callback_headers must be valid JSON object string") from exc
 
         ds = await self._datasets.get(dataset_id)
         if ds is None:
