@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import datetime  # noqa: F401  -- used by the retention sweep's type hint
 import json
 import uuid
 from typing import Any
@@ -213,5 +214,36 @@ class DatasetRepository:
         async with self._factory() as s, s.begin():
             await s.execute(
                 sa.text("UPDATE flyquery_datasets SET status='ARCHIVED', updated_at=now() WHERE id = :id"),
+                {"id": dataset_id},
+            )
+
+    async def delete_purged_older_than(self, *, cutoff: datetime.datetime) -> int:
+        """Hard-delete dataset rows whose status has been PURGING since ``cutoff``.
+
+        Run by the retention sweep ``dataset_purge_tombstone_days`` after
+        the ``DELETE /datasets/{id}:purge`` endpoint flipped the row to
+        PURGING (which also walked the object store).
+        """
+        async with self._factory() as s, s.begin():
+            result = await s.execute(
+                sa.text("DELETE FROM flyquery_datasets WHERE status = 'PURGING' AND updated_at < :cutoff"),
+                {"cutoff": cutoff},
+            )
+            return int(result.rowcount or 0)
+
+    async def mark_purging(self, dataset_id: uuid.UUID) -> None:
+        """Flip dataset.status to PURGING.
+
+        Mirrors :meth:`WorkspaceRepository.mark_purging`. The caller
+        (``DatasetService.purge``) then walks the object-store prefix
+        and reclaims blobs. Status stays PURGING after the walk so
+        downstream consumers (lineage, audit, retention reports) can
+        still see the row exists -- a follow-up retention job is
+        responsible for hard-deleting the SQL row after the tombstone
+        window elapses.
+        """
+        async with self._factory() as s, s.begin():
+            await s.execute(
+                sa.text("UPDATE flyquery_datasets SET status='PURGING', updated_at=now() WHERE id = :id"),
                 {"id": dataset_id},
             )

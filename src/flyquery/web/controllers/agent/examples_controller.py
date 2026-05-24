@@ -19,11 +19,14 @@ from starlette.requests import Request
 from flyquery.core.services.auth.agent_token_service import AgentTokenService
 from flyquery.core.services.examples.examples_service import ExamplesService
 from flyquery.interfaces.examples import ExampleCreate, ExampleRead
+from flyquery.interfaces.pagination import Paginated
 from flyquery.web.conventions import (
     HEADER_AGENT_TOKEN,
     FireflyHTTPException,
+    IdempotencyStore,
     tenant_context_from_request,
 )
+from flyquery.web.idempotent_handler import replay_dedup
 
 _SCOPE_EXAMPLES_AUTHOR = "flyquery.examples:author"
 _SCOPE_EXAMPLES_READ = "flyquery.examples:read"
@@ -51,9 +54,11 @@ class AgentExamplesController:
         self,
         examples_service: ExamplesService,
         agent_token_service: AgentTokenService,
+        idempotency_store: IdempotencyStore,
     ) -> None:
         self._service = examples_service
         self._token_service = agent_token_service
+        self._idempotency_store = idempotency_store
 
     async def _verify(self, http_request: Request, scope: str) -> None:
         """Verify X-Agent-Token with the given scope.
@@ -81,22 +86,35 @@ class AgentExamplesController:
     ) -> ExampleRead:
         """Create an example (agent-tier — source=AGENT_LEARNED, quality=PROPOSED).
 
-        :param http_request: Starlette request
-        :param body: validated ExampleCreate
-        :return: ExampleRead with created fields
+        Replay-dedup'd via ``Idempotency-Key`` (required). Without
+        this gate an agent retrying a network blip would persist
+        duplicate (question, SQL) PROPOSED rows that an operator
+        would then have to manually reject.
         """
         await self._verify(http_request, _SCOPE_EXAMPLES_AUTHOR)
         ctx = tenant_context_from_request(http_request)
         ws = uuid.UUID(str(ctx.workspace_id))
-        row = await self._service.create(
-            ctx.tenant_id,
-            ws,
-            body,
-            source="AGENT_LEARNED",
-            quality="PROPOSED",
-            actor=ctx.actor or "agent",
+
+        async def _do_create() -> ExampleRead:
+            row = await self._service.create(
+                ctx.tenant_id,
+                ws,
+                body,
+                source="AGENT_LEARNED",
+                quality="PROPOSED",
+                actor=ctx.actor or "agent",
+            )
+            return ExampleRead.model_validate(row)
+
+        return await replay_dedup(
+            request=http_request,
+            store=self._idempotency_store,
+            tenant_id=ctx.tenant_id,
+            route="POST /api/v1/agent/examples",
+            handler=_do_create,
+            status_code=201,
+            require_key=True,
         )
-        return ExampleRead.model_validate(row)
 
     @get_mapping("/examples")
     async def list_examples(
@@ -104,13 +122,17 @@ class AgentExamplesController:
         http_request: Request,
         quality: QueryParam[str] = None,
         dataset_id: QueryParam[uuid.UUID] = None,
-    ) -> dict:
+        limit: QueryParam[int] = 100,
+        offset: QueryParam[int] = 0,
+    ) -> Paginated[ExampleRead]:
         """List examples for the caller's workspace (agent-tier).
 
         :param http_request: Starlette request
         :param quality: optional quality filter (PROPOSED/APPROVED/REJECTED)
         :param dataset_id: optional dataset filter
-        :return: ``{"items": [...]}``
+        :param limit: page size (default 100)
+        :param offset: starting offset (default 0)
+        :return: Paginated[ExampleRead]
         """
         await self._verify(http_request, _SCOPE_EXAMPLES_READ)
         ctx = tenant_context_from_request(http_request)
@@ -121,4 +143,6 @@ class AgentExamplesController:
             quality=quality,
             dataset_id=dataset_id,
         )
-        return {"items": [ExampleRead.model_validate(r).model_dump(mode="json") for r in rows]}
+        items = [ExampleRead.model_validate(r) for r in rows]
+        sliced = items[offset : offset + limit]
+        return Paginated.of(sliced, total=len(items), limit=limit, offset=offset)

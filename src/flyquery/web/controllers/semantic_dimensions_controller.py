@@ -33,6 +33,7 @@ from starlette.requests import Request
 from flyquery.core.services.semantic.semantic_dimensions_service import (
     SemanticDimensionsService,
 )
+from flyquery.interfaces.pagination import Paginated
 from flyquery.interfaces.semantic import (
     SemanticDimensionCreate,
     SemanticDimensionRead,
@@ -67,12 +68,16 @@ class SemanticDimensionsController:
         self,
         http_request: Request,
         dataset_id: QueryParam[uuid.UUID] = None,
-    ) -> dict:
+        limit: QueryParam[int] = 100,
+        offset: QueryParam[int] = 0,
+    ) -> Paginated[SemanticDimensionRead]:
         """List all semantic dimensions for the caller's workspace."""
         ctx = tenant_context_from_request(http_request)
         ws = uuid.UUID(ctx.workspace_id)
         rows = await self._service.list(ctx.tenant_id, ws, dataset_id=dataset_id)
-        return {"items": [SemanticDimensionRead.model_validate(r).model_dump(mode="json") for r in rows]}
+        items = [SemanticDimensionRead.model_validate(r) for r in rows]
+        sliced = items[offset : offset + limit]
+        return Paginated.of(sliced, total=len(items), limit=limit, offset=offset)
 
     @get_mapping("/{dimension_id}")
     async def get_dimension(self, dimension_id: PathVar[uuid.UUID]) -> SemanticDimensionRead:
@@ -105,7 +110,8 @@ class SemanticDimensionsController:
         return SemanticDimensionRead.model_validate(row)
 
     @get_mapping("/{dimension_id}/history")
-    async def history(self, dimension_id: PathVar[uuid.UUID]) -> dict:
+    async def history(self, dimension_id: PathVar[uuid.UUID]) -> Paginated[SemanticVersionRead]:
         """Return version history for a dimension, oldest first."""
         rows = await self._service.list_history(dimension_id)
-        return {"items": [SemanticVersionRead.model_validate(r).model_dump(mode="json") for r in rows]}
+        items = [SemanticVersionRead.model_validate(r) for r in rows]
+        return Paginated.of(items, total=len(items))

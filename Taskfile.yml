@@ -87,6 +87,13 @@ tasks:
     cmds:
       - uv run python scripts/openapi_snapshot.py
 
+  sdk:all:
+    desc: Refresh openapi.json snapshot and regenerate both SDKs
+    cmds:
+      - task: openapi-snapshot
+      - task: sdk:python
+      - task: sdk:java
+
   sdk:python:
     desc: Regenerate the Python SDK from openapi.json
     cmds:
@@ -94,20 +101,37 @@ tasks:
       # preserved across regeneration by .openapi-generator-ignore.
       # Only packageVersion + library are passed as additional-properties;
       # multi-word values are hand-curated in pyproject.toml.
+      #
+      # IMPORTANT: prune the generated api/ + models/ + docs/ trees
+      # FIRST so files for OpenAPI tags that have since been split or
+      # renamed (eg. SchemaApi -> SchemaChangesApi + SchemaObjectsApi)
+      # don't accumulate. .openapi-generator-ignore preserves the
+      # hand-curated README + pyproject + LICENSE + examples/.
+      - rm -rf sdks/python/flyquery_sdk/api
+      - rm -rf sdks/python/flyquery_sdk/models
+      - rm -rf sdks/python/docs
       - npx -y @openapitools/openapi-generator-cli generate
           -i openapi.json
           -g python
           -o sdks/python
           --package-name flyquery_sdk
-          --additional-properties=packageVersion=26.5.6,projectName=flyquery-sdk,library=asyncio
+          --additional-properties=packageVersion=26.5.10,projectName=flyquery-sdk,library=asyncio
           --skip-validate-spec
       - cd sdks/python && uv pip install --system --quiet . || true
 
   sdk:java:
     desc: Regenerate the Java SDK from openapi.json (Java 25 + Spring Boot 3.5.9 + WebFlux)
     cmds:
-      # Remove stale package trees from earlier generator runs.
+      # Remove stale package trees from earlier generator runs (older
+      # versions used org.* / io.* package roots) AND the current
+      # api/ + model/ + docs/ trees so renamed/split tags don't leave
+      # zombie classes behind.
       - rm -rf sdks/java/src/main/java/org sdks/java/src/main/java/io
+      - rm -rf sdks/java/src/main/java/com/firefly/flyquery/api
+      - rm -rf sdks/java/src/main/java/com/firefly/flyquery/model
+      - rm -rf sdks/java/src/test/java/com/firefly/flyquery/api
+      - rm -rf sdks/java/src/test/java/com/firefly/flyquery/model
+      - rm -rf sdks/java/docs sdks/java/api
       - npx -y @openapitools/openapi-generator-cli generate
           -i openapi.json
           -g java
@@ -116,5 +140,5 @@ tasks:
           --invoker-package com.firefly.flyquery
           --api-package com.firefly.flyquery.api
           --model-package com.firefly.flyquery.model
-          --additional-properties=artifactId=flyquery-sdk,groupId=com.firefly,artifactVersion=26.5.6,library=webclient,dateLibrary=java8,java8=true
+          --additional-properties=artifactId=flyquery-sdk,groupId=com.firefly,artifactVersion=26.5.10,library=webclient,dateLibrary=java8,java8=true,useJakartaEe=true
           --skip-validate-spec

@@ -26,6 +26,7 @@ from flyquery.web.conventions import (
 )
 from flyquery.web.openapi_headers import enrich_openapi_with_headers
 from flyquery.web.openapi_override import install_openapi
+from flyquery.web.openapi_sse import enrich_openapi_with_sse
 
 _TITLE = "flyquery"
 _DESCRIPTION = (
@@ -111,11 +112,12 @@ install_openapi(
 def _wrapped_openapi(
     _pyfly_openapi=app.openapi,  # bind the install_openapi-set callable
 ):
-    """Pyfly-generated spec + flyquery's header components."""
+    """Pyfly-generated spec + flyquery's header components + SSE response types."""
     if getattr(app, "openapi_schema", None) is not None:
         return app.openapi_schema
     spec = _pyfly_openapi()
     enrich_openapi_with_headers(spec)
+    enrich_openapi_with_sse(spec)
     app.openapi_schema = spec
     return spec
 

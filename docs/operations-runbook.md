@@ -8,8 +8,9 @@
 4. [GDPR purge runbook](#4-gdpr-purge-runbook)
 5. [Key rotation](#5-key-rotation)
 6. [Backup and restore](#6-backup-and-restore)
-7. [Scaling up (more workers)](#7-scaling-up-more-workers)
-8. [Incident response template](#8-incident-response-template)
+7. [Worker fleet](#7-worker-fleet)
+8. [Scaling up (more workers)](#8-scaling-up-more-workers)
+9. [Incident response template](#9-incident-response-template)
 
 ---
 
@@ -433,13 +434,110 @@ provider console.
 
 ---
 
-## 7. Scaling up (more workers)
+## 7. Worker fleet
+
+flyquery runs two long-running worker processes in production. See
+[workers.md](workers.md) for the full operator-facing guide; this
+section is the runbook subset.
+
+### IngestWorker (`flyquery worker ingest`)
+
+Consumes the `flyquery.ingest` EDA topic and runs the 10-stage
+pipeline. Lock-free job claiming: every PENDING row is claimed via an
+atomic `UPDATE … WHERE status='PENDING'` on
+`flyquery_ingest_jobs.status`, so concurrent workers and concurrent
+processes are safe.
+
+Health signals:
+
+```bash
+# Is the bus alive at all? Should grow monotonically when ingests fire.
+psql flyquery -c "SELECT COUNT(*) FROM flyquery_ingest_events WHERE created_at > now() - interval '5 minutes';"
+
+# How many jobs are queued? Climbing + no workers visible = workers down.
+curl -s http://localhost:8520/api/v1/stats \
+  -H 'X-Tenant-Id: ...' -H 'X-Workspace-Id: ...' \
+  | jq .ingest_job_count_pending
+```
+
+### RetentionWorker (`flyquery worker retention`)
+
+Periodic sweep loop (default 5 min). Owns:
+
+1. **Stuck-RUNNING reaper** — jobs with `started_at > processing_lease_s`
+   (default 1800s) are reset to PENDING + republished. This is the
+   recovery primitive for crashed ingest workers.
+2. **Orphan-PENDING republisher** — PENDING jobs older than
+   `orphan_queued_grace_s` (default 600s) get republished in case the
+   original event never made it to the bus.
+3. **TTL deletes** — `flyquery_ingest_events` (30d default),
+   `flyquery_audit_events` (365d), `flyquery_cost_events` (365d). Set
+   any to 0 to disable that window.
+4. **PURGING dataset hard-delete** — dataset rows in PURGING longer
+   than `dataset_purge_tombstone_days` (default 90d).
+
+Per-step failure isolation: one concern raising does NOT abort the rest
+of the sweep
+([`retention_worker.py:122`](../src/flyquery/core/services/retention/retention_worker.py)).
+
+Health signals:
+
+```bash
+# Sweep log lines (only emitted when any work was done):
+grep retention_sweep_completed /var/log/flyquery/*.log | tail -5
+
+# Are stuck RUNNING jobs piling up despite the sweep?
+psql flyquery -c "
+  SELECT COUNT(*) FROM flyquery_ingest_jobs
+  WHERE status='RUNNING' AND started_at < now() - interval '30 minutes';
+"
+# > 0 means the retention worker is down (or processing_lease_s is misconfigured)
+
+# Are ledger tables bounded?
+psql flyquery -c "
+  SELECT 'ingest' AS k, COUNT(*) FROM flyquery_ingest_events WHERE created_at < now() - interval '30 days'
+  UNION ALL
+  SELECT 'audit',  COUNT(*) FROM flyquery_audit_events  WHERE created_at < now() - interval '365 days'
+  UNION ALL
+  SELECT 'cost',   COUNT(*) FROM flyquery_cost_events   WHERE created_at < now() - interval '365 days';
+"
+# All zeros mean the TTL sweep is keeping up.
+```
+
+### What to do when a worker crashes
+
+| Symptom | Action |
+|---|---|
+| **IngestWorker pod / process dies mid-stage** | Surviving workers continue picking up new jobs. The in-flight job stays in `RUNNING`. The RetentionWorker resets it to PENDING + republishes after `processing_lease_s` (default 1800s). No manual action required, unless you want to short-circuit — manually `UPDATE flyquery_ingest_jobs SET status='PENDING' WHERE id='<job_id>'` and the next worker poll claims it. |
+| **All IngestWorker replicas down** | Uploads still succeed (they queue PENDING). Queries unaffected. Pending count grows. Restart the deployment; backlog drains at `replicas × FLYQUERY_INGEST_WORKER_CONCURRENCY` jobs in parallel. |
+| **RetentionWorker down for hours** | No data loss; no API impact. Stuck-RUNNING reaper doesn't fire, ledger tables grow, PURGING datasets stick around. Restart and one sweep catches up the entire backlog. |
+| **RetentionWorker keeps crashing on one concern** | The sweep continues — concern failures are isolated. Check logs for `retention_sweep_step_failed concern=<name>`. The bad concern logs a stack trace; other concerns still run. |
+
+### Production bug fixed in 26.5.10
+
+The `IngestWorker._drain_inflight` shutdown path had a latent bug — the
+post-cancel cleanup used `with asyncio.timeout(5)` but `asyncio.timeout`
+is an ASYNC context manager (`async with`); `with` raises `TypeError`.
+Symptoms before fix: SIGTERM-during-cancel produced a `TypeError` log,
+not a graceful exit. Replaced with `asyncio.wait_for(...)` in
+[`workers.py:163`](../src/flyquery/core/services/ingestion/workers.py).
+No test exercised the path until the 26.5.10 concurrency test suite
+landed (see [concurrency.md](concurrency.md) for the regression test
+reference).
+
+Cross-reference: [workers.md](workers.md) for fleet ergonomics,
+[concurrency.md](concurrency.md) for the threading model.
+
+---
+
+## 8. Scaling up (more workers)
 
 ### Horizontal scaling — more worker pods
 
-Increase `replicas` for the `flyquery-worker` deployment. Each pod runs
-`FLYQUERY_INGEST_WORKER_CONCURRENCY` goroutines. The SELECT … FOR UPDATE SKIP
-LOCKED pattern ensures no job duplication.
+Increase `replicas` for the `flyquery-ingest-worker` deployment. Each pod
+runs `FLYQUERY_INGEST_WORKER_CONCURRENCY` parallel coroutines. The
+atomic PENDING → RUNNING update on `flyquery_ingest_jobs` ensures no
+job duplication.
 
 ```yaml
 # Kubernetes example
@@ -484,7 +582,7 @@ currently enforced in the embedding stage — rate limit enforcement is v1).
 
 ---
 
-## 8. Incident response template
+## 9. Incident response template
 
 Use this template for any severity-1 incident affecting flyquery availability.
 
@@ -528,8 +626,9 @@ FOLLOW-UP ACTIONS:
 
 ### Key runbook pointers
 
+- Worker fleet ops → [§7 Worker fleet](#7-worker-fleet) and [workers.md](workers.md)
 - Stuck worker → [§3 Stuck ingest job](#stuck-ingest-job)
 - RLS returning empty → [§3 RLS returning zero rows](#rls-returning-zero-rows)
 - GDPR request → [§4 GDPR purge](#4-gdpr-purge-runbook)
-- Scaling → [§7 Scaling up](#7-scaling-up-more-workers)
+- Scaling → [§8 Scaling up](#8-scaling-up-more-workers)
 - Detailed troubleshooting → [troubleshooting.md](troubleshooting.md)

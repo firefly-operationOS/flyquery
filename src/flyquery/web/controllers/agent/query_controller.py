@@ -47,6 +47,8 @@ from flyquery.core.services.retrieval.search_index import SearchIndex
 from flyquery.core.services.storage.object_store import ObjectStore
 from flyquery.interfaces.query import (
     AnswerResponse,
+    BatchQueryRequest,
+    BatchQueryResponse,
     ClarificationFrame,
     ExplainResponse,
     QueryRequest,
@@ -55,9 +57,11 @@ from flyquery.interfaces.query import (
 from flyquery.web.conventions import (
     HEADER_AGENT_TOKEN,
     FireflyHTTPException,
+    IdempotencyStore,
     InvalidRequest,
     tenant_context_from_request,
 )
+from flyquery.web.idempotent_handler import replay_dedup
 
 _SCOPE_QUERY_READ = "flyquery.query:read"
 
@@ -103,6 +107,7 @@ class AgentQueryController:
         examples_service: ExamplesService,
         embedder: Embedder,
         agent_token_service: AgentTokenService,
+        idempotency_store: IdempotencyStore,
     ) -> None:
         self._settings = settings
         self._session_factory = session
@@ -112,6 +117,7 @@ class AgentQueryController:
         self._examples_service = examples_service
         self._embedder = embedder
         self._token_service = agent_token_service
+        self._idempotency_store = idempotency_store
 
         self._ast_classifier = AstClassifier()
         self._scope_guard = ScopeGuard()
@@ -177,6 +183,11 @@ class AgentQueryController:
     ) -> AnswerResponse:
         """Run the full NL → SQL → result pipeline (agent-tier).
 
+        Replay-dedup'd via ``Idempotency-Key``. The header is *required*
+        on the agent surface so an at-least-once delivery agent (which
+        retries on network error) doesn't burn budget by re-running the
+        same multi-LLM pipeline twice.
+
         :param http_request: Starlette request (provides tenant context + agent token)
         :param body: validated QueryRequest
         :return: AnswerResponse
@@ -185,29 +196,138 @@ class AgentQueryController:
         ctx = tenant_context_from_request(http_request)
         workspace_id = _parse_workspace_id(ctx.workspace_id)
 
-        async with self._session_factory() as db_session:
-            svc = self._build_service(db_session)
-            result = await svc.answer(
-                tenant_id=ctx.tenant_id,
-                workspace_id=workspace_id,
-                dataset_id=body.dataset_id,
-                question=body.question,
-                scopes={_SCOPE_QUERY_READ},
-                conversation_id=body.conversation_id,
+        async def _do_query() -> AnswerResponse:
+            async with self._session_factory() as db_session:
+                svc = self._build_service(db_session)
+                result = await svc.answer(
+                    tenant_id=ctx.tenant_id,
+                    workspace_id=workspace_id,
+                    dataset_id=body.dataset_id,
+                    question=body.question,
+                    scopes={_SCOPE_QUERY_READ},
+                    conversation_id=body.conversation_id,
+                )
+
+            return AnswerResponse(
+                query_id=result.query_id,
+                sql=result.sql,
+                execution_status=result.execution_status,
+                preview=result.preview,
+                row_count=result.row_count,
+                truncated=result.truncated,
+                elapsed_ms=result.elapsed_ms,
+                chart_hint=result.chart_hint,
+                explanation=result.explanation,
+                clarification=result.clarification,
+                grounded_summary=result.grounded_summary,
             )
 
-        return AnswerResponse(
-            query_id=result.query_id,
-            sql=result.sql,
-            execution_status=result.execution_status,
-            preview=result.preview,
-            row_count=result.row_count,
-            truncated=result.truncated,
-            elapsed_ms=result.elapsed_ms,
-            chart_hint=result.chart_hint,
-            explanation=result.explanation,
-            clarification=result.clarification,
-            grounded_summary=result.grounded_summary,
+        return await replay_dedup(
+            request=http_request,
+            store=self._idempotency_store,
+            tenant_id=ctx.tenant_id,
+            route="POST /api/v1/agent/query",
+            handler=_do_query,
+            status_code=200,
+            require_key=True,
+        )
+
+    # ------------------------------------------------------------------
+    # POST /api/v1/agent/query:batch
+    # ------------------------------------------------------------------
+
+    @post_mapping("/query:batch")
+    async def batch(
+        self,
+        http_request: Request,
+        body: Valid[Body[BatchQueryRequest]],
+    ) -> BatchQueryResponse:
+        """Agent-tier mirror of POST /api/v1/query:batch.
+
+        Delegates to the user-tier ``QueryController.batch`` by
+        instantiating it inline (same pattern as :meth:`stream`).
+        Replay-dedup'd via ``Idempotency-Key`` (required) -- a batch
+        is N parallel multi-LLM pipelines, the costliest single
+        request shape in the API.
+        """
+        await self._verify(http_request)
+        ctx = tenant_context_from_request(http_request)
+
+        async def _do_batch() -> BatchQueryResponse:
+            # Lazy import keeps the agent controller free of user-tier
+            # circular dependency at module-load time.
+            from flyquery.web.controllers.query_controller import QueryController
+
+            user_ctrl = QueryController(
+                settings=self._settings,
+                session=self._session_factory,
+                object_store=self._object_store,
+                query_repository=self._query_repo,
+                examples_service=self._examples_service,
+                embedder=self._embedder,
+                idempotency_store=self._idempotency_store,
+            )
+            # The user-tier ``batch`` wraps itself in ``replay_dedup``
+            # too. We pass an empty Idempotency-Key into the underlying
+            # call so the user-tier wrapper short-circuits (no key ->
+            # no caching at that layer); the agent-tier ``replay_dedup``
+            # below is the authoritative cache.
+            #
+            # The user-tier ``batch`` returns a ``JSONResponse`` because
+            # of its own ``replay_dedup`` wrapping. We unwrap by calling
+            # the inner pipeline directly here -- duplicate the small
+            # ``_ask`` + gather flow rather than re-decoding JSON.
+            import asyncio
+
+            from flyquery.interfaces.query import BatchQueryResultItem
+
+            workspace_id = _parse_workspace_id(ctx.workspace_id)
+
+            async def _ask(idx: int, item):
+                try:
+                    async with self._session_factory() as db_session:
+                        svc = user_ctrl._build_service(db_session)
+                        r = await svc.answer(
+                            tenant_id=ctx.tenant_id,
+                            workspace_id=workspace_id,
+                            dataset_id=item.dataset_id,
+                            question=item.question,
+                            scopes={_SCOPE_QUERY_READ},
+                            conversation_id=item.conversation_id,
+                        )
+                    return BatchQueryResultItem(
+                        index=idx,
+                        status="OK",
+                        query_id=r.query_id,
+                        sql=r.sql,
+                        execution_status=r.execution_status,
+                        preview=r.preview,
+                        row_count=r.row_count,
+                        elapsed_ms=r.elapsed_ms,
+                        chart_hint=r.chart_hint,
+                        explanation=r.explanation,
+                        grounded_summary=r.grounded_summary,
+                    )
+                except Exception as exc:  # noqa: BLE001
+                    return BatchQueryResultItem(index=idx, status="FAILED", error=str(exc))
+
+            results = await asyncio.gather(*[_ask(i, item) for i, item in enumerate(body.queries)])
+            succeeded = sum(1 for r in results if r.status == "OK")
+            return BatchQueryResponse(
+                results=list(results),
+                total_queries=len(results),
+                succeeded=succeeded,
+                failed=len(results) - succeeded,
+            )
+
+        return await replay_dedup(
+            request=http_request,
+            store=self._idempotency_store,
+            tenant_id=ctx.tenant_id,
+            route="POST /api/v1/agent/query:batch",
+            handler=_do_batch,
+            status_code=200,
+            require_key=True,
         )
 
     # ------------------------------------------------------------------

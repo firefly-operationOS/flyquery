@@ -59,6 +59,27 @@ class FileUploadResponse(BaseModel):
     tables: list[TableSummary]
 
 
+class AsyncFileUploadAccepted(BaseModel):
+    """202 Accepted envelope from POST /datasets/{id}/files:async.
+
+    The file *bytes* were stored synchronously (Stage 1: receive), so
+    ``file_id`` is final and persists. Stages 2-10 of the pipeline
+    (parse / reconcile / sample / profile / describe / embed / publish)
+    run in the background under ``job_id`` -- poll
+    ``GET /ingest-jobs/{job_id}`` or stream
+    ``GET /ingest-jobs/{job_id}/stream`` for progress.
+
+    Use this endpoint instead of the synchronous ``POST /files`` when
+    the file is large enough (multi-MB) to risk timing out the HTTP
+    request thread.
+    """
+
+    job_id: uuid.UUID
+    file_id: uuid.UUID
+    dataset_id: uuid.UUID
+    status: str = "PENDING"
+
+
 class BulkFileResult(BaseModel):
     """Per-file outcome from POST /datasets/{id}/files:bulk."""
 

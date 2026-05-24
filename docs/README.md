@@ -40,7 +40,9 @@ Pick the entry point that matches what you're trying to do.
    durable Postgres outbox default.
 2. [**async-ingest.md**](async-ingest.md) — how `IngestWorker` consumes the
    `flyquery.ingest` topic, job lifecycle, cooperative cancel, retry + dead-letter.
-3. [**architecture.md**](architecture.md) — how `pyfly.eda.EventPublisher` is
+3. [**workers.md**](workers.md) — the worker fleet topology (IngestWorker +
+   RetentionWorker), CLI subcommands, scaling, recovery, and deployment forms.
+4. [**architecture.md**](architecture.md) — how `pyfly.eda.EventPublisher` is
    injected into the ingestion and query services.
 
 ### "I want to understand how it works"
@@ -52,7 +54,10 @@ Pick the entry point that matches what you're trying to do.
    diagrams; mode coupling (sync vs async via EDA).
 3. [**ingestion.md**](ingestion.md) — stage-by-stage ingestion detail: each
    stage's inputs, outputs, skip policy, and SSE events.
-4. [**prompts.md**](prompts.md) — catalog of the 7 agent prompts: instruction
+4. [**schema-detection.md**](schema-detection.md) — XLSX/CSV/JSON parsing
+   deep dive, type inference, drift detection, PII tagging, and the
+   column-name proposer agent.
+5. [**prompts.md**](prompts.md) — catalog of the 7 agent prompts: instruction
    text, input shape, output schema.
 
 ### "I'm running this in production"
@@ -138,8 +143,10 @@ Pick the entry point that matches what you're trying to do.
 | [integration-with-firefly-os.md](integration-with-firefly-os.md) | You're wiring flyquery with flycanon or flyradar. |
 | [glossary.md](glossary.md) | You need a precise definition for a term the API or docs use. |
 | [scale-and-performance.md](scale-and-performance.md) | You're capacity-planning or tuning FLYQUERY_* knobs. |
-| [billing.md](billing.md) | You're tracking per-query and per-ingest LLM cost via `flyquery_cost_events`. |
+| [billing.md](billing.md) | You're tracking per-query and per-ingest LLM cost via `flyquery_cost_events` and `GET /api/v1/billing`. |
 | [stats.md](stats.md) | You're rendering a workspace dashboard via `GET /api/v1/stats`. |
+| [schema-detection.md](schema-detection.md) | You're debugging XLSX/CSV/JSON parsing, type inference, drift detection, or the column-name proposer. |
+| [workers.md](workers.md) | You're running, scaling, or recovering the `IngestWorker` + `RetentionWorker` fleet. |
 | [quality.md](quality.md) | You're running or extending the test suite — unit, integration, parser fixtures, pipeline tests. |
 | [firefly-intelligence-system.md](firefly-intelligence-system.md) | You want the three-pillar narrative (flycanon + flyradar + flyquery). |
 | [../sdks/python/README.md](../sdks/python/README.md) | You're integrating from Python (async-first SDK, Pydantic types). |
@@ -164,14 +171,16 @@ Pick the entry point that matches what you're trying to do.
 | Agent-token surface | [security-model.md § 4](security-model.md) | [api-reference.md](api-reference.md) |
 | EDA / typed events | [eda-events.md](eda-events.md) | [async-ingest.md](async-ingest.md) |
 | Snapshot versioning + pinning | [ingestion.md](ingestion.md) | [conversations.md](conversations.md) |
-| Schema drift + rename detection | [ingestion.md § RENAMED_CANDIDATE](ingestion.md) | [pipeline.md](pipeline.md) |
+| Schema drift + rename detection | [schema-detection.md](schema-detection.md) | [ingestion.md § RENAMED_CANDIDATE](ingestion.md) |
+| Format detection + parser dispatch | [schema-detection.md](schema-detection.md) | [file-formats.md](file-formats.md) |
+| Worker fleet + scaling | [workers.md](workers.md) | [async-ingest.md](async-ingest.md), [deployment-topology.md](deployment-topology.md) |
 | Object-store layout | [architecture.md § Storage architecture](architecture.md) | [deployment.md](deployment.md) |
-| Billing + cost stream | [billing.md](billing.md) | [api-reference.md](api-reference.md) |
+| Billing + cost stream | [billing.md](billing.md) | [api-reference.md](api-reference.md), [cost-tracking.md](cost-tracking.md) |
 | Workspace stats | [stats.md](stats.md) | [api-reference.md](api-reference.md) |
 | Lock-step modules | [architecture.md § Lock-step](architecture.md) | [cicd.md](cicd.md) |
 | GDPR purge | [operations-runbook.md](operations-runbook.md) | [security-model.md § Upload security](security-model.md) |
 | RFC 7807 error envelope | [payload-reference.md](payload-reference.md) | [api-reference.md](api-reference.md) |
-| Multi-replica concurrency | [concurrency.md](concurrency.md) | [async-ingest.md](async-ingest.md) |
+| Multi-replica concurrency | [concurrency.md](concurrency.md) | [workers.md](workers.md), [async-ingest.md](async-ingest.md) |
 
 ---
 

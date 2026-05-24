@@ -73,8 +73,8 @@ asyncio.run(main())
 ### Java SDK (Spring Boot)
 
 ```java
-import io.firefly.flyquery.FlyqueryClient;
-import io.firefly.flyquery.model.*;
+import com.firefly.flyquery.FlyqueryClient;
+import com.firefly.flyquery.model.*;
 
 @Service
 public class FlyqueryService {
@@ -372,4 +372,95 @@ async def interactive_session(client, dataset_id):
         )
         print(response.answer)
         print(f"(SQL: {response.executed_sql})")
+```
+
+### Recipe F: Query history + re-download (new in 26.5.10)
+
+The v1 history endpoints surface previously executed queries — useful
+for "show me my last 10 questions" UIs, audit dashboards, and
+re-download flows that don't want to re-run the LLM pipeline.
+
+```bash
+# Curl: list history (filter to failures over the last week)
+curl -sS 'http://localhost:8520/api/v1/queries?execution_status=FAILED&date_from=2026-05-17' \
+  -H 'X-Tenant-Id: acme' -H 'X-Workspace-Id: analytics' | jq
+
+# Curl: full detail
+curl -sS 'http://localhost:8520/api/v1/queries/01906f40-.../' \
+  -H 'X-Tenant-Id: acme' -H 'X-Workspace-Id: analytics' | jq
+
+# Curl: re-download presigned URL
+curl -sS 'http://localhost:8520/api/v1/queries/01906f40-.../result' \
+  -H 'X-Tenant-Id: acme' -H 'X-Workspace-Id: analytics' | jq .parquet_presigned_url
+# null means the TTL elapsed; rerun the query.
+```
+
+```python
+# Python SDK
+async def recent_failures(client):
+    page = await client.get(
+        "/api/v1/queries",
+        params={"execution_status": "FAILED", "limit": 50},
+    )
+    for q in page["items"]:
+        print(q["created_at"], q["question"], q["row_count"])
+        detail = await client.get(f"/api/v1/queries/{q['id']}")
+        print("  error:", detail.get("error_json"))
+```
+
+```java
+// Java SDK -- header args come first in the generated signature
+QueriesApi q = client.getQueriesApi();
+PaginatedQueryHistoryItem page = q.listQueries(
+    /* xTenantId */ "acme",
+    /* xWorkspaceId */ "analytics",
+    /* datasetId */ null,
+    /* executionStatus */ "FAILED",
+    /* semanticPathTaken */ null,
+    /* dateFrom */ null,
+    /* dateTo */ null,
+    /* limit */ 50,
+    /* offset */ 0,
+    /* xCorrelationId */ null
+).block();
+page.getItems().forEach(i -> System.out.println(i.getQuestion()));
+```
+
+### Recipe G: Billing rollup + workspace stats (new in 26.5.10)
+
+```bash
+# Daily breakdown for the month so far
+curl -sS 'http://localhost:8520/api/v1/billing?period=day&date_from=2026-05-01' \
+  -H 'X-Tenant-Id: acme' -H 'X-Workspace-Id: analytics' | jq
+
+# Compact workspace summary
+curl -sS http://localhost:8520/api/v1/stats \
+  -H 'X-Tenant-Id: acme' -H 'X-Workspace-Id: analytics' | jq
+```
+
+```python
+# Python: render a workspace dashboard tile
+stats = await client.get("/api/v1/stats")
+billing = await client.get("/api/v1/billing?period=month")
+print(f"Storage: {stats['storage_used_bytes'] / 1024**3:.2f} GB")
+print(f"Datasets / Tables: {stats['dataset_count']} / {stats['table_count']}")
+print(f"Queries (30d): {stats['query_count_last_30d']}")
+print(f"This month: ${billing['total_cost_cents'] / 100:.2f}")
+```
+
+```java
+// Java: pull the rollup for a finance dashboard
+BillingRollup rollup = client.getBillingApi()
+    .rollup(
+        /* xTenantId */ "acme",
+        /* xWorkspaceId */ "analytics",
+        /* period */ "month",
+        /* dateFrom */ null,
+        /* dateTo */ null,
+        /* xCorrelationId */ null
+    )
+    .block();
+System.out.printf("Total: $%.2f over %d bucket(s)%n",
+    rollup.getTotalCostCents().doubleValue() / 100.0,
+    rollup.getBreakdown().size());
 ```

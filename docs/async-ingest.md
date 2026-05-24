@@ -24,13 +24,45 @@ semantics, retry behaviour, and the sequencing guarantees the system provides.
 
 For the stage-by-stage pipeline description see [ingestion.md](ingestion.md).
 For the stage diagrams and mode coupling with the query pipeline see
-[pipeline.md](pipeline.md).
+[pipeline.md](pipeline.md). For the full worker fleet (IngestWorker +
+RetentionWorker), scaling, and recovery, see [workers.md](workers.md).
+
+### Two upload entry points
+
+| Endpoint | Stages run synchronously | Stages run on worker | Response |
+|---|---|---|---|
+| `POST /datasets/{id}/files` | All 10 stages (in-process) | none | `200 OK` with full `IngestJobResult` once everything settles. |
+| `POST /datasets/{id}/files:async` (new in 26.5.10) | Stage 1 only (receive: caps check, hash, format detect, store bytes, write `flyquery_files` row, track storage) | Stages 2-10 (parse / reconcile / sample / profile / relations / describe / PII / embed / publish) | `202 Accepted` with `{job_id, file_id, dataset_id, status}` plus `Location: /api/v1/ingest-jobs/{job_id}`. |
+
+The async form queues the job with an `already_received` flag in
+`request_json`. When the worker picks the job up it inspects the flag
+and skips Stage 1 — re-running receive would create a duplicate
+`file_id` and overwrite the object-store key. See
+[`workers.py:374`](../src/flyquery/core/services/ingestion/workers.py)
+for the worker-side branch and
+[`files_controller.py:328`](../src/flyquery/web/controllers/files_controller.py)
+for the `mark_already_received` call on the controller side.
 
 ---
 
 ## 2. IngestWorker lifecycle
 
-`IngestWorker` is a long-running process (`uv run flyquery worker`) that:
+`IngestWorker` is a long-running process. As of 26.5.10 it ships under
+its own CLI subcommand (`flyquery worker ingest`); the previous
+`flyquery worker` form is gone. See
+[`src/flyquery/cli.py:74`](../src/flyquery/cli.py) for the click group
+and [workers.md](workers.md) for the deployment topologies.
+
+```bash
+# Production (one process per worker type, scale independently):
+flyquery worker ingest         # this doc
+flyquery worker retention      # see workers.md
+
+# Dev / docker-compose convenience (both in one process — NOT production):
+flyquery worker all
+```
+
+The ingest worker:
 
 1. Subscribes to the `flyquery.ingest` EDA topic.
 2. Claims jobs from `flyquery_ingest_jobs` via a transactional SELECT … FOR
@@ -70,14 +102,28 @@ Every transition is a single `UPDATE flyquery_ingest_jobs SET status=…`
 inside a database transaction. The transition is permanent; there is no
 rollback of already-completed stages.
 
-### Heartbeat + stale-job recovery
+### Stuck-job recovery (RetentionWorker, added 26.5.10)
 
-> **v1+:** Periodic heartbeat writes and automatic stale-job recovery are
-> planned for v1. Currently, stale RUNNING jobs are detected only at restart
-> via the handler timeout (`FLYQUERY_INGEST_HANDLER_TIMEOUT_S`, default 600 s);
-> manual `FAILED` marking via `POST /ingest-jobs/{id}:cancel` is the operator
-> workaround. `FLYQUERY_INGEST_HEARTBEAT_S` (default 30) and
-> `FLYQUERY_INGEST_MAX_ATTEMPTS` (default 3) are reserved for v1 use.
+The original v0 design planned periodic heartbeat writes from the
+worker plus a heartbeat-timeout reaper. 26.5.10 took a different
+approach: the new `RetentionWorker` polls `flyquery_ingest_jobs`
+periodically and atomically resets jobs whose `started_at` is older
+than `processing_lease_s` (default 1800s) back to `PENDING`, then
+republishes them onto the bus. The reaper is implemented at
+[`retention_worker.py:162`](../src/flyquery/core/services/retention/retention_worker.py)
+(`_reap_stuck_running`); see [workers.md](workers.md) for the full
+operator picture.
+
+This replaces the heartbeat scheme: instead of writing a heartbeat
+column from every worker, we use the existing `started_at` timestamp +
+a single polling sweep. The trade-off is detection latency
+(`processing_lease_s` instead of `FLYQUERY_INGEST_HEARTBEAT_S`) in
+exchange for zero per-handler write overhead and a simpler model.
+
+`FLYQUERY_INGEST_HANDLER_TIMEOUT_S` (default 600 s) is still the
+per-job in-process wall-clock cap; it bounds `asyncio.wait_for` around
+each handler. `FLYQUERY_INGEST_MAX_ATTEMPTS` (default 3) is reserved
+for a future change.
 
 ---
 
@@ -182,7 +228,7 @@ up by a worker.
 
 | Scenario | Behaviour |
 |----------|-----------|
-| Worker crashes mid-stage | Job remains `RUNNING`; heartbeat times out → reset to `PENDING` + `attempts++` |
+| Worker crashes mid-stage | Job remains `RUNNING` until the RetentionWorker's `_reap_stuck_running` sweep (every `retention_scan_interval_s`, default 300s) finds `started_at < now() - processing_lease_s` (default 1800s). Then: reset to `PENDING`, republish onto the bus. The next worker to claim it via the atomic update wins. |
 | Stage raises a retriable error | Job transitions to `FAILED`; operator must re-queue via `POST /ingest-jobs` with a new job or use REPARSE |
 | DESCRIBE_PASS budget exhausted | Normal `SUCCEEDED`; auto-creates another DESCRIBE_PASS for remaining objects |
 | Zip-bomb or FORMAT_MISMATCH | Immediate `FAILED` with structured `error_json`; no retry |
@@ -192,7 +238,7 @@ Business logic errors (wrong format, malformed JSON, encrypted XLSX) require
 operator attention, not silent retry.
 
 For transient infrastructure errors (Postgres unavailable, object-store
-timeout), the heartbeat-timeout mechanism re-queues the job once the
+timeout), the RetentionWorker re-queues the job once the
 infrastructure recovers. `FLYQUERY_INGEST_MAX_ATTEMPTS` (default 3) caps
 total attempts to prevent loops.
 
@@ -250,20 +296,37 @@ queryable). There is no half-ingested window.
 
 Object-store writes (Parquet materialisation in stage 2) happen before the
 corresponding `flyquery_schema_snapshots` row is inserted (stage 3). If the
-worker crashes between these two steps, the orphaned Parquet blob is cleaned
-up by a background retention sweep that looks for blobs without a
-corresponding `flyquery_schema_snapshots` row older than 1 hour.
+worker crashes between these two steps, the orphaned Parquet blob remains
+on the object store until the dataset is purged. There is **no** orphan-
+blob sweep in the RetentionWorker as of 26.5.10 -- the sweep only resets
+the **SQL** state (the `RetentionWorker._reap_stuck_running` step flips
+the job back to PENDING so the bus redelivers, and the next successful
+run writes a fresh snapshot pointing at a NEW Parquet key). The leaked
+blob from the crashed run is reclaimed when `DELETE /datasets/{id}:purge`
+walks the dataset prefix.
+
+Operators that need tighter Parquet GC have two options:
+1. Run periodic dataset purges (operator policy).
+2. Add object-store lifecycle rules at the bucket tier (S3 / GCS / Azure
+   all support "delete objects older than N days"). The
+   `flyquery/{tenant}/{workspace}/{dataset}/` prefix layout makes
+   per-dataset rules straightforward.
+
+See [`docs/workers.md`](workers.md) for the full RetentionWorker
+behaviour.
 
 ---
 
 ## 8. Configuration reference
 
+### IngestWorker
+
 | Variable | Default | Purpose |
 |----------|---------|---------|
 | `FLYQUERY_INGEST_TOPIC` | `flyquery.ingest` | EDA topic name for ingest jobs |
 | `FLYQUERY_INGEST_WORKER_CONCURRENCY` | `4` | Concurrent job slots per worker process |
-| `FLYQUERY_INGEST_HANDLER_TIMEOUT_S` | `600` | Max seconds before heartbeat-timeout triggers |
-| `FLYQUERY_INGEST_HEARTBEAT_S` | `30` | Heartbeat write interval |
+| `FLYQUERY_INGEST_HANDLER_TIMEOUT_S` | `600` | Max seconds any one handler runs before being cancelled |
+| `FLYQUERY_INGEST_HEARTBEAT_S` | `30` | Reserved for future use (replaced by RetentionWorker reap loop) |
 | `FLYQUERY_INGEST_SHUTDOWN_GRACE_S` | `30` | Grace period for in-flight jobs on SIGTERM |
 | `FLYQUERY_INGEST_MAX_ATTEMPTS` | `3` | Max total attempts before dead-letter |
 | `FLYQUERY_EDA_ADAPTER` | `postgres` | EDA transport: postgres\|redis\|kafka\|memory |
@@ -274,3 +337,19 @@ corresponding `flyquery_schema_snapshots` row older than 1 hour.
 | `FLYQUERY_RELATION_PROPOSER_MAX_PER_PAIR` | `3` | Max proposals per table-pair |
 | `FLYQUERY_SAMPLE_N` | `8` | Sample values per column in stage 4 |
 | `FLYQUERY_PROFILE_ROW_THRESHOLD` | `10000000` | Row count above which stage 5 is skipped |
+
+### RetentionWorker (new in 26.5.10)
+
+All settings live on `FlyquerySettings`
+([`config.py:187`](../src/flyquery/config.py)). Set any TTL to `0` to
+disable that sweep entirely.
+
+| Variable | Default | Purpose |
+|----------|---------|---------|
+| `FLYQUERY_RETENTION_SCAN_INTERVAL_S` | `300` | Sweep loop interval (clamped to ≥ 60s) |
+| `FLYQUERY_PROCESSING_LEASE_S` | `1800` | Stuck-RUNNING threshold — jobs older than this get reset to PENDING |
+| `FLYQUERY_ORPHAN_QUEUED_GRACE_S` | `600` | Orphan-PENDING threshold — PENDING jobs older than this get republished |
+| `FLYQUERY_RETENTION_INGEST_EVENTS_DAYS` | `30` | TTL for `flyquery_ingest_events`; `0` disables |
+| `FLYQUERY_RETENTION_AUDIT_EVENTS_DAYS` | `365` | TTL for `flyquery_audit_events`; `0` disables |
+| `FLYQUERY_RETENTION_COST_EVENTS_DAYS` | `365` | TTL for `flyquery_cost_events`; `0` disables |
+| `FLYQUERY_DATASET_PURGE_TOMBSTONE_DAYS` | `90` | PURGING dataset hard-delete delay |

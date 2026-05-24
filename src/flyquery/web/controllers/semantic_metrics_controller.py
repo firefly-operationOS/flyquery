@@ -31,6 +31,7 @@ from pyfly.web import (
 from starlette.requests import Request
 
 from flyquery.core.services.semantic.semantic_service import SemanticService
+from flyquery.interfaces.pagination import Paginated
 from flyquery.interfaces.semantic import (
     SemanticMetricCreate,
     SemanticMetricRead,
@@ -65,12 +66,16 @@ class SemanticMetricsController:
         self,
         http_request: Request,
         dataset_id: QueryParam[uuid.UUID] = None,
-    ) -> dict:
+        limit: QueryParam[int] = 100,
+        offset: QueryParam[int] = 0,
+    ) -> Paginated[SemanticMetricRead]:
         """List all semantic metrics for the caller's workspace."""
         ctx = tenant_context_from_request(http_request)
         ws = uuid.UUID(ctx.workspace_id)
         rows = await self._service.list(ctx.tenant_id, ws, dataset_id=dataset_id)
-        return {"items": [SemanticMetricRead.model_validate(r).model_dump(mode="json") for r in rows]}
+        items = [SemanticMetricRead.model_validate(r) for r in rows]
+        sliced = items[offset : offset + limit]
+        return Paginated.of(sliced, total=len(items), limit=limit, offset=offset)
 
     @get_mapping("/{metric_id}")
     async def get_metric(self, metric_id: PathVar[uuid.UUID]) -> SemanticMetricRead:
@@ -103,7 +108,13 @@ class SemanticMetricsController:
         return SemanticMetricRead.model_validate(row)
 
     @get_mapping("/{metric_id}/history")
-    async def history(self, metric_id: PathVar[uuid.UUID]) -> dict:
-        """Return version history for a metric, oldest first."""
+    async def history(self, metric_id: PathVar[uuid.UUID]) -> Paginated[SemanticVersionRead]:
+        """Return version history for a metric, oldest first.
+
+        History is intentionally returned in full -- versions are bounded
+        per metric (typically &lt; 50) and chronology is the consumer's
+        whole point. ``total = len(items)`` and ``has_more = False``.
+        """
         rows = await self._service.list_history(metric_id)
-        return {"items": [SemanticVersionRead.model_validate(r).model_dump(mode="json") for r in rows]}
+        items = [SemanticVersionRead.model_validate(r) for r in rows]
+        return Paginated.of(items, total=len(items))

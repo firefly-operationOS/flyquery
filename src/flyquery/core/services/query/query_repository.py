@@ -114,6 +114,146 @@ class QueryRepository:
             row = result.mappings().one()
             return row["id"]
 
+    async def get_query(
+        self,
+        query_id: uuid.UUID,
+        *,
+        tenant_id: str,
+        workspace_id: uuid.UUID,
+    ) -> dict[str, Any] | None:
+        """Read a single query row scoped to ``(tenant, workspace)``.
+
+        The full row is returned (every column from ``flyquery_queries``)
+        so the controller can expose candidates, retries, model
+        identifiers, error envelopes, and clarification frames in one
+        round-trip.
+        """
+        async with self._factory() as s:
+            result = await s.execute(
+                sa.text(
+                    "SELECT * FROM flyquery_queries "
+                    "WHERE id = :id AND tenant_id = :tenant AND workspace_id = :ws"
+                ),
+                {"id": query_id, "tenant": tenant_id, "ws": workspace_id},
+            )
+            row = result.mappings().one_or_none()
+            return dict(row) if row else None
+
+    async def list_queries(
+        self,
+        *,
+        tenant_id: str,
+        workspace_id: uuid.UUID,
+        dataset_id: uuid.UUID | None = None,
+        execution_status: str | None = None,
+        semantic_path_taken: str | None = None,
+        date_from: datetime | None = None,
+        date_to: datetime | None = None,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> tuple[list[dict[str, Any]], int]:
+        """Paginated + filtered list. Returns ``(rows, total_unpaginated)``.
+
+        Default ordering: newest first by ``created_at``. ``date_from``
+        is inclusive, ``date_to`` is exclusive. ``limit`` clamped to
+        [1, 200] -- queries carry heavy JSONB columns (candidates,
+        clarification, pii_findings) so the page size cap is tighter
+        than for cheap rows.
+        """
+        clamped_limit = max(1, min(200, int(limit)))
+        clamped_offset = max(0, int(offset))
+        params: dict[str, Any] = {
+            "tenant": tenant_id,
+            "ws": workspace_id,
+            "ds_id": dataset_id,
+            "execution_status": execution_status,
+            "semantic_path_taken": semantic_path_taken,
+            "date_from": date_from,
+            "date_to": date_to,
+            "limit": clamped_limit,
+            "offset": clamped_offset,
+        }
+        async with self._factory() as s:
+            result = await s.execute(
+                sa.text(
+                    """
+                    SELECT *, COUNT(*) OVER () AS _total
+                    FROM flyquery_queries
+                    WHERE tenant_id = :tenant
+                      AND workspace_id = :ws
+                      AND (CAST(:ds_id AS uuid) IS NULL OR dataset_id = CAST(:ds_id AS uuid))
+                      AND (CAST(:execution_status AS text) IS NULL
+                           OR execution_status = CAST(:execution_status AS text))
+                      AND (CAST(:semantic_path_taken AS text) IS NULL
+                           OR semantic_path_taken = CAST(:semantic_path_taken AS text))
+                      AND (CAST(:date_from AS timestamptz) IS NULL
+                           OR created_at >= CAST(:date_from AS timestamptz))
+                      AND (CAST(:date_to AS timestamptz) IS NULL
+                           OR created_at < CAST(:date_to AS timestamptz))
+                    ORDER BY created_at DESC
+                    LIMIT :limit OFFSET :offset
+                    """
+                ),
+                params,
+            )
+            rows = [dict(r) for r in result.mappings().all()]
+        if rows:
+            total = int(rows[0].pop("_total"))
+            for r in rows[1:]:
+                r.pop("_total", None)
+            return rows, total
+        return [], await self._count_queries(params)
+
+    async def _count_queries(self, params: dict[str, Any]) -> int:
+        async with self._factory() as s:
+            result = await s.execute(
+                sa.text(
+                    """
+                    SELECT COUNT(*) AS n
+                    FROM flyquery_queries
+                    WHERE tenant_id = :tenant
+                      AND workspace_id = :ws
+                      AND (CAST(:ds_id AS uuid) IS NULL OR dataset_id = CAST(:ds_id AS uuid))
+                      AND (CAST(:execution_status AS text) IS NULL
+                           OR execution_status = CAST(:execution_status AS text))
+                      AND (CAST(:semantic_path_taken AS text) IS NULL
+                           OR semantic_path_taken = CAST(:semantic_path_taken AS text))
+                      AND (CAST(:date_from AS timestamptz) IS NULL
+                           OR created_at >= CAST(:date_from AS timestamptz))
+                      AND (CAST(:date_to AS timestamptz) IS NULL
+                           OR created_at < CAST(:date_to AS timestamptz))
+                    """
+                ),
+                params,
+            )
+            return int(result.scalar_one())
+
+    async def get_result(
+        self,
+        query_id: uuid.UUID,
+        *,
+        tenant_id: str,
+        workspace_id: uuid.UUID,
+    ) -> dict[str, Any] | None:
+        """Read the persisted result row for ``query_id``.
+
+        Returns the full ``flyquery_query_results`` row including the
+        preview JSON, object-store key (raw Parquet), byte size, and
+        TTL. The controller is responsible for turning the
+        ``result_object_key`` into a presigned URL.
+        """
+        async with self._factory() as s:
+            result = await s.execute(
+                sa.text(
+                    "SELECT * FROM flyquery_query_results "
+                    "WHERE query_id = :id AND tenant_id = :tenant "
+                    "AND workspace_id = :ws"
+                ),
+                {"id": query_id, "tenant": tenant_id, "ws": workspace_id},
+            )
+            row = result.mappings().one_or_none()
+            return dict(row) if row else None
+
     async def upsert_result(
         self,
         *,

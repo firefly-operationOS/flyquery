@@ -1,3 +1,6 @@
 README.md
 .openapi-generator-ignore
 pom.xml
+# Hand-written ergonomic wrapper -- mirror of flyquery_sdk.client.FlyqueryClient.
+src/main/java/com/firefly/flyquery/FlyqueryClient.java
+src/test/java/com/firefly/flyquery/FlyqueryClientTest.java

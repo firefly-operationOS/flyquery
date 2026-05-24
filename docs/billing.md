@@ -117,51 +117,61 @@ provider.
 
 ## 6. Billing API
 
-> **v1+:** The `/api/v1/billing` endpoint is not in the current release.
-> `flyquery_cost_events` are recorded in the database and can be queried
-> directly. The API shape below describes the planned v1 surface.
+`GET /api/v1/billing` is **live as of 26.5.10** (see
+[`billing_controller.py:32`](../src/flyquery/web/controllers/billing_controller.py)).
+It aggregates `flyquery_cost_events` into day / week / month buckets
+scoped to the caller's workspace. For the raw per-call ledger consume
+`GET /api/v1/cost-events`; the rollup is the operator-facing aggregate.
 
-### Cost rollup by workspace (v1+)
+For the per-stage cost breakdown that rides back on individual query
+responses (`usage.by_agent[]`), see [cost-tracking.md](cost-tracking.md).
 
+### Cost rollup by workspace
+
+```bash
+curl -sS 'http://localhost:8520/api/v1/billing?period=day&date_from=2026-05-01&date_to=2026-05-25' \
+  -H 'X-Tenant-Id: acme' \
+  -H 'X-Workspace-Id: analytics'
 ```
-GET /api/v1/billing
-X-Tenant-Id: acme
-X-Workspace-Id: analytics
 
-→ {
-    "period_start": "2026-05-01T00:00:00Z",
-    "period_end": "2026-05-31T23:59:59Z",
-    "total_cost_cents": 1245,
-    "by_agent": {
-      "flyquery-grounding": 420,
-      "flyquery-generation": 560,
-      "flyquery-critic": 80,
-      "flyquery-explainer": 35,
-      "flyquery-describe": 110,
-      "flyquery-relation-proposer": 40
-    },
-    "by_day": [
-      {"date": "2026-05-01", "cost_cents": 42},
-      ...
-    ]
-  }
+```json
+{
+  "period": "day",
+  "date_from": "2026-05-01T00:00:00Z",
+  "date_to": "2026-05-25T00:00:00Z",
+  "total_cost_cents": 14230,
+  "breakdown": [
+    {
+      "date": "2026-05-23T00:00:00Z",
+      "ingest_cost_cents": 200,
+      "query_cost_cents": 14030,
+      "other_cost_cents": 0,
+      "total_cost_cents": 14230
+    }
+  ]
+}
 ```
+
+The shape is `BillingRollup` from
+[`src/flyquery/interfaces/ops.py:75`](../src/flyquery/interfaces/ops.py).
+Each `BillingBreakdownItem` carries `ingest_cost_cents` (anything tied
+to an `ingest_job_id` in the ledger), `query_cost_cents` (tied to a
+`query_id`), `other_cost_cents` (callsites that wrote a row without
+either FK), and the per-bucket `total_cost_cents` sum. Buckets with
+zero cost are omitted — no empty days in the response.
 
 ### Query parameters
 
 | Parameter | Default | Effect |
 |-----------|---------|--------|
-| `period_start` | 30 days ago | Start of the billing window |
-| `period_end` | now | End of the billing window |
-| `dataset_id` | (all) | Filter to a specific dataset |
-| `agent_name` | (all) | Filter to a specific agent |
+| `period` | `day` | Bucket granularity; must be `day` \| `week` \| `month`. Anything else returns 400 `invalid_request`. |
+| `date_from` | unset | Inclusive lower bound on `created_at` |
+| `date_to` | unset | Exclusive upper bound on `created_at` |
 
 ### Access control
 
-Scope required: `flyquery.billing:read`. Agent-tier also supported:
-```
-GET /api/v1/agent/billing   scope: flyquery.billing:read
-```
+Scope required: `flyquery.billing:read`. The same scope grants
+`GET /api/v1/stats` as both are operator-tier reads.
 
 ---
 
@@ -174,15 +184,17 @@ In v0, `flyquery_cost_events` is populated but no enforcement runs:
 - No rate-limit-rpm on LLM calls (only on API requests via
   `agent_token.rate_limit_rpm`).
 
-Operators can set up external cost alerts by querying `flyquery_cost_events`
-directly via the Postgres admin role until the billing API ships in v1:
+External cost alerts can either hit `GET /api/v1/billing` and threshold
+on `total_cost_cents`, or query `flyquery_cost_events` directly via the
+Postgres admin role:
 
 ```bash
-# Simple alert: daily cost check (query DB directly until /api/v1/billing ships)
-COST=$(psql "$FLYQUERY_DATABASE_URL_ADMIN" -tAc \
-  "SELECT COALESCE(SUM(cost_cents),0) FROM flyquery_cost_events WHERE created_at > now()-interval '1 day'")
-if [ "$COST" -gt "10000" ]; then   # $100/day threshold
-  echo "ALERT: flyquery daily cost exceeded $100 (actual: $(echo $COST/100 | bc) USD)"
+# Daily cost alert via the rollup API
+TOTAL=$(curl -sS 'http://localhost:8520/api/v1/billing?period=day' \
+  -H 'X-Tenant-Id: acme' -H 'X-Workspace-Id: analytics' \
+  | jq -r '.total_cost_cents')
+if [ "$TOTAL" -gt "10000" ]; then  # $100/day threshold
+  echo "ALERT: flyquery daily cost exceeded $100 (actual: $((TOTAL/100)) USD)"
 fi
 ```
 

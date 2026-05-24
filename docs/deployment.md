@@ -47,15 +47,24 @@ Multi-arch manifest: `linux/amd64` and `linux/arm64`.
 
 ## 3. Service roles
 
-The same image runs three commands:
+The same image runs four commands (as of 26.5.10 the single `worker`
+command was split into one subcommand per worker type — see
+[`src/flyquery/cli.py`](../src/flyquery/cli.py)):
 
 | Command | What it does | Scale policy |
 |---------|--------------|-------------|
 | `serve` | FastAPI ASGI on port `8520`. Stateless. | Horizontally scalable behind a load balancer |
-| `worker` | Consumes `flyquery.ingest` EDA jobs + schema events | At least 1; many is fine — work is idempotent |
-| `migrate` | Runs `alembic upgrade head` and exits | Single-shot before `serve` / `worker` start |
+| `worker ingest` | Consumes `flyquery.ingest` EDA jobs + runs the 10-stage pipeline | ≥1 in production. Scale N processes × `FLYQUERY_INGEST_WORKER_CONCURRENCY` slots per process. |
+| `worker retention` | Periodic loop: stuck-RUNNING reaper, orphan-PENDING republisher, TTL deletes (`ingest_events` 30d, `audit_events` + `cost_events` 365d), PURGING dataset hard-delete (90d). | 1 process per cluster is usually enough; 2 is fine (sweep is idempotent) but redundant. |
+| `worker all` | Both workers in a single asyncio event loop. Dev / docker-compose only. | NOT for production — split into two processes so they can be scaled and restarted independently. |
+| `migrate` | Runs `alembic upgrade head` and exits | Single-shot before `serve` / worker startup |
 
-The default `CMD` is `serve`. Override via `command:` in compose or Kubernetes.
+The default `CMD` is `serve`. Override via `command:` in compose or
+Kubernetes. **Production deployments must run BOTH `worker ingest` AND
+`worker retention`** — without the retention worker, stuck jobs are
+never reaped, orphan PENDING jobs are never republished, and the event
+ledgers grow unbounded. See [workers.md](workers.md) for the full
+operational picture.
 
 ---
 
@@ -207,11 +216,14 @@ FLYQUERY_DATABASE_URL_ADMIN=postgresql+asyncpg://flyquery_admin:<pw>@host:5432/f
 
 # 3. Start the API
 docker run -d --env-file .env -p 8520:8520 \
-    ghcr.io/firefly-operationos/flyquery:26.5.2 flyquery serve
+    ghcr.io/firefly-operationos/flyquery:26.5.10 flyquery serve
 
-# 4. Start the worker
-docker run -d --env-file .env \
-    ghcr.io/firefly-operationos/flyquery:26.5.2 flyquery worker
+# 4. Start BOTH workers (production needs both)
+docker run -d --env-file .env --name flyquery-ingest \
+    ghcr.io/firefly-operationos/flyquery:26.5.10 flyquery worker ingest
+
+docker run -d --env-file .env --name flyquery-retention \
+    ghcr.io/firefly-operationos/flyquery:26.5.10 flyquery worker retention
 
 # 5. Verify
 curl -fsS http://localhost:8520/actuator/health | jq .
@@ -362,12 +374,25 @@ concurrent query uses memory proportional to the result set. Size pods
 accordingly (e.g., 2 GB pods support ~4 concurrent 4 GB queries with
 multiplexing overhead).
 
-### Worker
+### IngestWorker (`worker ingest`)
 
 Each worker process consumes `FLYQUERY_INGEST_WORKER_CONCURRENCY` parallel
 ingest jobs. Scale worker replicas with the expected ingest queue depth.
-Jobs are claimed atomically via the EDA topic; duplicate processing is safe
-because reconcile is idempotent.
+Jobs are claimed atomically via the EDA topic + an atomic PENDING →
+RUNNING update on `flyquery_ingest_jobs`; duplicate processing is safe
+because reconcile is idempotent. Total inflight capacity =
+`N_processes × FLYQUERY_INGEST_WORKER_CONCURRENCY` (see
+[scale-and-performance.md § 6](scale-and-performance.md#6-observability-for-performance)
+for the formula and tuning guidance).
+
+### RetentionWorker (`worker retention`)
+
+One process per cluster is enough. The sweep is idempotent (`UPDATE …
+WHERE status='RUNNING'` and `DELETE … WHERE created_at < cutoff`), so
+two processes running concurrently is fine but redundant. Polls on a
+fixed interval (`retention_scan_interval_s`, default 300s) — not EDA
+driven. See [workers.md](workers.md) for the six concerns it owns and
+the per-step failure isolation contract.
 
 ### Postgres
 

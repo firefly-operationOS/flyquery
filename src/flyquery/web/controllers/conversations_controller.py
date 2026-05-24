@@ -15,7 +15,7 @@ from __future__ import annotations
 import uuid
 
 from pyfly.container import rest_controller
-from pyfly.web import Body, PathVar, Valid, get_mapping, post_mapping, request_mapping
+from pyfly.web import Body, PathVar, QueryParam, Valid, get_mapping, post_mapping, request_mapping
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from starlette.requests import Request
 
@@ -45,6 +45,7 @@ from flyquery.interfaces.conversations import (
     ConversationTurnRequest,
     TurnRead,
 )
+from flyquery.interfaces.pagination import Paginated
 from flyquery.interfaces.query import AnswerResponse
 from flyquery.web.conventions import ResourceNotFound, tenant_context_from_request
 
@@ -168,20 +169,24 @@ class ConversationsController:
     # ------------------------------------------------------------------
 
     @get_mapping("")
-    async def list_conversations(self, http_request: Request) -> dict:
+    async def list_conversations(
+        self,
+        http_request: Request,
+        limit: QueryParam[int] = 100,
+        offset: QueryParam[int] = 0,
+    ) -> Paginated[ConversationRead]:
         """List conversations for the caller's workspace, newest first.
 
-        :param http_request: Starlette request
-        :return: ``{"items": [...]}``
+        Service does not currently return a total; ``has_more`` is
+        inferred from page size (``len(items) >= limit`` -> assume
+        there may be more).
         """
         ctx = tenant_context_from_request(http_request)
         workspace_id = _parse_workspace_id(ctx.workspace_id)
         rows = await self._conversation_service.list(ctx.tenant_id, workspace_id)
-        return {
-            "items": [
-                ConversationRead.model_validate({**r, "turns": []}).model_dump(mode="json") for r in rows
-            ]
-        }
+        items = [ConversationRead.model_validate({**r, "turns": []}) for r in rows]
+        sliced = items[offset : offset + limit]
+        return Paginated.of(sliced, total=len(items), limit=limit, offset=offset)
 
     # ------------------------------------------------------------------
     # GET /api/v1/conversations/{conversation_id}  (fetch with turns)

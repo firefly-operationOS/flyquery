@@ -9,16 +9,18 @@ Method | HTTP request | Description
 
 
 # **create**
-> ExampleRead create(example_create)
+> ExampleRead create(x_agent_token, example_create, x_correlation_id=x_correlation_id, idempotency_key=idempotency_key)
 
 Create an example (agent-tier — source=AGENT_LEARNED, quality=PROPOSED).
 
-:param http_request: Starlette request
-:param body: validated ExampleCreate
-:return: ExampleRead with created fields
+Replay-dedup'd via ``Idempotency-Key`` (required). Without
+this gate an agent retrying a network blip would persist
+duplicate (question, SQL) PROPOSED rows that an operator
+would then have to manually reject.
 
 ### Example
 
+* Api Key Authentication (AgentToken):
 
 ```python
 import flyquery_sdk
@@ -33,16 +35,29 @@ configuration = flyquery_sdk.Configuration(
     host = "http://localhost"
 )
 
+# The client must configure the authentication and authorization parameters
+# in accordance with the API server security policy.
+# Examples for each auth method are provided below, use the example that
+# satisfies your auth use case.
+
+# Configure API key authorization: AgentToken
+configuration.api_key['AgentToken'] = os.environ["API_KEY"]
+
+# Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
+# configuration.api_key_prefix['AgentToken'] = 'Bearer'
 
 # Enter a context with an instance of the API client
 async with flyquery_sdk.ApiClient(configuration) as api_client:
     # Create an instance of the API class
     api_instance = flyquery_sdk.AgentExamplesApi(api_client)
+    x_agent_token = 'fqt_live_aBcDeF1234567890aBcDeF1234567890' # str | Machine-to-machine bearer token. Replaces X-Tenant-Id and X-Workspace-Id on agent-tier endpoints -- the token's claims encode the tenant + workspace + scopes. Issue via ``POST /api/v1/agent-tokens``.
     example_create = flyquery_sdk.ExampleCreate() # ExampleCreate | 
+    x_correlation_id = UUID('550e8400-e29b-41d4-a716-446655440000') # UUID | Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header. (optional)
+    idempotency_key = 'ingest-2026-05-23-abc123' # str | Optional client-supplied idempotency key for mutating operations. The first request with a key persists its result; subsequent requests with the same key + same tenant return the cached response. Keys expire after 24h. (optional)
 
     try:
         # Create an example (agent-tier — source=AGENT_LEARNED, quality=PROPOSED).
-        api_response = await api_instance.create(example_create)
+        api_response = await api_instance.create(x_agent_token, example_create, x_correlation_id=x_correlation_id, idempotency_key=idempotency_key)
         print("The response of AgentExamplesApi->create:\n")
         pprint(api_response)
     except Exception as e:
@@ -56,7 +71,10 @@ async with flyquery_sdk.ApiClient(configuration) as api_client:
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
+ **x_agent_token** | **str**| Machine-to-machine bearer token. Replaces X-Tenant-Id and X-Workspace-Id on agent-tier endpoints -- the token&#39;s claims encode the tenant + workspace + scopes. Issue via &#x60;&#x60;POST /api/v1/agent-tokens&#x60;&#x60;. | 
  **example_create** | [**ExampleCreate**](ExampleCreate.md)|  | 
+ **x_correlation_id** | **UUID**| Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header. | [optional] 
+ **idempotency_key** | **str**| Optional client-supplied idempotency key for mutating operations. The first request with a key persists its result; subsequent requests with the same key + same tenant return the cached response. Keys expire after 24h. | [optional] 
 
 ### Return type
 
@@ -64,7 +82,7 @@ Name | Type | Description  | Notes
 
 ### Authorization
 
-No authorization required
+[AgentToken](../README.md#AgentToken)
 
 ### HTTP request headers
 
@@ -81,20 +99,24 @@ No authorization required
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **list_examples**
-> list_examples(quality=quality, dataset_id=dataset_id)
+> PaginatedExampleRead list_examples(x_agent_token, quality=quality, dataset_id=dataset_id, limit=limit, offset=offset, x_correlation_id=x_correlation_id)
 
 List examples for the caller's workspace (agent-tier).
 
 :param http_request: Starlette request
 :param quality: optional quality filter (PROPOSED/APPROVED/REJECTED)
 :param dataset_id: optional dataset filter
-:return: ``{"items": [...]}``
+:param limit: page size (default 100)
+:param offset: starting offset (default 0)
+:return: Paginated[ExampleRead]
 
 ### Example
 
+* Api Key Authentication (AgentToken):
 
 ```python
 import flyquery_sdk
+from flyquery_sdk.models.paginated_example_read import PaginatedExampleRead
 from flyquery_sdk.rest import ApiException
 from pprint import pprint
 
@@ -104,17 +126,33 @@ configuration = flyquery_sdk.Configuration(
     host = "http://localhost"
 )
 
+# The client must configure the authentication and authorization parameters
+# in accordance with the API server security policy.
+# Examples for each auth method are provided below, use the example that
+# satisfies your auth use case.
+
+# Configure API key authorization: AgentToken
+configuration.api_key['AgentToken'] = os.environ["API_KEY"]
+
+# Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
+# configuration.api_key_prefix['AgentToken'] = 'Bearer'
 
 # Enter a context with an instance of the API client
 async with flyquery_sdk.ApiClient(configuration) as api_client:
     # Create an instance of the API class
     api_instance = flyquery_sdk.AgentExamplesApi(api_client)
-    quality = 'null' # str |  (optional) (default to 'null')
+    x_agent_token = 'fqt_live_aBcDeF1234567890aBcDeF1234567890' # str | Machine-to-machine bearer token. Replaces X-Tenant-Id and X-Workspace-Id on agent-tier endpoints -- the token's claims encode the tenant + workspace + scopes. Issue via ``POST /api/v1/agent-tokens``.
+    quality = 'quality_example' # str |  (optional)
     dataset_id = 'dataset_id_example' # str |  (optional)
+    limit = 100 # int |  (optional) (default to 100)
+    offset = 0 # int |  (optional) (default to 0)
+    x_correlation_id = UUID('550e8400-e29b-41d4-a716-446655440000') # UUID | Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header. (optional)
 
     try:
         # List examples for the caller's workspace (agent-tier).
-        await api_instance.list_examples(quality=quality, dataset_id=dataset_id)
+        api_response = await api_instance.list_examples(x_agent_token, quality=quality, dataset_id=dataset_id, limit=limit, offset=offset, x_correlation_id=x_correlation_id)
+        print("The response of AgentExamplesApi->list_examples:\n")
+        pprint(api_response)
     except Exception as e:
         print("Exception when calling AgentExamplesApi->list_examples: %s\n" % e)
 ```
@@ -126,21 +164,25 @@ async with flyquery_sdk.ApiClient(configuration) as api_client:
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **quality** | **str**|  | [optional] [default to &#39;null&#39;]
+ **x_agent_token** | **str**| Machine-to-machine bearer token. Replaces X-Tenant-Id and X-Workspace-Id on agent-tier endpoints -- the token&#39;s claims encode the tenant + workspace + scopes. Issue via &#x60;&#x60;POST /api/v1/agent-tokens&#x60;&#x60;. | 
+ **quality** | **str**|  | [optional] 
  **dataset_id** | **str**|  | [optional] 
+ **limit** | **int**|  | [optional] [default to 100]
+ **offset** | **int**|  | [optional] [default to 0]
+ **x_correlation_id** | **UUID**| Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header. | [optional] 
 
 ### Return type
 
-void (empty response body)
+[**PaginatedExampleRead**](PaginatedExampleRead.md)
 
 ### Authorization
 
-No authorization required
+[AgentToken](../README.md#AgentToken)
 
 ### HTTP request headers
 
  - **Content-Type**: Not defined
- - **Accept**: Not defined
+ - **Accept**: application/json
 
 ### HTTP response details
 

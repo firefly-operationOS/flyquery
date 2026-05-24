@@ -47,8 +47,7 @@ class IngestJobService:
     ) -> IngestJobRead:
         """Create a PENDING job, emit queued event, publish IngestRequested."""
         body.validate_startable()
-
-        row = await self._repo.create(
+        return await self._enqueue(
             tenant_id=tenant_id,
             workspace_id=workspace_id,
             dataset_id=body.dataset_id,
@@ -56,6 +55,72 @@ class IngestJobService:
             file_id=body.file_id,
             job_kind=body.job_kind,
             request_json=body.request_json,
+            session_factory=session_factory,
+        )
+
+    async def mark_already_received(self, job_id: uuid.UUID) -> None:
+        """Flip the job's ``request_json.already_received`` flag to ``true``.
+
+        Called by the async upload endpoint after queueing the job so
+        the worker's PARSE_AND_INGEST handler skips Stage 1 (the
+        endpoint already ran it).
+        """
+        await self._repo.merge_request_json(job_id, {"already_received": True})
+
+    async def enqueue_parse_and_ingest(
+        self,
+        *,
+        tenant_id: str,
+        workspace_id: uuid.UUID,
+        dataset_id: uuid.UUID,
+        file_id: uuid.UUID,
+        actor: str,
+        dataset_name: str,
+        session_factory: Any,
+    ) -> IngestJobRead:
+        """Queue a PARSE_AND_INGEST job for the async upload endpoint.
+
+        ``PARSE_AND_INGEST`` is intentionally excluded from
+        :meth:`IngestJobCreate.validate_startable` because it has a
+        canonical entry point (``POST /datasets/{id}/files``). The
+        async upload endpoint is the second canonical entry point and
+        bypasses that check here. The worker's ``_run_reparse`` handler
+        loads the file via ``file_id`` and runs stages 1-3 + 9-10 --
+        Stage 1 (receive) was already run synchronously by the
+        upload endpoint so the bytes + ``flyquery_files`` row exist.
+        """
+        return await self._enqueue(
+            tenant_id=tenant_id,
+            workspace_id=workspace_id,
+            dataset_id=dataset_id,
+            table_id=None,
+            file_id=file_id,
+            job_kind="PARSE_AND_INGEST",
+            request_json={"actor": actor, "dataset_name": dataset_name},
+            session_factory=session_factory,
+        )
+
+    async def _enqueue(
+        self,
+        *,
+        tenant_id: str,
+        workspace_id: uuid.UUID,
+        dataset_id: uuid.UUID,
+        table_id: uuid.UUID | None,
+        file_id: uuid.UUID | None,
+        job_kind: str,
+        request_json: dict[str, Any] | None,
+        session_factory: Any,
+    ) -> IngestJobRead:
+        """Shared implementation for both startable + internal job kinds."""
+        row = await self._repo.create(
+            tenant_id=tenant_id,
+            workspace_id=workspace_id,
+            dataset_id=dataset_id,
+            table_id=table_id,
+            file_id=file_id,
+            job_kind=job_kind,
+            request_json=request_json or {},
         )
 
         job_id = row["id"]
@@ -65,7 +130,7 @@ class IngestJobService:
             ingest_job_id=job_id,
             tenant_id=tenant_id,
             workspace_id=workspace_id,
-            job_kind=body.job_kind,
+            job_kind=job_kind,
             session_factory=session_factory,
         )
 

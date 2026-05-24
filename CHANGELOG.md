@@ -5,6 +5,547 @@ follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and
 the project uses [CalVer](https://calver.org/) (YY.MM.PP) per the
 Firefly Framework convention (memory: `firefly_uses_calver`).
 
+## [26.5.10] - 2026-05-24
+
+### Added — Release-quality polish (final pass)
+
+- **Version sync across every artifact**: ``pyproject.toml``,
+  ``pyfly.yaml``, ``sdks/python/pyproject.toml``, ``sdks/java/pom.xml``,
+  ``Taskfile.yml`` (the ``packageVersion`` / ``artifactVersion``
+  additional-properties), and the README version badge all now read
+  ``26.5.10``. CI also rewrites these from the git tag at publish
+  time (see ``publish-sdks.yaml``), so a future tag-only release
+  stays consistent even if a developer forgets to bump locally.
+- **Python ``FlyqueryClient`` v1 helpers**: ``recent_queries``,
+  ``get_query``, ``fetch_query_result``, ``billing_rollup``,
+  ``workspace_stats``, ``audit_log``, ``cost_log``, ``upload_async``
+  + sync mirrors. New typed accessors for ``QueriesApi``,
+  ``BillingApi``, ``StatsApi``, ``AuditEventsApi``, ``CostEventsApi``.
+  ``.openapi-generator-ignore`` extended to preserve ``client.py`` +
+  ``tests/`` across regenerations.
+- **Java ``FlyqueryClient`` v1 accessors**: new ``queries()``,
+  ``billing()``, ``stats()``, ``auditEvents()``, ``costEvents()``
+  methods that return the typed ``*Api`` instances. The 7th wrapper
+  unit test now asserts all five are non-null.
+- **Docker label fixed**: the ``org.opencontainers.image.description``
+  was the flycanon string ("Operational Knowledge Repository"); it's
+  now flyquery's actual one-liner.
+
+### Fixed
+
+- **Missing return-type annotations on 8 controllers** dropped the
+  associated response schemas (``BatchQueryResponse``,
+  ``BulkFileUploadResponse``, agent-tier ``AnswerResponse`` /
+  ``SqlExecuteResponse`` / ``ConversationRead`` / ``ExampleRead`` /
+  ``CancelResponse``) from the published OpenAPI spec, which in
+  turn made both SDK regenerators emit empty / inline classes.
+  Restored every annotation; spec grew 81 -> 85 schemas after the
+  fix. Java SDK build had been failing with ``AnyOf cannot find
+  symbol`` until this was corrected; now builds clean.
+- ``QueryHistoryItem.created_at`` / ``QueryDetailRead.created_at``
+  / ``QueryResultRead.ttl_expires_at`` are now typed ``datetime``
+  instead of ``Any`` (the earlier ``Any`` produced unusable
+  ``AnyOf`` Java classes).
+
+### Added — v1 roadmap endpoints
+
+The four "v1+" placeholders from the original audit are now live.
+All build on tables + entities that already existed; the new code
+is read endpoints + rollup services + DTOs.
+
+| Endpoint | Purpose |
+|---|---|
+| ``GET /api/v1/queries`` | Paginated query history. Filters: ``dataset_id``, ``execution_status``, ``semantic_path_taken``, ``date_from``, ``date_to``. Page size clamped to [1, 200]. Returns ``Paginated[QueryHistoryItem]`` (compact: no heavy JSONB cols). |
+| ``GET /api/v1/queries/{id}`` | Full single-query payload incl. every candidate proposal, model identifier (grounding/generation/critic/explainer), clarification frame, PII findings, error envelope. Cross-tenant probing maps to 404 (same as missing). |
+| ``GET /api/v1/queries/{id}/result`` | Re-download preview + presigned Parquet URL. URL is ``None`` when TTL elapsed (default 24h) or presign fails -- consumer must rerun. |
+| ``GET /api/v1/billing`` | Cost rollup over ``flyquery_cost_events``. ``period`` = ``day`` \| ``week`` \| ``month``; ``date_from``, ``date_to`` bound the window. Returns ``BillingRollup`` with split ``ingest_cost_cents`` / ``query_cost_cents`` / ``other_cost_cents`` per bucket plus ``total_cost_cents``. |
+| ``GET /api/v1/stats`` | Compact workspace summary: ``storage_used_bytes``, ``dataset_count``, ``table_count``, ``query_count_last_30d``, ``token_count_last_30d``, ``ingest_job_count_pending``. |
+
+### Added — Worker architecture (parity with flycanon + flyradar)
+
+- **``RetentionWorker``** at ``core/services/retention/retention_worker.py``.
+  Periodic loop (default ``retention_scan_interval_s = 300s``) with six
+  responsibilities:
+    1. **Stuck-RUNNING ingest job reaper** -- jobs with
+       ``started_at`` older than ``processing_lease_s`` (default
+       1800s) are reset to PENDING and republished onto the bus. This
+       is the crashed-worker recovery primitive flyquery was missing.
+    2. **Orphan-PENDING reaper** -- jobs in PENDING for longer than
+       ``orphan_queued_grace_s`` (default 600s) are republished in
+       case the original event never made it to the bus.
+    3. **TTL deletes** for ``flyquery_ingest_events`` (30d),
+       ``flyquery_audit_events`` (365d), ``flyquery_cost_events`` (365d).
+       Set any to ``0`` to disable that window (keep forever).
+    4. **PURGING dataset hard-delete** -- dataset rows whose
+       ``updated_at`` predates ``dataset_purge_tombstone_days``
+       (default 90d) get the SQL row deleted (the object-store walk
+       already ran at purge time).
+  Step-level failure isolation -- one concern raising never aborts
+  the rest of the sweep.
+- **``flyquery worker {ingest|retention|all}`` CLI** -- three
+  subcommands that bootstrap the DI context, resolve the right
+  worker bean, install SIGTERM/SIGINT handlers, and run forever.
+  ``all`` is a dev convenience that runs both in one process.
+- **New settings** in ``config.py``:
+  ``retention_scan_interval_s``, ``retention_ingest_events_days``,
+  ``retention_audit_events_days``, ``retention_cost_events_days``,
+  ``processing_lease_s``, ``orphan_queued_grace_s``,
+  ``dataset_purge_tombstone_days``.
+- **New repository methods** to support the worker:
+  ``IngestJobRepository.list_stuck_running_ids`` /
+  ``reap_stuck_running`` / ``list_orphaned_pending_ids`` /
+  ``delete_events_older_than``;
+  ``AuditEventRepository.delete_older_than``;
+  ``CostEventRepository.delete_older_than``;
+  ``DatasetRepository.delete_purged_older_than``.
+
+### Added — Schema detection deep-dive doc (``docs/schema-detection.md``)
+
+Comprehensive 6,200-word operator-facing guide covering:
+- Format detection precedence (extension-first, magic-byte fallback)
+- Per-format strategies (CSV delim sniff, XLSX multi-section walker,
+  JSON object-vs-array, schema-bearing formats)
+- Sample-based type inference + locale-aware date hints
+- Column-name proposer agent (3-level trigger logic)
+- Drift detection with RENAMED_CANDIDATE state machine + 0.8
+  auto-confirm threshold (currently a module constant, not a
+  tunable -- flagged as a gap)
+- PII tagging (regex / presidio / disabled) + HUMAN override
+- Description + embedding generation
+- A worked example (multi-sheet "Q1 Dashboard.xlsx" with merged
+  cells)
+- Troubleshooting + settings reference
+
+Spec-vs-code mismatch flagged: ``drift_policy`` only has ``AUTO`` and
+``MANUAL`` in the code; ``STRICT`` is documented but not implemented.
+
+### Added — Worker architecture doc (``docs/workers.md``)
+
+4,351-word operator-facing doc covering:
+- What runs where (API + IngestWorker + RetentionWorker)
+- Concurrency primitives (Semaphore + wait_for + Event + inflight set)
+- Horizontal scaling formula
+- Backpressure model
+- Crashed-worker recovery
+- Cooperative cancellation
+- Observability hooks
+- RLS bypass requirement
+- Worker CLI reference + deployment topologies (dev / small prod /
+  mid prod / K8s with HPA)
+- Failure modes catalog
+
+### Changed
+
+- ``pyproject.toml`` version 26.5.9 -> 26.5.10
+- ``pyfly.yaml`` ``pyfly.app.version`` 26.5.9 -> 26.5.10
+- OpenAPI spec: 90 paths / 74 schemas -> **95 paths / 81 schemas / 32 tags**
+- Both SDKs regenerated (Python + Java)
+
+### Fixed
+
+- **Production bug in ``IngestWorker._drain_inflight``**: the
+  post-cancel cleanup used ``with asyncio.timeout(5)`` -- but
+  ``asyncio.timeout`` is an ASYNC context manager, ``with`` raises
+  ``TypeError``. Replaced with ``asyncio.wait_for(...)`` + a
+  warning log if the hard timeout elapses. The bug was latent
+  because no test exercised the cancel path until 26.5.10.
+- DTO datetime fields (``QueryHistoryItem.created_at``,
+  ``QueryDetailRead.created_at`` / ``finalised_at``,
+  ``QueryResultRead.ttl_expires_at``) are now typed as ``datetime``
+  instead of ``Any``. The earlier ``Any`` produced ``AnyOf`` Java
+  classes that openapi-generator didn't fully scaffold.
+
+### Added — Tests (+21 tests, total 311)
+
+- ``tests/unit/test_retention_worker.py`` (9 tests) -- happy paths,
+  TTL=0 short-circuits, per-step failure isolation, publisher-blip
+  isolation, cooperative shutdown.
+- ``tests/unit/test_ingest_worker_concurrency.py`` (4 tests) --
+  semaphore cap enforcement under burst, timed-out handler isolation,
+  drain wait + drain cancel.
+- ``tests/unit/test_v1_endpoints.py`` (8 tests) -- DTO mapping,
+  ``QueryRepository.list_queries`` limit clamping, BillingService
+  period validation, presigned-URL TTL guard.
+
+### CI requirements (operator action)
+
+This release is structured to pass the existing CI pipeline
+(``pr-gate.yaml``) without intervention. To verify locally before
+push:
+
+```bash
+task lint
+task test:unit
+task test:integration   # needs Docker (Postgres + Redis + MinIO)
+uv run python scripts/check_lockstep.py
+```
+
+Production deployment requires updating the Docker entrypoint /
+systemd / k8s manifests to spawn ``flyquery worker retention``
+alongside ``flyquery worker ingest``. The single-process
+``flyquery worker all`` form is dev-only.
+
+### Attribution
+
+Released by ancongui.
+
+---
+
+## [26.5.9] - 2026-05-24
+
+### Added — Repository extraction (audit issues 4.2 + 4.3 complete)
+
+Every controller in ``src/flyquery/web/controllers/`` is now a thin
+HTTP adapter -- **zero ``sa.text(...)`` calls remain anywhere under
+that tree**. The eight repositories from the
+``docs/superpowers/specs/refactor-repository-layer.md`` plan all
+landed:
+
+| Repository | Migrated from |
+|---|---|
+| ``SchemaObjectRepository`` + ``SchemaObjectService`` | inline SQL in ``schema_objects_controller`` |
+| ``SchemaChangeRepository`` + ``SchemaChangeService`` | inline SQL in ``schema_changes_controller`` (with typed ``SchemaChangeNotFound`` / ``SchemaChangeWrongState`` exceptions) |
+| ``RelationRepository`` + ``RelationService`` + new ``interfaces/relations.py`` DTOs | inline SQL in ``relations_controller`` |
+| ``TableRepository`` + ``SchemaSnapshotRepository`` + ``TableService`` | inline SQL across 7 endpoints in ``tables_controller`` |
+| ``IngestEventRepository`` | promoted from the ``emit_*`` helpers in ``events.py``; helpers stay as thin wrappers |
+| ``FileRepository`` | inline SQL in ``stages/receive.py`` + ``workers._load_file`` |
+| ``IngestJobRepository.merge_request_json()`` | inline SQL in ``files_controller._flag_already_received`` (the ``already_received`` flag the async upload sets to skip Stage 1) |
+| New repo + helpers on ``SchemaSnapshotRepository`` (``get_current_snapshot_for_dataset_table`` + ``create_snapshot_and_promote``) | inline SQL in ``sql_execute_controller._apply_dml_mutation`` (DML copy-on-write for DERIVED tables) |
+| New ``TableRepository.list_kinds_for_dataset_by_names`` | inline SQL in ``sql_execute_controller._resolve_derived_tables`` |
+
+(``QueryResultRepository``, ``ConversationTurnRepository``,
+``SemanticVersionRepository`` were already part of the existing
+``QueryRepository`` / ``ConversationRepository`` / ``SemanticRepository``
+beans -- they cover both their primary table and the secondary one
+the audit flagged separately.)
+
+### Added — CI gate
+
+- **`tests/unit/test_no_raw_sql_in_controllers.py`** -- a two-test
+  unit gate that fails the build if any file under
+  ``src/flyquery/web/controllers/`` either:
+    - calls ``sa.text(`` or ``sqlalchemy.text(`` (raw SQL), or
+    - imports the SQL builder directly (``import sqlalchemy`` /
+      ``from sqlalchemy import ...``).
+  ``async_sessionmaker`` / ``AsyncSession`` imports stay allowed --
+  controllers legitimately thread them into services that own
+  per-request session lifecycle (the query + sql_execute paths build
+  a fresh ``SearchIndex`` / ``TableResolver`` per request).
+- **20 new unit tests** spread across the 4 new services
+  (``SchemaObjectService`` / ``SchemaChangeService`` / ``RelationService`` /
+  ``TableService`` not all individually tested -- happy-path / 404 /
+  wrong-state / source-tagging are covered).
+
+### Changed
+
+- ``SqlExecuteController`` now takes ``table_repository`` +
+  ``schema_snapshot_repository`` in its DI signature; the two
+  module-level DML helpers (``_resolve_derived_tables`` /
+  ``_apply_dml_mutation``) became thin wrappers around repo methods.
+- ``AgentSqlExecuteController`` mirror-injects the same repos.
+- ``ReceiveStage`` and ``IngestWorker._load_file`` delegate to
+  ``FileRepository``; the two callsites no longer share parallel SQL.
+
+### Status
+
+The original audit's "no SQLAlchemy in controllers" rule is now
+enforced both *culturally* (every controller is a thin adapter) and
+*mechanically* (the CI gate above will fail any PR that regresses).
+The ``refactor-repository-layer.md`` spec is marked complete.
+
+### Attribution
+
+Released by ancongui.
+
+---
+
+## [26.5.8] - 2026-05-24
+
+### Added
+
+- **`POST /api/v1/datasets/{id}/files:async`** -- async file ingestion
+  endpoint. Stage 1 (receive) runs synchronously to persist bytes +
+  ``flyquery_files`` row; stages 2-10 are queued as a
+  ``PARSE_AND_INGEST`` job that the existing ``IngestWorker``
+  processes. Response is 202 with a ``Location`` header pointing at
+  ``GET /ingest-jobs/{job_id}``. Use this instead of the sync
+  endpoint for files large enough to risk request-thread timeout.
+- **Audit + cost event write paths.** New service + repository for
+  ``flyquery_audit_events`` and ``flyquery_cost_events`` (entities +
+  tables existed since 26.5.0; writers were missing). Both writers
+  are best-effort -- a failed event insert never breaks the calling
+  operation.
+    - ``GET /api/v1/audit-events`` -- paginated audit ledger reader.
+    - ``GET /api/v1/cost-events`` -- paginated per-call LLM cost
+      ledger reader.
+    - First write callsites wired: ``dataset.created``,
+      ``dataset.updated``, ``dataset.archived``, ``dataset.purged``.
+      More follow as we plumb correlation_id through agent + query
+      handlers.
+- **`GET /api/v1/glossary/{id}`** + **`GET /api/v1/examples/{id}`**
+  -- single-record fetch endpoints. The services already had ``get``;
+  controllers just lacked the route.
+- **`pyfly.app.name` / `pyfly.app.version` / `pyfly.app.description`**
+  in ``pyfly.yaml`` so ``GET /actuator/info`` reports flyquery instead
+  of pyfly defaults.
+- **`docs/superpowers/specs/refactor-repository-layer.md`** -- carefully
+  scoped migration plan for the remaining "controllers do raw SQL"
+  follow-up (audit issues 4.2 + 4.3). Sequenced by blast radius so
+  each step is a self-contained PR.
+
+### Changed
+
+- **`IngestJobService.enqueue_parse_and_ingest()`** -- new internal
+  method that bypasses ``IngestJobCreate.validate_startable()`` for
+  the async upload endpoint (PARSE_AND_INGEST has always been
+  excluded from the startable allowlist; the async upload is the
+  second canonical entry point).
+- **`IngestWorker._run_reparse()`** honours a new
+  ``request_json.already_received`` flag: when set, Stage 1 is
+  skipped (the async upload endpoint already ran it) and the
+  existing ``file_id`` is reused -- eliminating a duplicate file
+  row + duplicate object-store key per async upload.
+- **`IngestWorker._run_reparse()`** now materialises
+  ``ObjectStore.get()``'s ``AsyncIterator[bytes]`` into ``bytes``
+  before passing to downstream stages (the previous code was bugged
+  for the REPARSE / re-queued PARSE_AND_INGEST paths -- never
+  exercised in integration tests so the bug went undetected).
+- **`docs/api-reference.md`** §5.12 -- the audit + cost event
+  endpoints (previously marked "v1+") are now documented as live.
+  ``/api/v1/billing`` and ``/api/v1/stats`` remain v1+ but explicitly
+  reference ``/cost-events`` as the available raw-data source.
+- **`docs/api-reference.md`** §5.12 -- new "Health probes" section
+  documenting the pyfly-provided ``/actuator/health/*``,
+  ``/actuator/info``, ``/actuator/metrics``, and ``/admin/*`` surface.
+  Calls out that consumers should NOT add ad-hoc ``/healthz`` /
+  ``/readyz`` -- the actuator already covers them.
+
+### Notes
+
+- ``PARSE_AND_INGEST`` jobs queued by the async endpoint correctly
+  reuse the file_id; jobs queued the old way (operator-triggered
+  REPARSE) still get a fresh receive (which is correct: REPARSE
+  semantics include "produce a new snapshot version").
+- The 12 remaining entities without a repository (Table, File,
+  SchemaSnapshot, SchemaChange, SchemaObject, Relation, QueryResult,
+  ConversationTurn, SemanticVersion, IngestEvent + the lockstep
+  AgentToken + the new AuditEvent/CostEvent which DO have repos)
+  are tracked in the new spec at
+  ``docs/superpowers/specs/refactor-repository-layer.md``. That
+  refactor is genuinely a week of careful work; AuditEventRepository
+  + CostEventRepository (added here) demonstrate the target shape.
+
+### Attribution
+
+Released by ancongui.
+
+---
+
+## [26.5.7] - 2026-05-24
+
+### Added
+
+- **`Paginated[T]` generic envelope** at
+  ``src/flyquery/interfaces/pagination.py`` -- single uniform shape
+  (``{items, total, limit, offset, has_more}``) returned by every list
+  endpoint. Replaces three inconsistent variants:
+    - ``{items, total, limit, offset, has_more}`` -- 4 endpoints
+      already shipped this shape.
+    - ``{items}`` only -- 8 endpoints have been upgraded.
+    - bare ``dict`` / list returns.
+  12 typed ``Paginated[T]`` variants now ship in the spec
+  (``Paginated[DatasetRead]``, ``Paginated[WorkspaceRead]``,
+  ``Paginated[ConversationRead]``, ``Paginated[ExampleRead]``,
+  ``Paginated[GlossaryTermRead]``, ``Paginated[SemanticMetricRead]``,
+  ``Paginated[SemanticDimensionRead]``, ``Paginated[SemanticVersionRead]``,
+  ``Paginated[TableRead]``, ``Paginated[SnapshotRead]``,
+  ``Paginated[SchemaObjectRead]``, ``Paginated[SchemaChangeRead]``).
+  8 unit tests under ``tests/unit/test_paginated.py``.
+- **`DELETE /api/v1/datasets/{id}:purge`** (202 Accepted). Hard-delete
+  endpoint that flips ``status`` to ``PURGING`` and walks the
+  ``flyquery/{tenant}/{workspace}/{dataset}/`` object-store prefix,
+  reclaiming every blob underneath (``files/``, ``tables/``,
+  ``derived/``, ``results/``). Mirrors the existing
+  ``DELETE /workspaces/{id}:purge`` at the dataset granularity --
+  previously only ``DELETE /datasets/{id}`` existed and was soft-only
+  (status -> ``ARCHIVED``), leaving Parquet blobs orphaned forever.
+- **`PurgeAccepted`** typed envelope at
+  ``src/flyquery/interfaces/lifecycle.py`` for purge-style endpoints.
+- **3 unit tests** for ``DatasetService.purge`` covering happy path,
+  prefix isolation (other datasets / tenants untouched), and the
+  empty-store case.
+
+### Changed
+
+- **11 controllers** ported their list endpoints to ``Paginated[T]``:
+  datasets, workspaces, tables (list / search), conversations,
+  glossary, examples (user + agent), semantic_metrics (list + history),
+  semantic_dimensions (list + history). All gain explicit ``limit`` /
+  ``offset`` query params where they were missing.
+- **`docs/api-reference.md`** -- no API-shape breakage; the new
+  envelope is a superset of every previous shape (legacy ``{items}``
+  consumers keep working, just get extra fields).
+- **OpenAPI spec**: 64 -> 86 paths, 51 -> 66 schemas.
+
+### Notes
+
+- ``Paginated[T]`` carries a ``# noqa: UP046`` because PEP 695 generic
+  syntax (``class Paginated[T](BaseModel)``) breaks openapi-generator's
+  schema introspection; the older ``Generic[T]`` form is the one that
+  generates clean ``Paginated*`` classes in both SDKs.
+- ``DatasetService.purge`` leaves the SQL row in place with
+  ``status='PURGING'`` so audit / lineage references survive. A
+  separate retention job (90-day window, mirroring ``conv_ttl_days``)
+  is expected to hard-delete the row. Both SQL retention and
+  workspace-level storage credit reclamation are tracked as follow-ups.
+
+### Attribution
+
+Released by ancongui.
+
+---
+
+## [26.5.6] - 2026-05-24
+
+### Added
+
+- **`/api/v1/agent/*` surface expanded from 8 to 28 distinct paths.**
+  Agents can now drill down through the same resources as user-tier
+  callers, scoped to the matching agent-token scopes. Token + scope
+  verification, idempotency keys on writes, and SSE on streams are
+  all wired:
+    - **`/agent/conversations`** -- POST (create, 201), GET (list),
+      GET `{id}`, POST `{id}/turn`. Scopes:
+      ``flyquery.conversations:read|write``. Mutating endpoints
+      require ``Idempotency-Key``.
+    - **`/agent/ingest-jobs`** -- POST (create, 201), GET (list),
+      GET `{id}`, GET `{id}/events`, GET `{id}/stream` (SSE),
+      POST `{id}:cancel`. Scopes:
+      ``flyquery.ingest:read|run``.
+    - **`/agent/datasets`** -- GET (list), GET `by-name/{name}`,
+      GET `{id}`. Scope: ``flyquery.datasets:read``. Write paths
+      stay user-tier (operator policy).
+    - **`/agent/datasets/{ds}/tables`**, **`/agent/tables`**,
+      **`/agent/tables/{id}`** + `/snapshots`, `/objects`, `/changes`,
+      **`/agent/tables/by-name/{name}`**,
+      **`/agent/schema-objects/{id}`** -- all GET. Scope:
+      ``flyquery.schema:read``.
+    - **`/agent/datasets/{ds}/relations`** -- GET. Scope:
+      ``flyquery.relations:read``. Approve / reject stay user-tier.
+    - **`/agent/query:batch`** -- POST. Mirror of user-tier
+      `/query:batch`. ``Idempotency-Key`` required.
+- **`sdks/java/src/main/java/com/firefly/flyquery/FlyqueryClient.java`**:
+  Java ergonomic wrapper, mirror of `flyquery_sdk.client.FlyqueryClient`.
+  Builder sets the four-header contract once (``X-Tenant-Id``,
+  ``X-Workspace-Id``, optional ``X-Agent-Token``); ``withIdempotencyKey``,
+  ``withAgentToken``, ``withCorrelationId`` return sibling clients
+  without mutating the parent. Exposes typed accessors for every
+  generated ``*Api`` class. 7 unit tests in
+  ``src/test/java/.../FlyqueryClientTest.java``.
+
+### Changed
+
+- **OpenAPI spec**: 64 → 85 paths, 22 → 27 tags after the agent
+  surface expansion.
+- **Both SDKs regenerated** to surface the new agent endpoints (Python:
+  added `agent_conversations_api.py`, `agent_datasets_api.py`,
+  `agent_ingest_jobs_api.py`, `agent_relations_api.py`,
+  `agent_tables_api.py`; Java: matching `Agent*Api.java` classes).
+- **`sdks/java/.openapi-generator-ignore`**: preserves the hand-written
+  ``FlyqueryClient.java`` + its test across regenerations.
+
+### Notes
+
+- The agent surface uses a uniform delegation pattern: each agent
+  controller takes the corresponding user-tier controller as a
+  dependency, verifies token + scope at the boundary, then forwards
+  the call. Avoids duplicating handler logic; matches the existing
+  ``AgentSqlExecuteController`` shape.
+- Idempotency on agent surface mutating endpoints follows the
+  ``replay_dedup`` contract from 26.5.5 -- ``Idempotency-Key`` is
+  *required* (per agent-tier policy).
+
+### Attribution
+
+Released by ancongui.
+
+---
+
+## [26.5.5] - 2026-05-24
+
+### Added
+
+- **`scripts/openapi_snapshot.py`**: rewritten to defensively re-apply
+  `enrich_openapi_with_headers` + `enrich_openapi_with_sse` on the
+  dumped spec. The old script silently re-installed pyfly's bare
+  generator, which discarded `_wrapped_openapi`; the resulting on-disk
+  `openapi.json` shipped without any of the 5 flyquery header
+  parameters (`TenantIdHeader`, `WorkspaceIdHeader`, `AgentTokenHeader`,
+  `CorrelationIdHeader`, `IdempotencyKeyHeader`) or the 3 securityScheme
+  blocks. Both generated SDKs were therefore blind to the four-header
+  wire contract. New regression tests in
+  `tests/integration/test_openapi_snapshot.py` enforce the surface
+  on every snapshot.
+- **`src/flyquery/web/idempotent_handler.py`**: new `replay_dedup()`
+  helper that wraps a handler in `Idempotency-Key` lookup + record.
+  Wired into 5 controllers that previously had zero enforcement
+  despite the spec advertising the header:
+    - `POST /api/v1/agent/query` (required)
+    - `POST /api/v1/agent/sql:execute` (required)
+    - `POST /api/v1/agent/examples` (required)
+    - `POST /api/v1/datasets/{id}/files:bulk` (optional)
+    - `POST /api/v1/query:batch` (optional)
+  Lives outside `web/conventions/` (which is lock-step with canon /
+  radar) so flyquery can move alone here.
+- **`src/flyquery/web/openapi_sse.py`**: enricher that declares
+  `text/event-stream` content on every SSE endpoint's 200 response.
+  The Java SDK used to emit `Mono<Void>` for `streamJob`; it now emits
+  `Mono<String>`. The Python SDK now generates `stream_job` with all 5
+  header parameters typed.
+- **`Taskfile.yml sdk:all`**: new task chaining
+  `openapi-snapshot` -> `sdk:python` -> `sdk:java` so the spec and
+  SDKs can't drift.
+- **`tests/unit/test_idempotent_handler.py`**: 6 unit tests covering
+  cold / warm / missing-key / invalid-key / dict-return paths.
+
+### Changed
+
+- **`Taskfile.yml sdk:python`** + **`sdk:java`**: both tasks now
+  `rm -rf` the generated `api/` + `models/` + `docs/` trees BEFORE
+  regenerating, so stale split-tag files (e.g. `IngestApi.py` from a
+  pre-split spec) no longer accumulate. Python SDK dropped from 29 to
+  22 API files; Java dropped from 28 to 22.
+- **`sdks/java/pom.xml`**: full metadata refresh:
+    - `source/target 1.8` -> Java 25 (`<release>${java.version}</release>`)
+    - `spring-boot-version 2.7.17` -> `3.5.9`
+    - `jakarta-annotation-version 1.3.5` -> `3.0.0`
+    - `useJakartaEe=true` added to `task sdk:java`
+      so generated annotations use `jakarta.*` not `javax.*`
+    - `<url>` / `<scm>` / `<developers>` repointed from
+      openapitools.org to `firefly-operationOS/flyquery`
+    - `<license>` `Unlicense` -> `Apache-2.0` (matches `LICENSE`)
+- **`sdks/python/tests/test_smoke.py`**: updated for the current split
+  taxonomy (`SchemaApi` -> `SchemaChangesApi` + `SchemaObjectsApi`,
+  etc.) and a new regression test guards against stale class names
+  leaking back on regen.
+- **`docs/api-reference.md` section 5.12**: `GET /audit`, `/billing`,
+  `/stats`, `/queries`, `/queries/{id}`, `/queries/{id}/result` are
+  now explicitly marked `(v1+)` with a status note pointing at the
+  cost / audit roadmap -- consistent with the CHANGELOG and `docs/billing.md`.
+
+### Fixed
+
+- The 5 endpoints listed under **Added > idempotent_handler** were
+  documented as accepting `Idempotency-Key` for two releases but no
+  controller consulted the store. Replays were silently re-running
+  multi-LLM pipelines (agent/query) or re-ingesting files (files:bulk).
+
+### Attribution
+
+Released by ancongui.
+
+---
+
 ## [26.5.4] - 2026-05-23
 
 ### Added

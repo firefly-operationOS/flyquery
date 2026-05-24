@@ -21,9 +21,15 @@ ergonomic wrapper on top of the generated API classes.
 | Dataset CRUD | ✅ generated | ✅ generated |
 | Single file upload | ✅ `FlyqueryClient.upload` | ✅ `FilesApi.uploadFile` |
 | **Bulk file upload** | ✅ `FlyqueryClient.upload_bulk` + `upload_directory` | ✅ raw `WebClient` against `:bulk` (snippet in README) |
+| **Async file upload** (`files:async`, new in 26.5.10) | ✅ generated `FilesApi.uploadFileAsync` | ✅ generated `FilesApi.uploadFileAsync` |
 | Single NL query | ✅ `FlyqueryClient.ask` | ✅ `QueryApi.query` |
 | **Batch NL query** | ✅ `FlyqueryClient.ask_batch` | ✅ `QueryApi.batch` |
 | Streaming SSE | ✅ `QueryApi.stream` (raw) | ✅ `QueryApi.stream` (raw) |
+| **Query history list** (new in 26.5.10) | ✅ `FlyqueryClient.recent_queries` (ergonomic) + `QueriesApi.list_queries` (raw) | ✅ `QueriesApi.listQueries` |
+| **Query detail** (new in 26.5.10) | ✅ `FlyqueryClient.get_query` (ergonomic) + `QueriesApi.get_query` (raw) | ✅ `QueriesApi.getQuery` |
+| **Query result re-download** (new in 26.5.10) | ✅ `FlyqueryClient.fetch_query_result` (ergonomic) + `QueriesApi.get_query_result` (raw) | ✅ `QueriesApi.getQueryResult` |
+| **Billing rollup** (new in 26.5.10) | ✅ `FlyqueryClient.billing_rollup` (ergonomic) + `BillingApi.rollup` (raw) | ✅ `BillingApi.rollup` |
+| **Workspace stats** (new in 26.5.10) | ✅ `FlyqueryClient.workspace_stats` (ergonomic) + `StatsApi.workspace_summary` (raw) | ✅ `StatsApi.workspaceSummary` |
 | Idempotent workspace lookup-or-create | ✅ `FlyqueryClient.find_or_create_workspace` | manual chain via `readBySlug` + `onErrorResume` |
 | Idempotent dataset lookup-or-create | ✅ `FlyqueryClient.find_or_create_dataset` | manual chain via `readByName` + `onErrorResume` |
 | Sync helpers | ✅ `_sync` mirror per async method | reactive only (block at the edge) |
@@ -31,6 +37,16 @@ ergonomic wrapper on top of the generated API classes.
 The Java SDK is intentionally lower-level — Spring WebFlux users
 expect to chain `Mono`s themselves and the ergonomic wrapper
 pattern adds more confusion than value in that ecosystem.
+
+The Python `FlyqueryClient` ergonomic wrapper lives at
+[`sdks/python/flyquery_sdk/client.py`](../sdks/python/flyquery_sdk/client.py).
+The Java equivalent `FlyqueryClient` lives at
+[`sdks/java/src/main/java/com/firefly/flyquery/FlyqueryClient.java`](../sdks/java/src/main/java/com/firefly/flyquery/FlyqueryClient.java)
+and wires base URL + tenant/workspace/agent-token headers into every
+Api class. For the new v1 history / billing / stats endpoints, both SDKs
+expose the generated API classes directly — see
+[consumers.md § Recipe F + G](consumers.md#recipe-f-query-history--re-download-new-in-26510)
+for end-to-end snippets.
 
 ## Authentication contract
 

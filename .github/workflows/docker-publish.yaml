@@ -112,7 +112,7 @@ jobs:
             type=raw,value=manual-${{ github.run_id }},enable=${{ github.event_name == 'workflow_dispatch' }}
           labels: |
             org.opencontainers.image.title=flyquery
-            org.opencontainers.image.description=flyquery -- Operational Knowledge Repository. Universal ingestion (any file format), hybrid retrieval (Postgres BM25 + pgvector dense + RRF), grounded RAG answers with citations, append-only version chain + provenance graph + EDA outbox. Part of Firefly OperationOS, platform-agnostic.
+            org.opencontainers.image.description=flyquery -- Operational Structured-Data Intelligence (upload-driven). Multi-tenant ingestion + Text-to-SQL service over user-uploaded structured files (CSV / TSV / XLSX / XLS / ODS / JSON / JSONL / Parquet / Avro / ORC / Arrow / Feather + compression variants). Materialises uploads to Parquet on object storage; indexes a long-lived schema knowledge base; answers natural-language questions via a multi-agent pipeline. Part of Firefly OperationOS.
             org.opencontainers.image.source=https://github.com/${{ github.repository }}
             org.opencontainers.image.licenses=Proprietary
             org.opencontainers.image.vendor=Firefly Software Solutions Inc

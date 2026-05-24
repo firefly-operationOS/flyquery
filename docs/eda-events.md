@@ -86,6 +86,24 @@ to it for observability purposes:
 - Use `GET /api/v1/ingest-jobs/{id}/stream` for per-stage progress instead
   of subscribing to this topic.
 
+### Second publisher: RetentionWorker republish
+
+As of 26.5.10, the [`RetentionWorker`](../src/flyquery/core/services/retention/retention_worker.py)
+also publishes `IngestRequested` events as part of its periodic sweep
+(see [workers.md](workers.md)). Two paths:
+
+1. **Stuck-RUNNING reap** — `started_at > processing_lease_s` jobs are
+   reset to PENDING and republished, recovering from a crashed worker.
+2. **Orphan-PENDING grace** — PENDING jobs older than
+   `orphan_queued_grace_s` are republished in case the original event
+   never made it to the bus.
+
+In both cases the event payload is reconstructed from the persisted
+job row, so the schema is identical to the original. Idempotency on
+the consumer side relies on the atomic PENDING → RUNNING claim in
+`flyquery_ingest_jobs`: a job that's already RUNNING (or done)
+short-circuits in the worker handler.
+
 ---
 
 ## 3. flyquery.schema — SchemaUpdated

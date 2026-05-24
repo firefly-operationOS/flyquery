@@ -301,8 +301,37 @@ connection returns to the pool.
 Asynchronous, restartable, streamable, idempotent across re-ingests. Each stage
 emits an SSE event (see [ingestion.md](ingestion.md) for full detail).
 
+### System-shape: three process types
+
+```
+┌──────────────────────┐    ┌──────────────────────┐    ┌──────────────────────┐
+│  flyquery serve      │    │ flyquery worker      │    │ flyquery worker      │
+│  (API server)        │    │ ingest               │    │ retention            │
+│                      │    │ (IngestWorker)       │    │ (RetentionWorker)    │
+│  HTTP / SSE          │    │ EDA consumer of      │    │ Periodic loop:       │
+│  controllers         │    │ flyquery.ingest      │    │  - stuck-job reaper  │
+│  + services + repos  │    │ + 10-stage pipeline  │    │  - orphan republish  │
+│  (sync ingest path   │    │ + retry / cancel /   │    │  - TTL deletes       │
+│   in-process)        │    │   dead-letter        │    │  - PURGED hard-del   │
+└──────────┬───────────┘    └──────────┬───────────┘    └──────────┬───────────┘
+           │ scale: replicas           │ scale: N replicas         │ scale: 1
+           │                           │ × _CONCURRENCY            │ usually
+           ▼                           ▼                           ▼
+      Postgres (RLS-enforced) ─ EDA bus ─ Object storage (Parquet)
+```
+
+Each is a distinct process. Production runs ≥1 of each; dev /
+docker-compose can collapse all three into a single process via
+`flyquery worker all` (NOT recommended for production — see
+[workers.md](workers.md) for full topology + scaling guidance). The
+RetentionWorker doesn't run the pipeline; it owns the cross-cutting
+cleanup duties (TTL sweeps + reaping stuck `RUNNING` jobs + republishing
+orphaned `PENDING` jobs) listed in
+[`retention_worker.py`](../src/flyquery/core/services/retention/retention_worker.py).
+
 ```
 POST /datasets/{id}/files
+POST /datasets/{id}/files:async        (new in 26.5.10: 202 Accepted; Stage 1 sync, 2-10 on worker)
 PUT  /datasets/{ds}/tables/{id}:upload
         │
         ▼  bytes → object store: files/{file_id}.{ext}

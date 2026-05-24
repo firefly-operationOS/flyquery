@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import uuid
 from collections.abc import Sequence
+from datetime import datetime
 from typing import Any
 
 import sqlalchemy as sa
@@ -159,6 +160,120 @@ class IngestJobRepository:
             )
             items = [_row_to_dict(r) for r in rows_result.mappings().all()]
             return items, total
+
+    async def list_stuck_running_ids(
+        self,
+        *,
+        older_than: datetime,
+        limit: int = 200,
+    ) -> list[uuid.UUID]:
+        """Return up to ``limit`` ingest job ids stuck in RUNNING since ``older_than``.
+
+        "Stuck" means a worker claimed the job (flipped status to
+        RUNNING + set ``started_at``) but never finished -- the
+        worker likely crashed. The retention sweep resets these.
+        Returns ids only so the caller can split the reset + republish
+        decisions across two repo calls.
+        """
+        async with self._factory() as s:
+            result = await s.execute(
+                sa.text(
+                    "SELECT id FROM flyquery_ingest_jobs "
+                    "WHERE status = 'RUNNING' "
+                    "  AND started_at IS NOT NULL "
+                    "  AND started_at < :cutoff "
+                    "ORDER BY started_at "
+                    "LIMIT :limit"
+                ),
+                {"cutoff": older_than, "limit": int(limit)},
+            )
+            return [uuid.UUID(str(r["id"])) for r in result.mappings().all()]
+
+    async def reap_stuck_running(self, *, older_than: datetime) -> int:
+        """Reset stuck RUNNING ingest jobs back to PENDING.
+
+        ``started_at`` is cleared so the next ``_mark_running`` can
+        claim afresh. ``attempts`` is intentionally NOT decremented --
+        we want stuck-recovery to consume one retry slot so an
+        infinitely-flapping job hits ``ingest_max_attempts`` and gets
+        permanently FAILED.
+        """
+        async with self._factory() as s, s.begin():
+            result = await s.execute(
+                sa.text(
+                    "UPDATE flyquery_ingest_jobs "
+                    "SET status = 'PENDING', started_at = NULL "
+                    "WHERE status = 'RUNNING' "
+                    "  AND started_at IS NOT NULL "
+                    "  AND started_at < :cutoff"
+                ),
+                {"cutoff": older_than},
+            )
+            return int(result.rowcount or 0)
+
+    async def list_orphaned_pending_ids(
+        self,
+        *,
+        older_than: datetime,
+        limit: int = 200,
+    ) -> list[uuid.UUID]:
+        """Return PENDING ingest jobs older than ``older_than`` -- candidates for republish."""
+        async with self._factory() as s:
+            result = await s.execute(
+                sa.text(
+                    "SELECT id FROM flyquery_ingest_jobs "
+                    "WHERE status = 'PENDING' "
+                    "  AND attempts = 0 "
+                    "  AND started_at IS NULL "
+                    "  AND created_at IS NOT NULL "
+                    "  AND created_at < :cutoff "
+                    "ORDER BY created_at "
+                    "LIMIT :limit"
+                ),
+                {"cutoff": older_than, "limit": int(limit)},
+            )
+            return [uuid.UUID(str(r["id"])) for r in result.mappings().all()]
+
+    async def delete_events_older_than(self, *, cutoff: datetime) -> int:
+        """Hard-delete ingest event rows older than ``cutoff``.
+
+        Used by the retention sweep -- the events table accumulates
+        ~10 rows per ingest job, so even a slow tenant generates many
+        thousands per month.
+        """
+        async with self._factory() as s, s.begin():
+            result = await s.execute(
+                sa.text("DELETE FROM flyquery_ingest_events WHERE created_at < :cutoff"),
+                {"cutoff": cutoff},
+            )
+            return int(result.rowcount or 0)
+
+    async def merge_request_json(
+        self,
+        job_id: uuid.UUID,
+        patch: dict[str, Any],
+    ) -> None:
+        """Shallow-merge ``patch`` into ``request_json`` for the job row.
+
+        Uses Postgres ``jsonb`` concat (``||``) so existing keys are
+        overwritten and missing keys are added without re-roundtripping
+        the full payload. Used by the async upload endpoint to set
+        ``{"already_received": true}`` after creating a job.
+        """
+        if not patch:
+            return
+        import json as _json
+
+        async with self._factory() as s, s.begin():
+            await s.execute(
+                sa.text(
+                    "UPDATE flyquery_ingest_jobs "
+                    "SET request_json = COALESCE(request_json, '{}'::jsonb) "
+                    "                    || CAST(:patch AS jsonb) "
+                    "WHERE id = :id"
+                ),
+                {"id": job_id, "patch": _json.dumps(patch)},
+            )
 
     async def cancel(
         self,

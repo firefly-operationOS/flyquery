@@ -83,6 +83,28 @@ jobs:
       - run: git diff --exit-code openapi.json || (echo "openapi.json drifted"; exit 1)
 ```
 
+### Test counts (26.5.10)
+
+- 311 tests in `tests/` (up from 258 in 26.5.4 -- +21 added in 26.5.10
+  and the rest landed across the 26.5.5 -> 26.5.9 patches).
+- New tests in 26.5.10 worth flagging:
+  - [`tests/unit/test_retention_worker.py`](../tests/unit/test_retention_worker.py)
+    (9 tests) -- happy paths, TTL=0 short-circuits, per-step failure
+    isolation, publisher-blip isolation, cooperative shutdown.
+  - [`tests/unit/test_ingest_worker_concurrency.py`](../tests/unit/test_ingest_worker_concurrency.py)
+    (4 tests) -- semaphore cap enforcement under burst, timed-out
+    handler isolation, drain wait, drain-with-cancel (catches the
+    `_drain_inflight` `with asyncio.timeout(...)` bug, see
+    [concurrency.md](concurrency.md)).
+  - [`tests/unit/test_v1_endpoints.py`](../tests/unit/test_v1_endpoints.py)
+    (8 tests) -- DTO mapping, `QueryRepository.list_queries` limit
+    clamping, `BillingService` period validation, presigned-URL TTL
+    guard.
+- [`tests/unit/test_no_raw_sql_in_controllers.py`](../tests/unit/test_no_raw_sql_in_controllers.py)
+  is a structural CI gate -- it scans every controller for raw SQL
+  string literals and fails the build if any leak in (controllers must
+  go through repository methods).
+
 ### Test marks
 
 | Mark | Excluded in CI by default | When to include |

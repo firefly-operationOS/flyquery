@@ -20,9 +20,9 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-import sqlalchemy as sa
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from flyquery.core.services.files.file_repository import FileRepository
 from flyquery.core.services.ingestion.caps import (
     enforce_upload_cap,
 )
@@ -87,37 +87,20 @@ async def run_receive(
         os.close(fd)
 
     # --- 7. Insert flyquery_files row ---
-    async with session_factory() as s, s.begin():
-        await s.execute(
-            sa.text(
-                """
-                INSERT INTO flyquery_files (
-                    id, tenant_id, workspace_id, dataset_id,
-                    original_filename, file_format, compression,
-                    size_bytes, content_hash_sha256, object_store_key,
-                    uploaded_by, status
-                ) VALUES (
-                    :id, :tenant_id, :workspace_id, :dataset_id,
-                    :original_filename, :file_format, :compression,
-                    :size_bytes, :content_hash_sha256, :object_store_key,
-                    :uploaded_by, 'RECEIVED'
-                )
-                """
-            ),
-            {
-                "id": file_id,
-                "tenant_id": tenant_id,
-                "workspace_id": workspace_id,
-                "dataset_id": dataset_id,
-                "original_filename": filename,
-                "file_format": file_format,
-                "compression": compression,
-                "size_bytes": size_bytes,
-                "content_hash_sha256": content_hash,
-                "object_store_key": object_store_key,
-                "uploaded_by": actor,
-            },
-        )
+    file_repo = FileRepository(session_factory)
+    await file_repo.insert_received(
+        file_id=file_id,
+        tenant_id=tenant_id,
+        workspace_id=workspace_id,
+        dataset_id=dataset_id,
+        original_filename=filename,
+        file_format=file_format,
+        compression=compression,
+        size_bytes=size_bytes,
+        content_hash_sha256=content_hash,
+        object_store_key=object_store_key,
+        uploaded_by=actor,
+    )
 
     logger.info(
         "stage=receive file_id=%s format=%s compression=%s size=%d",

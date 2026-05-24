@@ -157,3 +157,37 @@ class FlyquerySettings(BaseSettings):
 
     # Observability
     otel_endpoint: str = ""
+
+    # ------------------------------------------------------------------
+    # Retention worker (26.5.10+)
+    # ------------------------------------------------------------------
+    #
+    # ``RetentionWorker`` is the second long-running process the
+    # service now needs (the first is ``IngestWorker``). It runs a
+    # periodic loop that:
+    #
+    # 1. **Reaps stuck RUNNING ingest jobs** -- a crashed worker
+    #    leaves a job in RUNNING with no path back to PENDING (the
+    #    atomic claim in ``_mark_running`` requires PENDING). Every
+    #    sweep we reset jobs whose ``started_at`` is older than
+    #    ``processing_lease_s`` and republish them onto the bus.
+    # 2. **Republishes orphan PENDING jobs** -- a publish that crashed
+    #    after the DB insert leaves the row in PENDING with no event
+    #    on the bus. We republish PENDING jobs older than
+    #    ``orphan_queued_grace_s``.
+    # 3. **TTL-deletes** rows in ``flyquery_ingest_events``,
+    #    ``flyquery_audit_events``, and ``flyquery_cost_events``
+    #    older than the per-table retention window. Set a window to
+    #    ``0`` to disable TTL on that table (kept forever).
+    # 4. **Reclaims storage for PURGING datasets** -- the SQL row of
+    #    a dataset whose ``status`` has been ``PURGING`` for longer
+    #    than ``dataset_purge_tombstone_days`` is finally deleted.
+    #
+    # Defaults are conservative -- prod operators tune via env vars.
+    retention_scan_interval_s: int = 300  # 5 minutes
+    retention_ingest_events_days: int = 30
+    retention_audit_events_days: int = 365  # one year, compliance default
+    retention_cost_events_days: int = 365
+    processing_lease_s: int = 1800  # 30 minutes -- longer than the longest job
+    orphan_queued_grace_s: int = 600  # 10 minutes
+    dataset_purge_tombstone_days: int = 90

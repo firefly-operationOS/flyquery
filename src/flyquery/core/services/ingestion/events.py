@@ -29,14 +29,12 @@ Stages emitted by the ingestion pipeline:
 
 from __future__ import annotations
 
-import logging
 import uuid
 from typing import Any
 
-import sqlalchemy as sa
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-logger = logging.getLogger(__name__)
+from flyquery.core.services.ingestion.ingest_event_repository import _insert_event
 
 
 async def emit_event(
@@ -55,32 +53,21 @@ async def emit_event(
     Swallows DB errors so a broken event-write never aborts the main
     pipeline stage. The job itself is the durable truth; events are
     best-effort audit/SSE trail.
+
+    Delegates to :func:`_insert_event` in
+    :mod:`flyquery.core.services.ingestion.ingest_event_repository`
+    so the SQL + JSON + error policy lives in one place.
     """
-    try:
-        async with session_factory() as s, s.begin():
-            await s.execute(
-                sa.text(
-                    "INSERT INTO flyquery_ingest_events "
-                    "(tenant_id, workspace_id, ingest_job_id, stage, status, message, payload_json) "
-                    "VALUES (:tenant, :ws, :job_id, :stage, :status, :msg, CAST(:payload AS jsonb))"
-                ),
-                {
-                    "tenant": tenant_id,
-                    "ws": workspace_id,
-                    "job_id": ingest_job_id,
-                    "stage": stage,
-                    "status": status,
-                    "msg": message,
-                    "payload": _to_jsonb(payload or {}),
-                },
-            )
-    except Exception as exc:  # noqa: BLE001
-        logger.warning(
-            "ingest_event write failed job_id=%s stage=%s: %s",
-            ingest_job_id,
-            stage,
-            exc,
-        )
+    await _insert_event(
+        session_factory=session_factory,
+        ingest_job_id=ingest_job_id,
+        tenant_id=tenant_id,
+        workspace_id=workspace_id,
+        stage=stage,
+        status=status,
+        message=message,
+        payload=payload,
+    )
 
 
 async def emit_queued(
@@ -185,15 +172,3 @@ async def emit_error(
         payload={"error_type": type(exc).__name__, "failed_stage": stage},
         session_factory=session_factory,
     )
-
-
-def _to_jsonb(obj: Any) -> str:
-    """Serialise a dict to a JSON string for Postgres JSONB binding."""
-    import json
-
-    def _default(o: Any) -> Any:
-        if isinstance(o, uuid.UUID):
-            return str(o)
-        raise TypeError(f"Object of type {type(o).__name__!r} is not JSON serialisable")
-
-    return json.dumps(obj, default=_default)

@@ -14,10 +14,12 @@ Method | HTTP request | Description
 
 
 # **get_table**
-> TableRead get_table(table_id)
+> TableRead get_table(table_id, x_tenant_id, x_workspace_id, x_correlation_id=x_correlation_id)
 
 ### Example
 
+* Api Key Authentication (WorkspaceContext):
+* Api Key Authentication (TenantContext):
 
 ```python
 import flyquery_sdk
@@ -31,15 +33,34 @@ configuration = flyquery_sdk.Configuration(
     host = "http://localhost"
 )
 
+# The client must configure the authentication and authorization parameters
+# in accordance with the API server security policy.
+# Examples for each auth method are provided below, use the example that
+# satisfies your auth use case.
+
+# Configure API key authorization: WorkspaceContext
+configuration.api_key['WorkspaceContext'] = os.environ["API_KEY"]
+
+# Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
+# configuration.api_key_prefix['WorkspaceContext'] = 'Bearer'
+
+# Configure API key authorization: TenantContext
+configuration.api_key['TenantContext'] = os.environ["API_KEY"]
+
+# Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
+# configuration.api_key_prefix['TenantContext'] = 'Bearer'
 
 # Enter a context with an instance of the API client
 async with flyquery_sdk.ApiClient(configuration) as api_client:
     # Create an instance of the API class
     api_instance = flyquery_sdk.TablesApi(api_client)
     table_id = 'table_id_example' # str | 
+    x_tenant_id = 'acme-corp' # str | Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present.
+    x_workspace_id = '00000000-0000-0000-0000-000000000001' # str | Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation.
+    x_correlation_id = UUID('550e8400-e29b-41d4-a716-446655440000') # UUID | Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header. (optional)
 
     try:
-        api_response = await api_instance.get_table(table_id)
+        api_response = await api_instance.get_table(table_id, x_tenant_id, x_workspace_id, x_correlation_id=x_correlation_id)
         print("The response of TablesApi->get_table:\n")
         pprint(api_response)
     except Exception as e:
@@ -54,6 +75,9 @@ async with flyquery_sdk.ApiClient(configuration) as api_client:
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
  **table_id** | **str**|  | 
+ **x_tenant_id** | **str**| Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present. | 
+ **x_workspace_id** | **str**| Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation. | 
+ **x_correlation_id** | **UUID**| Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header. | [optional] 
 
 ### Return type
 
@@ -61,7 +85,7 @@ Name | Type | Description  | Notes
 
 ### Authorization
 
-No authorization required
+[WorkspaceContext](../README.md#WorkspaceContext), [TenantContext](../README.md#TenantContext)
 
 ### HTTP request headers
 
@@ -77,16 +101,18 @@ No authorization required
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **get_table_by_name**
-> TableRead get_table_by_name(name, dataset_id=dataset_id)
+> TableRead get_table_by_name(name, x_tenant_id, x_workspace_id, dataset_id=dataset_id, x_correlation_id=x_correlation_id)
 
 Resolve a table by ``name`` within the caller's workspace.
 
 Pass ``?dataset_id=...`` to scope the lookup to a single dataset.
-Returns 404 if the name is not unique within the scope or no
-match is found.
+Returns 404 if the name is ambiguous (matches multiple datasets)
+or no match is found.
 
 ### Example
 
+* Api Key Authentication (WorkspaceContext):
+* Api Key Authentication (TenantContext):
 
 ```python
 import flyquery_sdk
@@ -100,17 +126,36 @@ configuration = flyquery_sdk.Configuration(
     host = "http://localhost"
 )
 
+# The client must configure the authentication and authorization parameters
+# in accordance with the API server security policy.
+# Examples for each auth method are provided below, use the example that
+# satisfies your auth use case.
+
+# Configure API key authorization: WorkspaceContext
+configuration.api_key['WorkspaceContext'] = os.environ["API_KEY"]
+
+# Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
+# configuration.api_key_prefix['WorkspaceContext'] = 'Bearer'
+
+# Configure API key authorization: TenantContext
+configuration.api_key['TenantContext'] = os.environ["API_KEY"]
+
+# Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
+# configuration.api_key_prefix['TenantContext'] = 'Bearer'
 
 # Enter a context with an instance of the API client
 async with flyquery_sdk.ApiClient(configuration) as api_client:
     # Create an instance of the API class
     api_instance = flyquery_sdk.TablesApi(api_client)
     name = 'name_example' # str | 
+    x_tenant_id = 'acme-corp' # str | Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present.
+    x_workspace_id = '00000000-0000-0000-0000-000000000001' # str | Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation.
     dataset_id = 'dataset_id_example' # str |  (optional)
+    x_correlation_id = UUID('550e8400-e29b-41d4-a716-446655440000') # UUID | Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header. (optional)
 
     try:
         # Resolve a table by ``name`` within the caller's workspace.
-        api_response = await api_instance.get_table_by_name(name, dataset_id=dataset_id)
+        api_response = await api_instance.get_table_by_name(name, x_tenant_id, x_workspace_id, dataset_id=dataset_id, x_correlation_id=x_correlation_id)
         print("The response of TablesApi->get_table_by_name:\n")
         pprint(api_response)
     except Exception as e:
@@ -125,7 +170,10 @@ async with flyquery_sdk.ApiClient(configuration) as api_client:
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
  **name** | **str**|  | 
+ **x_tenant_id** | **str**| Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present. | 
+ **x_workspace_id** | **str**| Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation. | 
  **dataset_id** | **str**|  | [optional] 
+ **x_correlation_id** | **UUID**| Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header. | [optional] 
 
 ### Return type
 
@@ -133,7 +181,7 @@ Name | Type | Description  | Notes
 
 ### Authorization
 
-No authorization required
+[WorkspaceContext](../README.md#WorkspaceContext), [TenantContext](../README.md#TenantContext)
 
 ### HTTP request headers
 
@@ -149,13 +197,16 @@ No authorization required
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **list_changes**
-> list_changes(table_id)
+> PaginatedSchemaChangeRead list_changes(table_id, x_tenant_id, x_workspace_id, x_correlation_id=x_correlation_id)
 
 ### Example
 
+* Api Key Authentication (WorkspaceContext):
+* Api Key Authentication (TenantContext):
 
 ```python
 import flyquery_sdk
+from flyquery_sdk.models.paginated_schema_change_read import PaginatedSchemaChangeRead
 from flyquery_sdk.rest import ApiException
 from pprint import pprint
 
@@ -165,15 +216,36 @@ configuration = flyquery_sdk.Configuration(
     host = "http://localhost"
 )
 
+# The client must configure the authentication and authorization parameters
+# in accordance with the API server security policy.
+# Examples for each auth method are provided below, use the example that
+# satisfies your auth use case.
+
+# Configure API key authorization: WorkspaceContext
+configuration.api_key['WorkspaceContext'] = os.environ["API_KEY"]
+
+# Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
+# configuration.api_key_prefix['WorkspaceContext'] = 'Bearer'
+
+# Configure API key authorization: TenantContext
+configuration.api_key['TenantContext'] = os.environ["API_KEY"]
+
+# Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
+# configuration.api_key_prefix['TenantContext'] = 'Bearer'
 
 # Enter a context with an instance of the API client
 async with flyquery_sdk.ApiClient(configuration) as api_client:
     # Create an instance of the API class
     api_instance = flyquery_sdk.TablesApi(api_client)
     table_id = 'table_id_example' # str | 
+    x_tenant_id = 'acme-corp' # str | Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present.
+    x_workspace_id = '00000000-0000-0000-0000-000000000001' # str | Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation.
+    x_correlation_id = UUID('550e8400-e29b-41d4-a716-446655440000') # UUID | Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header. (optional)
 
     try:
-        await api_instance.list_changes(table_id)
+        api_response = await api_instance.list_changes(table_id, x_tenant_id, x_workspace_id, x_correlation_id=x_correlation_id)
+        print("The response of TablesApi->list_changes:\n")
+        pprint(api_response)
     except Exception as e:
         print("Exception when calling TablesApi->list_changes: %s\n" % e)
 ```
@@ -186,19 +258,22 @@ async with flyquery_sdk.ApiClient(configuration) as api_client:
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
  **table_id** | **str**|  | 
+ **x_tenant_id** | **str**| Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present. | 
+ **x_workspace_id** | **str**| Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation. | 
+ **x_correlation_id** | **UUID**| Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header. | [optional] 
 
 ### Return type
 
-void (empty response body)
+[**PaginatedSchemaChangeRead**](PaginatedSchemaChangeRead.md)
 
 ### Authorization
 
-No authorization required
+[WorkspaceContext](../README.md#WorkspaceContext), [TenantContext](../README.md#TenantContext)
 
 ### HTTP request headers
 
  - **Content-Type**: Not defined
- - **Accept**: Not defined
+ - **Accept**: application/json
 
 ### HTTP response details
 
@@ -209,15 +284,18 @@ No authorization required
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **list_objects**
-> list_objects(table_id)
+> PaginatedSchemaObjectRead list_objects(table_id, x_tenant_id, x_workspace_id, x_correlation_id=x_correlation_id)
 
 List schema_objects for the table's current snapshot.
 
 ### Example
 
+* Api Key Authentication (WorkspaceContext):
+* Api Key Authentication (TenantContext):
 
 ```python
 import flyquery_sdk
+from flyquery_sdk.models.paginated_schema_object_read import PaginatedSchemaObjectRead
 from flyquery_sdk.rest import ApiException
 from pprint import pprint
 
@@ -227,16 +305,37 @@ configuration = flyquery_sdk.Configuration(
     host = "http://localhost"
 )
 
+# The client must configure the authentication and authorization parameters
+# in accordance with the API server security policy.
+# Examples for each auth method are provided below, use the example that
+# satisfies your auth use case.
+
+# Configure API key authorization: WorkspaceContext
+configuration.api_key['WorkspaceContext'] = os.environ["API_KEY"]
+
+# Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
+# configuration.api_key_prefix['WorkspaceContext'] = 'Bearer'
+
+# Configure API key authorization: TenantContext
+configuration.api_key['TenantContext'] = os.environ["API_KEY"]
+
+# Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
+# configuration.api_key_prefix['TenantContext'] = 'Bearer'
 
 # Enter a context with an instance of the API client
 async with flyquery_sdk.ApiClient(configuration) as api_client:
     # Create an instance of the API class
     api_instance = flyquery_sdk.TablesApi(api_client)
     table_id = 'table_id_example' # str | 
+    x_tenant_id = 'acme-corp' # str | Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present.
+    x_workspace_id = '00000000-0000-0000-0000-000000000001' # str | Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation.
+    x_correlation_id = UUID('550e8400-e29b-41d4-a716-446655440000') # UUID | Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header. (optional)
 
     try:
         # List schema_objects for the table's current snapshot.
-        await api_instance.list_objects(table_id)
+        api_response = await api_instance.list_objects(table_id, x_tenant_id, x_workspace_id, x_correlation_id=x_correlation_id)
+        print("The response of TablesApi->list_objects:\n")
+        pprint(api_response)
     except Exception as e:
         print("Exception when calling TablesApi->list_objects: %s\n" % e)
 ```
@@ -249,19 +348,22 @@ async with flyquery_sdk.ApiClient(configuration) as api_client:
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
  **table_id** | **str**|  | 
+ **x_tenant_id** | **str**| Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present. | 
+ **x_workspace_id** | **str**| Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation. | 
+ **x_correlation_id** | **UUID**| Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header. | [optional] 
 
 ### Return type
 
-void (empty response body)
+[**PaginatedSchemaObjectRead**](PaginatedSchemaObjectRead.md)
 
 ### Authorization
 
-No authorization required
+[WorkspaceContext](../README.md#WorkspaceContext), [TenantContext](../README.md#TenantContext)
 
 ### HTTP request headers
 
  - **Content-Type**: Not defined
- - **Accept**: Not defined
+ - **Accept**: application/json
 
 ### HTTP response details
 
@@ -272,13 +374,16 @@ No authorization required
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **list_snapshots**
-> list_snapshots(table_id)
+> PaginatedSnapshotRead list_snapshots(table_id, x_tenant_id, x_workspace_id, x_correlation_id=x_correlation_id)
 
 ### Example
 
+* Api Key Authentication (WorkspaceContext):
+* Api Key Authentication (TenantContext):
 
 ```python
 import flyquery_sdk
+from flyquery_sdk.models.paginated_snapshot_read import PaginatedSnapshotRead
 from flyquery_sdk.rest import ApiException
 from pprint import pprint
 
@@ -288,15 +393,36 @@ configuration = flyquery_sdk.Configuration(
     host = "http://localhost"
 )
 
+# The client must configure the authentication and authorization parameters
+# in accordance with the API server security policy.
+# Examples for each auth method are provided below, use the example that
+# satisfies your auth use case.
+
+# Configure API key authorization: WorkspaceContext
+configuration.api_key['WorkspaceContext'] = os.environ["API_KEY"]
+
+# Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
+# configuration.api_key_prefix['WorkspaceContext'] = 'Bearer'
+
+# Configure API key authorization: TenantContext
+configuration.api_key['TenantContext'] = os.environ["API_KEY"]
+
+# Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
+# configuration.api_key_prefix['TenantContext'] = 'Bearer'
 
 # Enter a context with an instance of the API client
 async with flyquery_sdk.ApiClient(configuration) as api_client:
     # Create an instance of the API class
     api_instance = flyquery_sdk.TablesApi(api_client)
     table_id = 'table_id_example' # str | 
+    x_tenant_id = 'acme-corp' # str | Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present.
+    x_workspace_id = '00000000-0000-0000-0000-000000000001' # str | Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation.
+    x_correlation_id = UUID('550e8400-e29b-41d4-a716-446655440000') # UUID | Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header. (optional)
 
     try:
-        await api_instance.list_snapshots(table_id)
+        api_response = await api_instance.list_snapshots(table_id, x_tenant_id, x_workspace_id, x_correlation_id=x_correlation_id)
+        print("The response of TablesApi->list_snapshots:\n")
+        pprint(api_response)
     except Exception as e:
         print("Exception when calling TablesApi->list_snapshots: %s\n" % e)
 ```
@@ -309,19 +435,22 @@ async with flyquery_sdk.ApiClient(configuration) as api_client:
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
  **table_id** | **str**|  | 
+ **x_tenant_id** | **str**| Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present. | 
+ **x_workspace_id** | **str**| Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation. | 
+ **x_correlation_id** | **UUID**| Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header. | [optional] 
 
 ### Return type
 
-void (empty response body)
+[**PaginatedSnapshotRead**](PaginatedSnapshotRead.md)
 
 ### Authorization
 
-No authorization required
+[WorkspaceContext](../README.md#WorkspaceContext), [TenantContext](../README.md#TenantContext)
 
 ### HTTP request headers
 
  - **Content-Type**: Not defined
- - **Accept**: Not defined
+ - **Accept**: application/json
 
 ### HTTP response details
 
@@ -332,13 +461,16 @@ No authorization required
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **list_tables**
-> list_tables(dataset_id)
+> PaginatedTableRead list_tables(dataset_id, x_tenant_id, x_workspace_id, x_correlation_id=x_correlation_id)
 
 ### Example
 
+* Api Key Authentication (WorkspaceContext):
+* Api Key Authentication (TenantContext):
 
 ```python
 import flyquery_sdk
+from flyquery_sdk.models.paginated_table_read import PaginatedTableRead
 from flyquery_sdk.rest import ApiException
 from pprint import pprint
 
@@ -348,15 +480,36 @@ configuration = flyquery_sdk.Configuration(
     host = "http://localhost"
 )
 
+# The client must configure the authentication and authorization parameters
+# in accordance with the API server security policy.
+# Examples for each auth method are provided below, use the example that
+# satisfies your auth use case.
+
+# Configure API key authorization: WorkspaceContext
+configuration.api_key['WorkspaceContext'] = os.environ["API_KEY"]
+
+# Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
+# configuration.api_key_prefix['WorkspaceContext'] = 'Bearer'
+
+# Configure API key authorization: TenantContext
+configuration.api_key['TenantContext'] = os.environ["API_KEY"]
+
+# Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
+# configuration.api_key_prefix['TenantContext'] = 'Bearer'
 
 # Enter a context with an instance of the API client
 async with flyquery_sdk.ApiClient(configuration) as api_client:
     # Create an instance of the API class
     api_instance = flyquery_sdk.TablesApi(api_client)
     dataset_id = 'dataset_id_example' # str | 
+    x_tenant_id = 'acme-corp' # str | Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present.
+    x_workspace_id = '00000000-0000-0000-0000-000000000001' # str | Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation.
+    x_correlation_id = UUID('550e8400-e29b-41d4-a716-446655440000') # UUID | Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header. (optional)
 
     try:
-        await api_instance.list_tables(dataset_id)
+        api_response = await api_instance.list_tables(dataset_id, x_tenant_id, x_workspace_id, x_correlation_id=x_correlation_id)
+        print("The response of TablesApi->list_tables:\n")
+        pprint(api_response)
     except Exception as e:
         print("Exception when calling TablesApi->list_tables: %s\n" % e)
 ```
@@ -369,19 +522,22 @@ async with flyquery_sdk.ApiClient(configuration) as api_client:
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
  **dataset_id** | **str**|  | 
+ **x_tenant_id** | **str**| Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present. | 
+ **x_workspace_id** | **str**| Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation. | 
+ **x_correlation_id** | **UUID**| Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header. | [optional] 
 
 ### Return type
 
-void (empty response body)
+[**PaginatedTableRead**](PaginatedTableRead.md)
 
 ### Authorization
 
-No authorization required
+[WorkspaceContext](../README.md#WorkspaceContext), [TenantContext](../README.md#TenantContext)
 
 ### HTTP request headers
 
  - **Content-Type**: Not defined
- - **Accept**: Not defined
+ - **Accept**: application/json
 
 ### HTTP response details
 
@@ -392,7 +548,7 @@ No authorization required
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **search_tables**
-> search_tables(q=q, name=name, dataset_id=dataset_id, kind=kind, is_active=is_active, limit=limit, offset=offset)
+> PaginatedTableRead search_tables(x_tenant_id, x_workspace_id, q=q, name=name, dataset_id=dataset_id, kind=kind, is_active=is_active, limit=limit, offset=offset, x_correlation_id=x_correlation_id)
 
 Search/filter tables across the caller's workspace.
 
@@ -408,13 +564,16 @@ archived tables.
 * ``limit``      -- page size, clamped to [1, 1000]. Default 100.
 * ``offset``     -- starting offset. Default 0.
 
-Response envelope: ``{items, total, limit, offset, has_more}``.
+Response envelope: ``Paginated[TableRead]``.
 
 ### Example
 
+* Api Key Authentication (WorkspaceContext):
+* Api Key Authentication (TenantContext):
 
 ```python
 import flyquery_sdk
+from flyquery_sdk.models.paginated_table_read import PaginatedTableRead
 from flyquery_sdk.rest import ApiException
 from pprint import pprint
 
@@ -424,22 +583,43 @@ configuration = flyquery_sdk.Configuration(
     host = "http://localhost"
 )
 
+# The client must configure the authentication and authorization parameters
+# in accordance with the API server security policy.
+# Examples for each auth method are provided below, use the example that
+# satisfies your auth use case.
+
+# Configure API key authorization: WorkspaceContext
+configuration.api_key['WorkspaceContext'] = os.environ["API_KEY"]
+
+# Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
+# configuration.api_key_prefix['WorkspaceContext'] = 'Bearer'
+
+# Configure API key authorization: TenantContext
+configuration.api_key['TenantContext'] = os.environ["API_KEY"]
+
+# Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
+# configuration.api_key_prefix['TenantContext'] = 'Bearer'
 
 # Enter a context with an instance of the API client
 async with flyquery_sdk.ApiClient(configuration) as api_client:
     # Create an instance of the API class
     api_instance = flyquery_sdk.TablesApi(api_client)
+    x_tenant_id = 'acme-corp' # str | Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present.
+    x_workspace_id = '00000000-0000-0000-0000-000000000001' # str | Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation.
     q = 'q_example' # str |  (optional)
     name = 'name_example' # str |  (optional)
     dataset_id = 'dataset_id_example' # str |  (optional)
     kind = 'kind_example' # str |  (optional)
-    is_active = 'is_active_example' # str |  (optional)
+    is_active = True # bool |  (optional)
     limit = 100 # int |  (optional) (default to 100)
     offset = 0 # int |  (optional) (default to 0)
+    x_correlation_id = UUID('550e8400-e29b-41d4-a716-446655440000') # UUID | Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header. (optional)
 
     try:
         # Search/filter tables across the caller's workspace.
-        await api_instance.search_tables(q=q, name=name, dataset_id=dataset_id, kind=kind, is_active=is_active, limit=limit, offset=offset)
+        api_response = await api_instance.search_tables(x_tenant_id, x_workspace_id, q=q, name=name, dataset_id=dataset_id, kind=kind, is_active=is_active, limit=limit, offset=offset, x_correlation_id=x_correlation_id)
+        print("The response of TablesApi->search_tables:\n")
+        pprint(api_response)
     except Exception as e:
         print("Exception when calling TablesApi->search_tables: %s\n" % e)
 ```
@@ -451,26 +631,29 @@ async with flyquery_sdk.ApiClient(configuration) as api_client:
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
+ **x_tenant_id** | **str**| Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present. | 
+ **x_workspace_id** | **str**| Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation. | 
  **q** | **str**|  | [optional] 
  **name** | **str**|  | [optional] 
  **dataset_id** | **str**|  | [optional] 
  **kind** | **str**|  | [optional] 
- **is_active** | **str**|  | [optional] 
+ **is_active** | **bool**|  | [optional] 
  **limit** | **int**|  | [optional] [default to 100]
  **offset** | **int**|  | [optional] [default to 0]
+ **x_correlation_id** | **UUID**| Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header. | [optional] 
 
 ### Return type
 
-void (empty response body)
+[**PaginatedTableRead**](PaginatedTableRead.md)
 
 ### Authorization
 
-No authorization required
+[WorkspaceContext](../README.md#WorkspaceContext), [TenantContext](../README.md#TenantContext)
 
 ### HTTP request headers
 
  - **Content-Type**: Not defined
- - **Accept**: Not defined
+ - **Accept**: application/json
 
 ### HTTP response details
 

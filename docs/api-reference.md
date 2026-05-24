@@ -292,6 +292,39 @@ SDK helpers:
 
 ---
 
+#### `POST /api/v1/datasets/{id}/files:async` — async upload
+
+Like `POST /datasets/{id}/files` but the response is a `202 Accepted`
+with a job id. Stage 1 (receive: caps check, hash, format detect,
+store bytes, write `flyquery_files` row, track workspace storage)
+runs **synchronously** before responding — `file_id` is final and the
+content hash provides natural per-file dedup. Stages 2-10 of the
+pipeline are queued as a `PARSE_AND_INGEST` ingest job that the
+`IngestWorker` consumes (the worker honours an `already_received`
+flag on the job so it does NOT re-run Stage 1; see
+[async-ingest.md](async-ingest.md) and
+[workers.md](workers.md) for the worker side).
+
+**Request** `Content-Type: multipart/form-data` — one `file` part.
+
+**Response** `202 Accepted` with `Location: /api/v1/ingest-jobs/{job_id}`
+```json
+{
+  "job_id": "01906f2c-...",
+  "file_id": "01906f2b-...",
+  "dataset_id": "01906f2a-...",
+  "status": "PENDING"
+}
+```
+
+Use in place of the synchronous endpoint when a single file exceeds
+the request-timeout budget of the deployment (typically anything
+above a few MB once cold-cache LLM describe calls land).
+
+Source: `files_controller.py:249` (upload_file_async).
+
+---
+
 #### `GET /api/v1/datasets/{id}/files`
 
 List files for a dataset.
@@ -883,23 +916,85 @@ Add a drill-down turn. The prior turn's `executed_sql`, `table_qnames`, and
 
 ### 5.12 History and ops
 
+#### `GET /api/v1/audit-events`
+
+Paginated audit-event ledger. Filters: `event_type`, `actor`,
+`resource_kind`, `date_from`, `date_to`, `limit`, `offset`. Response
+is the standard `Paginated[AuditEventRead]` envelope. Newest first.
+
+Today's writers (more callsites land over time):
+- Dataset CRUD (`dataset.created`, `dataset.updated`, `dataset.archived`, `dataset.purged`)
+- Workspace CRUD (`workspace.created`, `workspace.updated`)
+- Agent-token mint / revoke (`agent_token.minted`, `agent_token.revoked`)
+
+Future scope gate: `flyquery.audit:read`.
+
+---
+
+#### `GET /api/v1/cost-events`
+
+Paginated per-call LLM cost ledger. Filters: `actor`, `model`,
+`operation`, `date_from`, `date_to`, `limit`, `offset`. Response is
+`Paginated[CostEventRead]`. One row per LLM-bearing operation.
+
+Today's writers cover the query pipeline (grounding / generation /
+critic / explainer) and the ingest pipeline (describe / column-name
+proposer / relation proposer / rename detector).
+
+Future scope gate: `flyquery.billing:read`. The `GET /api/v1/billing`
+rollup below is the aggregation on top of this raw stream — see
+[billing.md](billing.md).
+
+---
+
+> **Live as of 26.5.10.** The endpoints below were placeholders in
+> earlier releases; the read-side query history + billing rollup +
+> stats endpoints are now shipped on top of the pre-existing
+> `flyquery_queries`, `flyquery_cost_events`, and workspace inventory
+> tables. See [`src/flyquery/web/controllers/queries_controller.py`](../src/flyquery/web/controllers/queries_controller.py),
+> [`billing_controller.py`](../src/flyquery/web/controllers/billing_controller.py),
+> [`stats_controller.py`](../src/flyquery/web/controllers/stats_controller.py).
+
 #### `GET /api/v1/queries`
 
-Paginated query history. Optional: `dataset_id`, `execution_status`,
-`semantic_path_taken`, `date_from`, `date_to`.
+Paginated query history scoped to the caller's workspace, newest first.
+
+**Query params** — `dataset_id`, `execution_status`,
+`semantic_path_taken`, `date_from` (inclusive), `date_to` (exclusive),
+`limit` (clamped to `[1, 200]`), `offset`.
+
+Each row is the compact `QueryHistoryItem` shape — heavy JSONB columns
+(candidates, clarification, PII findings) are omitted; use the detail
+endpoint below for the full payload. Response is the standard
+`Paginated[QueryHistoryItem]` envelope.
+
+Source: `queries_controller.py:52` (list_queries).
 
 ---
 
 #### `GET /api/v1/queries/{id}`
 
-Full query detail including all candidates, retries, cost, model identifiers.
+Full single-query payload including every candidate proposal, the AST
+classification, every model identifier used
+(`model_grounding` / `model_generation` / `model_critic` /
+`model_explainer`), PII findings, clarification frame, retries, and the
+final error envelope if any. Returns `QueryDetailRead`.
+
+Cross-tenant probing returns 404 (the same response as a missing query),
+so the endpoint never leaks the existence of another tenant's row.
+
+Source: `queries_controller.py:100` (get_query).
 
 ---
 
 #### `GET /api/v1/queries/{id}/result`
 
+Re-download the preview + a fresh presigned Parquet URL for a previously
+executed query.
+
 ```json
 {
+  "query_id": "01906f40-...",
   "preview_json": [...],
   "parquet_presigned_url": "https://...",
   "result_byte_size": 204800,
@@ -907,42 +1002,104 @@ Full query detail including all candidates, retries, cost, model identifiers.
 }
 ```
 
----
+`parquet_presigned_url` is `None` once `ttl_expires_at` has elapsed
+(default 24h, controlled by `FLYQUERY_RESULT_TTL_HOURS`) — the consumer
+must rerun the query to materialise a fresh URL. A presign-time failure
+(object reclaimed, backend transient outage) also collapses the URL to
+`None` while still returning the inline preview.
 
-#### `GET /api/v1/audit`
-
-Paginated audit events. Optional: `event_type`, `actor`, `date_from`, `date_to`.
+Source: `queries_controller.py:124` (get_query_result).
 
 ---
 
 #### `GET /api/v1/billing`
 
-Cost rollup by period.
+Aggregates `flyquery_cost_events` into day / week / month buckets
+scoped to the caller's workspace. Consume
+[`GET /api/v1/cost-events`](#cost-events) for the raw per-call ledger;
+this endpoint just rolls it up.
 
-**Query params**: `period` (day|week|month), `date_from`, `date_to`.
+**Query params**: `period` = `day` (default) | `week` | `month`,
+`date_from` (inclusive), `date_to` (exclusive).
 
-**Response**
+Returns `BillingRollup` with the split `ingest_cost_cents` /
+`query_cost_cents` / `other_cost_cents` per bucket plus the
+`total_cost_cents` sum. Buckets with zero cost are omitted (no empty
+days). An invalid `period` returns 400 `invalid_request`.
+
 ```json
 {
+  "period": "day",
+  "date_from": "2026-05-01T00:00:00Z",
+  "date_to": "2026-05-24T00:00:00Z",
   "total_cost_cents": 14230,
   "breakdown": [
-    {"date": "2026-05-23", "ingest_cost_cents": 200, "query_cost_cents": 14030}
+    {
+      "date": "2026-05-23T00:00:00Z",
+      "ingest_cost_cents": 200,
+      "query_cost_cents": 14030,
+      "other_cost_cents": 0,
+      "total_cost_cents": 14230
+    }
   ]
 }
 ```
+
+See [billing.md](billing.md) and [cost-tracking.md](cost-tracking.md)
+for the cost model and which call sites currently write to the ledger.
+Scope: `flyquery.billing:read`.
+
+Source: `billing_controller.py:32` (rollup).
 
 ---
 
 #### `GET /api/v1/stats`
 
-Workspace usage summary: `storage_used_bytes`, `dataset_count`, `table_count`,
-`query_count_last_30d`, `token_count_last_30d`.
+Compact workspace summary, returned as `WorkspaceStats`. Six fields:
+
+```json
+{
+  "storage_used_bytes": 524288000,
+  "dataset_count": 5,
+  "table_count": 23,
+  "query_count_last_30d": 312,
+  "token_count_last_30d": 412380,
+  "ingest_job_count_pending": 0
+}
+```
+
+Operator traffic, not hot-path — backed by a small set of `COUNT(*)`
+queries on demand without caching. See [stats.md](stats.md) for field
+semantics. Scope: `flyquery.billing:read` (reused).
+
+Source: `stats_controller.py:32` (workspace_summary).
 
 ---
 
 #### `GET /api/v1/version`
 
 Returns `{version, git_sha, build_time}`.
+
+---
+
+#### Health probes — `GET /actuator/health` and siblings
+
+Pyfly's actuator is enabled and exposes Spring-Boot-style health
+probes. **Use these instead of ad-hoc `/healthz` / `/readyz` paths**:
+
+| Path | Purpose |
+|---|---|
+| `GET /actuator/health` | Aggregate of every registered `HealthIndicator`. Returns `{"status": "UP" \| "DOWN"}`. |
+| `GET /actuator/health/liveness` | Kubernetes liveness probe (process alive?). |
+| `GET /actuator/health/readiness` | Kubernetes readiness probe (deps reachable?). |
+| `GET /actuator/info` | `{"app": {"name", "version", "description"}}` from `pyfly.yaml`. |
+| `GET /actuator/metrics` | Prometheus-compatible counters. |
+| `GET /actuator/env` | Runtime configuration view (gate behind auth in production). |
+| `GET /admin/*` | Full admin UI surface for development. |
+
+These are **not** under `/api/v1/*` (deliberate — they're operator
+endpoints, not tenant-scoped business endpoints) and therefore don't
+require `X-Tenant-Id` / `X-Workspace-Id`.
 
 ---
 

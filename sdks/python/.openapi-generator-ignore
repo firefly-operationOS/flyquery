@@ -1,3 +1,8 @@
 README.md
 .openapi-generator-ignore
 pyproject.toml
+# Hand-written ergonomic wrapper -- mirror of the Java FlyqueryClient.
+flyquery_sdk/client.py
+tests/test_smoke.py
+LICENSE
+examples/

@@ -8,6 +8,7 @@ Defines the request/response shapes for the /query, /query:explain,
 from __future__ import annotations
 
 import uuid
+from datetime import datetime
 from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -147,3 +148,92 @@ class ValidateResponse(BaseModel):
     single_statement: bool = True
     scope_error: str | None = None
     clarification: ClarificationFrame | None = None
+
+
+# ---------------------------------------------------------------------------
+# v1 history endpoints — GET /api/v1/queries, /queries/{id}, /queries/{id}/result
+# ---------------------------------------------------------------------------
+
+
+class QueryHistoryItem(BaseModel):
+    """Compact row for `GET /api/v1/queries` (history list).
+
+    Heavy JSONB columns (candidates, clarification, pii_findings) are
+    omitted here so a 50-item page stays under a few KB; the detail
+    endpoint exposes them via :class:`QueryDetailRead`.
+    """
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    tenant_id: str
+    workspace_id: uuid.UUID
+    dataset_id: uuid.UUID | None = None
+    question: str
+    executed_sql: str | None = None
+    ast_classification: str | None = None
+    execution_status: str | None = None
+    row_count: int | None = None
+    elapsed_ms: int | None = None
+    semantic_path_taken: str | None = None
+    retries: int = 0
+    clarification_emitted: bool = False
+    created_at: datetime
+    finalised_at: datetime | None = None
+
+
+class QueryDetailRead(BaseModel):
+    """Full single-query payload for `GET /api/v1/queries/{id}`.
+
+    Includes every candidate proposal, the AST classification, every
+    model identifier used (grounding / generation / critic / explainer),
+    PII findings, clarification frame, and the final error envelope if
+    any. JSONB columns are passed through as Python dicts / lists.
+    """
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    tenant_id: str
+    workspace_id: uuid.UUID
+    dataset_id: uuid.UUID | None = None
+    question: str
+    prior_turn_ids: list[uuid.UUID] = Field(default_factory=list)
+    table_id_snapshot_pins_json: dict[str, Any] | None = None
+    semantic_path_taken: str | None = None
+    candidates_json: list[Any] = Field(default_factory=list)
+    chosen_candidate_index: int | None = None
+    executed_sql: str | None = None
+    ast_classification: str | None = None
+    execution_engine: str = "duckdb"
+    execution_status: str | None = None
+    retries: int = 0
+    row_count: int | None = None
+    elapsed_ms: int | None = None
+    cost_cents: float | int | None = None
+    clarification_emitted: bool = False
+    clarification_json: dict[str, Any] | None = None
+    pii_findings_json: dict[str, Any] | None = None
+    error_json: dict[str, Any] | None = None
+    model_grounding: str | None = None
+    model_generation: str | None = None
+    model_critic: str | None = None
+    model_explainer: str | None = None
+    created_at: datetime
+    finalised_at: datetime | None = None
+
+
+class QueryResultRead(BaseModel):
+    """Re-download envelope for `GET /api/v1/queries/{id}/result`.
+
+    The preview is always inlined. ``parquet_presigned_url`` is set
+    when the full Parquet is still available on the object store
+    (i.e. ``ttl_expires_at`` hasn't elapsed). When the TTL is past
+    the URL is ``None`` and the consumer must rerun the query.
+    """
+
+    query_id: uuid.UUID
+    preview_json: Any
+    parquet_presigned_url: str | None = None
+    result_byte_size: int | None = None
+    ttl_expires_at: datetime | None = None

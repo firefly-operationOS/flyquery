@@ -11,11 +11,11 @@ All URIs are relative to *http://localhost*
 
 ## execute
 
-> SqlExecuteResponse execute(sqlExecuteRequest)
+> SqlExecuteResponse execute(xAgentToken, sqlExecuteRequest, xCorrelationId, idempotencyKey)
 
 Execute SQL directly (agent-tier).
 
-:param http_request: Starlette request :param body: validated SqlExecuteRequest :return: SqlExecuteResponse
+Replay-dedup&#39;d via &#x60;&#x60;Idempotency-Key&#x60;&#x60; -- required, because a retried direct-SQL execution would re-scan the dataset and burn query budget for no caller benefit.
 
 ### Example
 
@@ -24,6 +24,7 @@ Execute SQL directly (agent-tier).
 import com.firefly.flyquery.ApiClient;
 import com.firefly.flyquery.ApiException;
 import com.firefly.flyquery.Configuration;
+import com.firefly.flyquery.auth.*;
 import com.firefly.flyquery.models.*;
 import com.firefly.flyquery.api.AgentSqlExecuteApi;
 
@@ -31,11 +32,20 @@ public class Example {
     public static void main(String[] args) {
         ApiClient defaultClient = Configuration.getDefaultApiClient();
         defaultClient.setBasePath("http://localhost");
+        
+        // Configure API key authorization: AgentToken
+        ApiKeyAuth AgentToken = (ApiKeyAuth) defaultClient.getAuthentication("AgentToken");
+        AgentToken.setApiKey("YOUR API KEY");
+        // Uncomment the following line to set a prefix for the API key, e.g. "Token" (defaults to null)
+        //AgentToken.setApiKeyPrefix("Token");
 
         AgentSqlExecuteApi apiInstance = new AgentSqlExecuteApi(defaultClient);
+        String xAgentToken = "fqt_live_aBcDeF1234567890aBcDeF1234567890"; // String | Machine-to-machine bearer token. Replaces X-Tenant-Id and X-Workspace-Id on agent-tier endpoints -- the token's claims encode the tenant + workspace + scopes. Issue via ``POST /api/v1/agent-tokens``.
         SqlExecuteRequest sqlExecuteRequest = new SqlExecuteRequest(); // SqlExecuteRequest | 
+        UUID xCorrelationId = UUID.fromString("550e8400-e29b-41d4-a716-446655440000"); // UUID | Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.
+        String idempotencyKey = "ingest-2026-05-23-abc123"; // String | Optional client-supplied idempotency key for mutating operations. The first request with a key persists its result; subsequent requests with the same key + same tenant return the cached response. Keys expire after 24h.
         try {
-            SqlExecuteResponse result = apiInstance.execute(sqlExecuteRequest);
+            SqlExecuteResponse result = apiInstance.execute(xAgentToken, sqlExecuteRequest, xCorrelationId, idempotencyKey);
             System.out.println(result);
         } catch (ApiException e) {
             System.err.println("Exception when calling AgentSqlExecuteApi#execute");
@@ -53,7 +63,10 @@ public class Example {
 
 | Name | Type | Description  | Notes |
 |------------- | ------------- | ------------- | -------------|
+| **xAgentToken** | **String**| Machine-to-machine bearer token. Replaces X-Tenant-Id and X-Workspace-Id on agent-tier endpoints -- the token&#39;s claims encode the tenant + workspace + scopes. Issue via &#x60;&#x60;POST /api/v1/agent-tokens&#x60;&#x60;. | |
 | **sqlExecuteRequest** | [**SqlExecuteRequest**](SqlExecuteRequest.md)|  | |
+| **xCorrelationId** | **UUID**| Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header. | [optional] |
+| **idempotencyKey** | **String**| Optional client-supplied idempotency key for mutating operations. The first request with a key persists its result; subsequent requests with the same key + same tenant return the cached response. Keys expire after 24h. | [optional] |
 
 ### Return type
 
@@ -61,7 +74,7 @@ public class Example {
 
 ### Authorization
 
-No authorization required
+[AgentToken](../README.md#AgentToken)
 
 ### HTTP request headers
 
@@ -78,7 +91,7 @@ No authorization required
 
 ## executeStream
 
-> executeStream(sqlExecuteRequest)
+> String executeStream(xAgentToken, sqlExecuteRequest, xCorrelationId, idempotencyKey)
 
 Execute SQL as SSE stream (agent-tier).
 
@@ -91,6 +104,7 @@ Execute SQL as SSE stream (agent-tier).
 import com.firefly.flyquery.ApiClient;
 import com.firefly.flyquery.ApiException;
 import com.firefly.flyquery.Configuration;
+import com.firefly.flyquery.auth.*;
 import com.firefly.flyquery.models.*;
 import com.firefly.flyquery.api.AgentSqlExecuteApi;
 
@@ -98,11 +112,21 @@ public class Example {
     public static void main(String[] args) {
         ApiClient defaultClient = Configuration.getDefaultApiClient();
         defaultClient.setBasePath("http://localhost");
+        
+        // Configure API key authorization: AgentToken
+        ApiKeyAuth AgentToken = (ApiKeyAuth) defaultClient.getAuthentication("AgentToken");
+        AgentToken.setApiKey("YOUR API KEY");
+        // Uncomment the following line to set a prefix for the API key, e.g. "Token" (defaults to null)
+        //AgentToken.setApiKeyPrefix("Token");
 
         AgentSqlExecuteApi apiInstance = new AgentSqlExecuteApi(defaultClient);
+        String xAgentToken = "fqt_live_aBcDeF1234567890aBcDeF1234567890"; // String | Machine-to-machine bearer token. Replaces X-Tenant-Id and X-Workspace-Id on agent-tier endpoints -- the token's claims encode the tenant + workspace + scopes. Issue via ``POST /api/v1/agent-tokens``.
         SqlExecuteRequest sqlExecuteRequest = new SqlExecuteRequest(); // SqlExecuteRequest | 
+        UUID xCorrelationId = UUID.fromString("550e8400-e29b-41d4-a716-446655440000"); // UUID | Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.
+        String idempotencyKey = "ingest-2026-05-23-abc123"; // String | Optional client-supplied idempotency key for mutating operations. The first request with a key persists its result; subsequent requests with the same key + same tenant return the cached response. Keys expire after 24h.
         try {
-            apiInstance.executeStream(sqlExecuteRequest);
+            String result = apiInstance.executeStream(xAgentToken, sqlExecuteRequest, xCorrelationId, idempotencyKey);
+            System.out.println(result);
         } catch (ApiException e) {
             System.err.println("Exception when calling AgentSqlExecuteApi#executeStream");
             System.err.println("Status code: " + e.getCode());
@@ -119,25 +143,28 @@ public class Example {
 
 | Name | Type | Description  | Notes |
 |------------- | ------------- | ------------- | -------------|
+| **xAgentToken** | **String**| Machine-to-machine bearer token. Replaces X-Tenant-Id and X-Workspace-Id on agent-tier endpoints -- the token&#39;s claims encode the tenant + workspace + scopes. Issue via &#x60;&#x60;POST /api/v1/agent-tokens&#x60;&#x60;. | |
 | **sqlExecuteRequest** | [**SqlExecuteRequest**](SqlExecuteRequest.md)|  | |
+| **xCorrelationId** | **UUID**| Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header. | [optional] |
+| **idempotencyKey** | **String**| Optional client-supplied idempotency key for mutating operations. The first request with a key persists its result; subsequent requests with the same key + same tenant return the cached response. Keys expire after 24h. | [optional] |
 
 ### Return type
 
-null (empty response body)
+**String**
 
 ### Authorization
 
-No authorization required
+[AgentToken](../README.md#AgentToken)
 
 ### HTTP request headers
 
 - **Content-Type**: application/json
-- **Accept**: application/json
+- **Accept**: text/event-stream, application/json
 
 
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-| **200** | Successful response |  -  |
+| **200** | Server-Sent Events stream. Each frame follows the SSE wire format &#x60;&#x60;event: &lt;name&gt;\\ndata: &lt;json&gt;\\n\\n&#x60;&#x60;. See &#x60;&#x60;docs/api-reference.md&#x60;&#x60; section 8 for the per-endpoint event catalogue. |  -  |
 | **422** | Validation Error |  -  |
 

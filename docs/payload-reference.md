@@ -12,7 +12,8 @@
 8. [Semantic layer DTOs](#8-semantic-layer-dtos)
 9. [Agent token DTOs](#9-agent-token-dtos)
 10. [Error DTOs](#10-error-dtos)
-11. [Generating schemas from code](#11-generating-schemas-from-code)
+11. [v1 ops DTOs (history, billing, stats — new in 26.5.10)](#11-v1-ops-dtos-history-billing-stats--new-in-26510)
+12. [Generating schemas from code](#12-generating-schemas-from-code)
 
 ---
 
@@ -487,7 +488,155 @@ Rate limit exceeded:
 
 ---
 
-## 11. Generating schemas from code
+## 11. v1 ops DTOs (history, billing, stats — new in 26.5.10)
+
+Wire payloads for the v1 query-history, billing, async-upload, and
+stats endpoints. All shapes live in
+[`src/flyquery/interfaces/query.py`](../src/flyquery/interfaces/query.py),
+[`src/flyquery/interfaces/ops.py`](../src/flyquery/interfaces/ops.py),
+[`src/flyquery/interfaces/files.py`](../src/flyquery/interfaces/files.py),
+and [`src/flyquery/interfaces/pagination.py`](../src/flyquery/interfaces/pagination.py).
+
+### Paginated[T]
+
+Generic envelope used by every list endpoint:
+
+```json
+{
+  "items": [...],
+  "total": 1402,
+  "limit": 50,
+  "offset": 0
+}
+```
+
+`limit` is clamped to the per-endpoint maximum (the query-history list
+caps it at `200`); `total` is the total count of matching rows, not
+just the page.
+
+### QueryHistoryItem
+
+Compact row for `GET /api/v1/queries`. Heavy JSONB columns
+(candidates, clarification, PII findings) are omitted so a 50-item
+page stays under a few KB.
+
+Fields: `id`, `tenant_id`, `workspace_id`, `dataset_id?`, `question`,
+`executed_sql?`, `ast_classification?`, `execution_status?`,
+`row_count?`, `elapsed_ms?`, `semantic_path_taken?`, `retries`,
+`clarification_emitted`, `created_at`, `finalised_at?`.
+
+### QueryDetailRead
+
+Full single-query payload for `GET /api/v1/queries/{id}`. Includes
+every candidate proposal, AST classification, every model identifier
+used (`model_grounding` / `model_generation` / `model_critic` /
+`model_explainer`), PII findings, clarification frame, retries, and
+the final error envelope if any. JSONB columns are passed through as
+Python dicts / lists.
+
+### QueryResultRead
+
+Re-download envelope for `GET /api/v1/queries/{id}/result`:
+
+```json
+{
+  "query_id": "01906f40-...",
+  "preview_json": [{"region": "EU", "revenue": 14230}],
+  "parquet_presigned_url": "https://...",
+  "result_byte_size": 204800,
+  "ttl_expires_at": "2026-05-24T12:00:00Z"
+}
+```
+
+`parquet_presigned_url` is `null` once `ttl_expires_at` has elapsed
+(default 24h) or if presign fails — consumer must rerun the query.
+
+### BillingRollup
+
+Response from `GET /api/v1/billing`:
+
+```json
+{
+  "period": "day",
+  "date_from": "2026-05-01T00:00:00Z",
+  "date_to": "2026-05-25T00:00:00Z",
+  "total_cost_cents": 14230,
+  "breakdown": [{"date": "...", "ingest_cost_cents": 200, ...}]
+}
+```
+
+### BillingBreakdownItem
+
+One bucket of the rollup:
+
+```json
+{
+  "date": "2026-05-23T00:00:00Z",
+  "ingest_cost_cents": 200,
+  "query_cost_cents": 14030,
+  "other_cost_cents": 0,
+  "total_cost_cents": 14230
+}
+```
+
+Costs are `Decimal` in the model (partial cents are common at the
+per-call granularity). Wire is JSON number.
+
+### WorkspaceStats
+
+Response from `GET /api/v1/stats`:
+
+```json
+{
+  "storage_used_bytes": 524288000,
+  "dataset_count": 5,
+  "table_count": 23,
+  "query_count_last_30d": 312,
+  "token_count_last_30d": 412380,
+  "ingest_job_count_pending": 0
+}
+```
+
+### AsyncFileUploadAccepted
+
+`202 Accepted` body from `POST /api/v1/datasets/{id}/files:async`:
+
+```json
+{
+  "job_id": "01906f2c-...",
+  "file_id": "01906f2b-...",
+  "dataset_id": "01906f2a-...",
+  "status": "PENDING"
+}
+```
+
+`file_id` is final at this point (Stage 1 ran synchronously); poll
+`GET /ingest-jobs/{job_id}` for pipeline status. Response carries a
+`Location` header pointing at the ingest-job resource.
+
+### PurgeAccepted
+
+`202 Accepted` envelope for typed dataset/agent-token purge endpoints
+(workspaces use a bare-dict response that is byte-equivalent with the
+canon/radar lockstep controller — see
+[`src/flyquery/interfaces/lifecycle.py`](../src/flyquery/interfaces/lifecycle.py)).
+
+```json
+{
+  "status": "accepted",
+  "tombstone_expires_at": "+90d"
+}
+```
+
+`tombstone_expires_at` is documented as a human-readable hint today; a
+future revision will return an ISO-8601 wall-clock timestamp once the
+field is wired to a per-record value. The actual hard-delete happens
+in the RetentionWorker after `dataset_purge_tombstone_days` (default
+90d); see [workers.md](workers.md).
+
+---
+
+## 12. Generating schemas from code
 
 The Pydantic models in `src/flyquery/interfaces/` can emit their JSON schemas
 at any time:

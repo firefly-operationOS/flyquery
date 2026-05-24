@@ -12,7 +12,7 @@ Method | HTTP request | Description
 
 
 # **batch**
-> BatchQueryResponse batch(batch_query_request)
+> BatchQueryResponse batch(x_tenant_id, x_workspace_id, batch_query_request, x_correlation_id=x_correlation_id, idempotency_key=idempotency_key)
 
 Run multiple NL questions in parallel through the full pipeline.
 
@@ -28,8 +28,15 @@ comparison reports (same question against M datasets), or SDK
 callers that want to amortise auth + tenant context across many
 questions.
 
+Replay-dedup'd via ``Idempotency-Key`` when present (optional on
+the user tier). A retried batch with the same key returns the
+cached aggregate without re-running any question -- important
+when a single batch represents tens of LLM calls.
+
 ### Example
 
+* Api Key Authentication (WorkspaceContext):
+* Api Key Authentication (TenantContext):
 
 ```python
 import flyquery_sdk
@@ -44,16 +51,36 @@ configuration = flyquery_sdk.Configuration(
     host = "http://localhost"
 )
 
+# The client must configure the authentication and authorization parameters
+# in accordance with the API server security policy.
+# Examples for each auth method are provided below, use the example that
+# satisfies your auth use case.
+
+# Configure API key authorization: WorkspaceContext
+configuration.api_key['WorkspaceContext'] = os.environ["API_KEY"]
+
+# Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
+# configuration.api_key_prefix['WorkspaceContext'] = 'Bearer'
+
+# Configure API key authorization: TenantContext
+configuration.api_key['TenantContext'] = os.environ["API_KEY"]
+
+# Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
+# configuration.api_key_prefix['TenantContext'] = 'Bearer'
 
 # Enter a context with an instance of the API client
 async with flyquery_sdk.ApiClient(configuration) as api_client:
     # Create an instance of the API class
     api_instance = flyquery_sdk.QueryApi(api_client)
+    x_tenant_id = 'acme-corp' # str | Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present.
+    x_workspace_id = '00000000-0000-0000-0000-000000000001' # str | Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation.
     batch_query_request = flyquery_sdk.BatchQueryRequest() # BatchQueryRequest | 
+    x_correlation_id = UUID('550e8400-e29b-41d4-a716-446655440000') # UUID | Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header. (optional)
+    idempotency_key = 'ingest-2026-05-23-abc123' # str | Optional client-supplied idempotency key for mutating operations. The first request with a key persists its result; subsequent requests with the same key + same tenant return the cached response. Keys expire after 24h. (optional)
 
     try:
         # Run multiple NL questions in parallel through the full pipeline.
-        api_response = await api_instance.batch(batch_query_request)
+        api_response = await api_instance.batch(x_tenant_id, x_workspace_id, batch_query_request, x_correlation_id=x_correlation_id, idempotency_key=idempotency_key)
         print("The response of QueryApi->batch:\n")
         pprint(api_response)
     except Exception as e:
@@ -67,7 +94,11 @@ async with flyquery_sdk.ApiClient(configuration) as api_client:
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
+ **x_tenant_id** | **str**| Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present. | 
+ **x_workspace_id** | **str**| Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation. | 
  **batch_query_request** | [**BatchQueryRequest**](BatchQueryRequest.md)|  | 
+ **x_correlation_id** | **UUID**| Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header. | [optional] 
+ **idempotency_key** | **str**| Optional client-supplied idempotency key for mutating operations. The first request with a key persists its result; subsequent requests with the same key + same tenant return the cached response. Keys expire after 24h. | [optional] 
 
 ### Return type
 
@@ -75,7 +106,7 @@ Name | Type | Description  | Notes
 
 ### Authorization
 
-No authorization required
+[WorkspaceContext](../README.md#WorkspaceContext), [TenantContext](../README.md#TenantContext)
 
 ### HTTP request headers
 
@@ -92,7 +123,7 @@ No authorization required
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **explain**
-> ExplainResponse explain(query_request)
+> ExplainResponse explain(x_tenant_id, x_workspace_id, query_request, x_correlation_id=x_correlation_id, idempotency_key=idempotency_key)
 
 Run Grounding + Generation but stop before AST/execution.
 
@@ -104,6 +135,8 @@ Useful for previewing the generated SQL without paying execution costs.
 
 ### Example
 
+* Api Key Authentication (WorkspaceContext):
+* Api Key Authentication (TenantContext):
 
 ```python
 import flyquery_sdk
@@ -118,16 +151,36 @@ configuration = flyquery_sdk.Configuration(
     host = "http://localhost"
 )
 
+# The client must configure the authentication and authorization parameters
+# in accordance with the API server security policy.
+# Examples for each auth method are provided below, use the example that
+# satisfies your auth use case.
+
+# Configure API key authorization: WorkspaceContext
+configuration.api_key['WorkspaceContext'] = os.environ["API_KEY"]
+
+# Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
+# configuration.api_key_prefix['WorkspaceContext'] = 'Bearer'
+
+# Configure API key authorization: TenantContext
+configuration.api_key['TenantContext'] = os.environ["API_KEY"]
+
+# Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
+# configuration.api_key_prefix['TenantContext'] = 'Bearer'
 
 # Enter a context with an instance of the API client
 async with flyquery_sdk.ApiClient(configuration) as api_client:
     # Create an instance of the API class
     api_instance = flyquery_sdk.QueryApi(api_client)
+    x_tenant_id = 'acme-corp' # str | Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present.
+    x_workspace_id = '00000000-0000-0000-0000-000000000001' # str | Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation.
     query_request = flyquery_sdk.QueryRequest() # QueryRequest | 
+    x_correlation_id = UUID('550e8400-e29b-41d4-a716-446655440000') # UUID | Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header. (optional)
+    idempotency_key = 'ingest-2026-05-23-abc123' # str | Optional client-supplied idempotency key for mutating operations. The first request with a key persists its result; subsequent requests with the same key + same tenant return the cached response. Keys expire after 24h. (optional)
 
     try:
         # Run Grounding + Generation but stop before AST/execution.
-        api_response = await api_instance.explain(query_request)
+        api_response = await api_instance.explain(x_tenant_id, x_workspace_id, query_request, x_correlation_id=x_correlation_id, idempotency_key=idempotency_key)
         print("The response of QueryApi->explain:\n")
         pprint(api_response)
     except Exception as e:
@@ -141,7 +194,11 @@ async with flyquery_sdk.ApiClient(configuration) as api_client:
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
+ **x_tenant_id** | **str**| Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present. | 
+ **x_workspace_id** | **str**| Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation. | 
  **query_request** | [**QueryRequest**](QueryRequest.md)|  | 
+ **x_correlation_id** | **UUID**| Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header. | [optional] 
+ **idempotency_key** | **str**| Optional client-supplied idempotency key for mutating operations. The first request with a key persists its result; subsequent requests with the same key + same tenant return the cached response. Keys expire after 24h. | [optional] 
 
 ### Return type
 
@@ -149,7 +206,7 @@ Name | Type | Description  | Notes
 
 ### Authorization
 
-No authorization required
+[WorkspaceContext](../README.md#WorkspaceContext), [TenantContext](../README.md#TenantContext)
 
 ### HTTP request headers
 
@@ -166,7 +223,7 @@ No authorization required
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **query**
-> AnswerResponse query(query_request)
+> AnswerResponse query(x_tenant_id, x_workspace_id, query_request, x_correlation_id=x_correlation_id, idempotency_key=idempotency_key)
 
 Run the full NL → SQL → result pipeline and return a synchronous answer.
 
@@ -176,6 +233,8 @@ Run the full NL → SQL → result pipeline and return a synchronous answer.
 
 ### Example
 
+* Api Key Authentication (WorkspaceContext):
+* Api Key Authentication (TenantContext):
 
 ```python
 import flyquery_sdk
@@ -190,16 +249,36 @@ configuration = flyquery_sdk.Configuration(
     host = "http://localhost"
 )
 
+# The client must configure the authentication and authorization parameters
+# in accordance with the API server security policy.
+# Examples for each auth method are provided below, use the example that
+# satisfies your auth use case.
+
+# Configure API key authorization: WorkspaceContext
+configuration.api_key['WorkspaceContext'] = os.environ["API_KEY"]
+
+# Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
+# configuration.api_key_prefix['WorkspaceContext'] = 'Bearer'
+
+# Configure API key authorization: TenantContext
+configuration.api_key['TenantContext'] = os.environ["API_KEY"]
+
+# Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
+# configuration.api_key_prefix['TenantContext'] = 'Bearer'
 
 # Enter a context with an instance of the API client
 async with flyquery_sdk.ApiClient(configuration) as api_client:
     # Create an instance of the API class
     api_instance = flyquery_sdk.QueryApi(api_client)
+    x_tenant_id = 'acme-corp' # str | Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present.
+    x_workspace_id = '00000000-0000-0000-0000-000000000001' # str | Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation.
     query_request = flyquery_sdk.QueryRequest() # QueryRequest | 
+    x_correlation_id = UUID('550e8400-e29b-41d4-a716-446655440000') # UUID | Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header. (optional)
+    idempotency_key = 'ingest-2026-05-23-abc123' # str | Optional client-supplied idempotency key for mutating operations. The first request with a key persists its result; subsequent requests with the same key + same tenant return the cached response. Keys expire after 24h. (optional)
 
     try:
         # Run the full NL → SQL → result pipeline and return a synchronous answer.
-        api_response = await api_instance.query(query_request)
+        api_response = await api_instance.query(x_tenant_id, x_workspace_id, query_request, x_correlation_id=x_correlation_id, idempotency_key=idempotency_key)
         print("The response of QueryApi->query:\n")
         pprint(api_response)
     except Exception as e:
@@ -213,7 +292,11 @@ async with flyquery_sdk.ApiClient(configuration) as api_client:
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
+ **x_tenant_id** | **str**| Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present. | 
+ **x_workspace_id** | **str**| Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation. | 
  **query_request** | [**QueryRequest**](QueryRequest.md)|  | 
+ **x_correlation_id** | **UUID**| Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header. | [optional] 
+ **idempotency_key** | **str**| Optional client-supplied idempotency key for mutating operations. The first request with a key persists its result; subsequent requests with the same key + same tenant return the cached response. Keys expire after 24h. | [optional] 
 
 ### Return type
 
@@ -221,7 +304,7 @@ Name | Type | Description  | Notes
 
 ### Authorization
 
-No authorization required
+[WorkspaceContext](../README.md#WorkspaceContext), [TenantContext](../README.md#TenantContext)
 
 ### HTTP request headers
 
@@ -238,7 +321,7 @@ No authorization required
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **stream**
-> stream(query_request)
+> str stream(x_tenant_id, x_workspace_id, query_request, x_correlation_id=x_correlation_id, idempotency_key=idempotency_key)
 
 Run the full pipeline as a Server-Sent Events stream.
 
@@ -256,6 +339,8 @@ Event sequence:
 
 ### Example
 
+* Api Key Authentication (WorkspaceContext):
+* Api Key Authentication (TenantContext):
 
 ```python
 import flyquery_sdk
@@ -269,16 +354,38 @@ configuration = flyquery_sdk.Configuration(
     host = "http://localhost"
 )
 
+# The client must configure the authentication and authorization parameters
+# in accordance with the API server security policy.
+# Examples for each auth method are provided below, use the example that
+# satisfies your auth use case.
+
+# Configure API key authorization: WorkspaceContext
+configuration.api_key['WorkspaceContext'] = os.environ["API_KEY"]
+
+# Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
+# configuration.api_key_prefix['WorkspaceContext'] = 'Bearer'
+
+# Configure API key authorization: TenantContext
+configuration.api_key['TenantContext'] = os.environ["API_KEY"]
+
+# Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
+# configuration.api_key_prefix['TenantContext'] = 'Bearer'
 
 # Enter a context with an instance of the API client
 async with flyquery_sdk.ApiClient(configuration) as api_client:
     # Create an instance of the API class
     api_instance = flyquery_sdk.QueryApi(api_client)
+    x_tenant_id = 'acme-corp' # str | Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present.
+    x_workspace_id = '00000000-0000-0000-0000-000000000001' # str | Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation.
     query_request = flyquery_sdk.QueryRequest() # QueryRequest | 
+    x_correlation_id = UUID('550e8400-e29b-41d4-a716-446655440000') # UUID | Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header. (optional)
+    idempotency_key = 'ingest-2026-05-23-abc123' # str | Optional client-supplied idempotency key for mutating operations. The first request with a key persists its result; subsequent requests with the same key + same tenant return the cached response. Keys expire after 24h. (optional)
 
     try:
         # Run the full pipeline as a Server-Sent Events stream.
-        await api_instance.stream(query_request)
+        api_response = await api_instance.stream(x_tenant_id, x_workspace_id, query_request, x_correlation_id=x_correlation_id, idempotency_key=idempotency_key)
+        print("The response of QueryApi->stream:\n")
+        pprint(api_response)
     except Exception as e:
         print("Exception when calling QueryApi->stream: %s\n" % e)
 ```
@@ -290,32 +397,36 @@ async with flyquery_sdk.ApiClient(configuration) as api_client:
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
+ **x_tenant_id** | **str**| Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present. | 
+ **x_workspace_id** | **str**| Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation. | 
  **query_request** | [**QueryRequest**](QueryRequest.md)|  | 
+ **x_correlation_id** | **UUID**| Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header. | [optional] 
+ **idempotency_key** | **str**| Optional client-supplied idempotency key for mutating operations. The first request with a key persists its result; subsequent requests with the same key + same tenant return the cached response. Keys expire after 24h. | [optional] 
 
 ### Return type
 
-void (empty response body)
+**str**
 
 ### Authorization
 
-No authorization required
+[WorkspaceContext](../README.md#WorkspaceContext), [TenantContext](../README.md#TenantContext)
 
 ### HTTP request headers
 
  - **Content-Type**: application/json
- - **Accept**: application/json
+ - **Accept**: text/event-stream, application/json
 
 ### HTTP response details
 
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-**200** | Successful response |  -  |
+**200** | Server-Sent Events stream. Each frame follows the SSE wire format &#x60;&#x60;event: &lt;name&gt;\\ndata: &lt;json&gt;\\n\\n&#x60;&#x60;. See &#x60;&#x60;docs/api-reference.md&#x60;&#x60; section 8 for the per-endpoint event catalogue. |  -  |
 **422** | Validation Error |  -  |
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **validate**
-> ValidateResponse validate(query_request)
+> ValidateResponse validate(x_tenant_id, x_workspace_id, query_request, x_correlation_id=x_correlation_id, idempotency_key=idempotency_key)
 
 Run Grounding + Generation + AST classification + ScopeGuard check.
 
@@ -327,6 +438,8 @@ Returns the classification and any scope error without executing the SQL.
 
 ### Example
 
+* Api Key Authentication (WorkspaceContext):
+* Api Key Authentication (TenantContext):
 
 ```python
 import flyquery_sdk
@@ -341,16 +454,36 @@ configuration = flyquery_sdk.Configuration(
     host = "http://localhost"
 )
 
+# The client must configure the authentication and authorization parameters
+# in accordance with the API server security policy.
+# Examples for each auth method are provided below, use the example that
+# satisfies your auth use case.
+
+# Configure API key authorization: WorkspaceContext
+configuration.api_key['WorkspaceContext'] = os.environ["API_KEY"]
+
+# Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
+# configuration.api_key_prefix['WorkspaceContext'] = 'Bearer'
+
+# Configure API key authorization: TenantContext
+configuration.api_key['TenantContext'] = os.environ["API_KEY"]
+
+# Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
+# configuration.api_key_prefix['TenantContext'] = 'Bearer'
 
 # Enter a context with an instance of the API client
 async with flyquery_sdk.ApiClient(configuration) as api_client:
     # Create an instance of the API class
     api_instance = flyquery_sdk.QueryApi(api_client)
+    x_tenant_id = 'acme-corp' # str | Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present.
+    x_workspace_id = '00000000-0000-0000-0000-000000000001' # str | Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation.
     query_request = flyquery_sdk.QueryRequest() # QueryRequest | 
+    x_correlation_id = UUID('550e8400-e29b-41d4-a716-446655440000') # UUID | Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header. (optional)
+    idempotency_key = 'ingest-2026-05-23-abc123' # str | Optional client-supplied idempotency key for mutating operations. The first request with a key persists its result; subsequent requests with the same key + same tenant return the cached response. Keys expire after 24h. (optional)
 
     try:
         # Run Grounding + Generation + AST classification + ScopeGuard check.
-        api_response = await api_instance.validate(query_request)
+        api_response = await api_instance.validate(x_tenant_id, x_workspace_id, query_request, x_correlation_id=x_correlation_id, idempotency_key=idempotency_key)
         print("The response of QueryApi->validate:\n")
         pprint(api_response)
     except Exception as e:
@@ -364,7 +497,11 @@ async with flyquery_sdk.ApiClient(configuration) as api_client:
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
+ **x_tenant_id** | **str**| Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present. | 
+ **x_workspace_id** | **str**| Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation. | 
  **query_request** | [**QueryRequest**](QueryRequest.md)|  | 
+ **x_correlation_id** | **UUID**| Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header. | [optional] 
+ **idempotency_key** | **str**| Optional client-supplied idempotency key for mutating operations. The first request with a key persists its result; subsequent requests with the same key + same tenant return the cached response. Keys expire after 24h. | [optional] 
 
 ### Return type
 
@@ -372,7 +509,7 @@ Name | Type | Description  | Notes
 
 ### Authorization
 
-No authorization required
+[WorkspaceContext](../README.md#WorkspaceContext), [TenantContext](../README.md#TenantContext)
 
 ### HTTP request headers
 

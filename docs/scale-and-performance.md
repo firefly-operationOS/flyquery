@@ -200,6 +200,36 @@ With `httpfs` and column predicate pushdown, only the queried columns are
 transferred. For a 100-column table with 1M rows querying 3 columns:
 typical transfer = 5–50 MB per query.
 
+### Horizontal worker scaling formula
+
+Total inflight ingest jobs across the fleet:
+
+```
+total_inflight = N_processes × FLYQUERY_INGEST_WORKER_CONCURRENCY
+```
+
+Each `IngestWorker` process bounds simultaneous handler tasks with an
+`asyncio.Semaphore(_CONCURRENCY)` (see
+[concurrency.md § 4](concurrency.md#4-eda-worker-concurrency)). Adding
+processes is linear in capacity; adding `_CONCURRENCY` per process is
+cheaper but capped by the per-process Postgres pool + per-key LLM RPM
+budget.
+
+**Tuning rules of thumb:**
+
+| Constraint | Symptom | Knob |
+|---|---|---|
+| LLM provider rate limit (RPM) | Burst errors from Anthropic / OpenAI | Lower `_CONCURRENCY` per process, add more processes (smaller bursts per key). |
+| Postgres connection pool saturation | `TimeoutError` on `await session.begin()` | Raise pool size to ≥ `N × _CONCURRENCY + API_pool` connections OR run PgBouncer in transaction mode. |
+| DuckDB OOM in ingest stages | `Out of memory` errors mid-pipeline | Raise pod RAM OR lower `_CONCURRENCY` per process. |
+| Pending queue grows (slow consumer) | `ingest_job_count_pending` from `GET /api/v1/stats` climbs | Add `N_processes`. |
+| Pending queue grows (ingest pipeline LLM-bound) | Per-job duration > 60s, queue grows | Raise `_CONCURRENCY` per process (more parallel work) if Postgres has slack. |
+
+The RetentionWorker doesn't scale — one process per cluster is enough.
+Two processes are safe (every operation is idempotent + atomic) but
+redundant. See [workers.md](workers.md) for the full deployment
+topology.
+
 ---
 
 ## 6. Observability for performance

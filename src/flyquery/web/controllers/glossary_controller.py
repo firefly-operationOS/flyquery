@@ -35,6 +35,7 @@ from flyquery.interfaces.glossary import (
     GlossaryTermRead,
     GlossaryTermUpdate,
 )
+from flyquery.interfaces.pagination import Paginated
 from flyquery.web.conventions import ResourceNotFound, tenant_context_from_request
 
 
@@ -64,12 +65,26 @@ class GlossaryController:
         http_request: Request,
         limit: QueryParam[int] = 100,
         offset: QueryParam[int] = 0,
-    ) -> dict:
-        """Return paginated glossary terms for the caller's workspace."""
+    ) -> Paginated[GlossaryTermRead]:
+        """Return paginated glossary terms for the caller's workspace.
+
+        ``total`` is not populated -- the underlying service does not
+        compute a COUNT(*); consumers use ``has_more`` to decide
+        whether to fetch another page.
+        """
         ctx = tenant_context_from_request(http_request)
         ws = uuid.UUID(ctx.workspace_id)
         rows = await self._service.list(ctx.tenant_id, ws, limit=limit, offset=offset)
-        return {"items": [GlossaryTermRead.model_validate(r).model_dump(mode="json") for r in rows]}
+        items = [GlossaryTermRead.model_validate(r) for r in rows]
+        return Paginated.of(items, limit=limit, offset=offset)
+
+    @get_mapping("/{term_id}")
+    async def get_term(self, term_id: PathVar[uuid.UUID]) -> GlossaryTermRead:
+        """Fetch a single glossary term by id. Returns 404 if not found."""
+        row = await self._service.get(term_id)
+        if row is None:
+            raise ResourceNotFound(f"glossary term {term_id!r} not found")
+        return GlossaryTermRead.model_validate(row)
 
     @put_mapping("/{term_id}")
     async def update(

@@ -23,6 +23,10 @@ from flyquery.config import FlyquerySettings
 from flyquery.core.services.auth.agent_token_service import AgentTokenService
 from flyquery.core.services.query.query_repository import QueryRepository
 from flyquery.core.services.storage.object_store import ObjectStore
+from flyquery.core.services.tables.schema_snapshot_repository import (
+    SchemaSnapshotRepository,
+)
+from flyquery.core.services.tables.table_repository import TableRepository
 from flyquery.core.services.workspaces.workspace_service import WorkspaceService
 from flyquery.interfaces.sql_execute import SqlExecuteRequest, SqlExecuteResponse
 from flyquery.web.controllers.sql_execute_controller import (
@@ -31,9 +35,11 @@ from flyquery.web.controllers.sql_execute_controller import (
 from flyquery.web.conventions import (
     HEADER_AGENT_TOKEN,
     FireflyHTTPException,
+    IdempotencyStore,
     InvalidRequest,
     tenant_context_from_request,
 )
+from flyquery.web.idempotent_handler import replay_dedup
 
 _SCOPE_SQL_EXECUTE = "flyquery.sql:execute"
 
@@ -74,7 +80,10 @@ class AgentSqlExecuteController:
         object_store: ObjectStore,
         query_repository: QueryRepository,
         workspace_service: WorkspaceService,
+        table_repository: TableRepository,
+        schema_snapshot_repository: SchemaSnapshotRepository,
         agent_token_service: AgentTokenService,
+        idempotency_store: IdempotencyStore,
     ) -> None:
         self._settings = settings
         self._session_factory = session
@@ -82,6 +91,7 @@ class AgentSqlExecuteController:
         self._query_repo = query_repository
         self._workspace_service = workspace_service
         self._token_service = agent_token_service
+        self._idempotency_store = idempotency_store
 
         # Reuse the user-tier controller's pipeline logic.
         self._delegate = _UserSqlExecuteController(
@@ -90,6 +100,8 @@ class AgentSqlExecuteController:
             object_store=object_store,
             query_repository=query_repository,
             workspace_service=workspace_service,
+            table_repository=table_repository,
+            schema_snapshot_repository=schema_snapshot_repository,
         )
 
     async def _verify(self, http_request: Request) -> None:
@@ -116,12 +128,25 @@ class AgentSqlExecuteController:
     ) -> SqlExecuteResponse:
         """Execute SQL directly (agent-tier).
 
-        :param http_request: Starlette request
-        :param body: validated SqlExecuteRequest
-        :return: SqlExecuteResponse
+        Replay-dedup'd via ``Idempotency-Key`` -- required, because a
+        retried direct-SQL execution would re-scan the dataset and
+        burn query budget for no caller benefit.
         """
         await self._verify(http_request)
-        return await self._delegate.execute(http_request, body)
+        ctx = tenant_context_from_request(http_request)
+
+        async def _do_execute() -> SqlExecuteResponse:
+            return await self._delegate.execute(http_request, body)
+
+        return await replay_dedup(
+            request=http_request,
+            store=self._idempotency_store,
+            tenant_id=ctx.tenant_id,
+            route="POST /api/v1/agent/sql:execute",
+            handler=_do_execute,
+            status_code=200,
+            require_key=True,
+        )
 
     @post_mapping("/sql:execute/stream")
     async def execute_stream(

@@ -36,6 +36,7 @@ from starlette.requests import Request
 
 from flyquery.core.services.storage.object_store import ObjectStore
 from flyquery.core.services.workspaces.workspace_service import WorkspaceService
+from flyquery.interfaces.pagination import Paginated
 from flyquery.interfaces.workspaces import (
     WorkspaceCreate,
     WorkspaceRead,
@@ -76,7 +77,7 @@ class WorkspacesController:
         status: QueryParam[str] = None,
         limit: QueryParam[int] = 100,
         offset: QueryParam[int] = 0,
-    ) -> dict:
+    ) -> Paginated[WorkspaceRead]:
         """Search/filter workspaces for the caller's tenant.
 
         Query parameters
@@ -89,8 +90,8 @@ class WorkspacesController:
         * ``limit``  -- page size, clamped to [1, 1000]. Default 100.
         * ``offset`` -- starting offset. Default 0.
 
-        Response envelope: ``{items, total, limit, offset, has_more}``
-        where ``total`` is the un-paginated match count.
+        Returns :class:`~flyquery.interfaces.pagination.Paginated`
+        with ``total`` populated from the un-paginated match count.
         """
         ctx = tenant_context_from_request(http_request)
         rows, total = await self._service.list_filtered(
@@ -101,14 +102,8 @@ class WorkspacesController:
             limit=limit,
             offset=offset,
         )
-        items = [WorkspaceRead.model_validate(r).model_dump(mode="json") for r in rows]
-        return {
-            "items": items,
-            "total": total,
-            "limit": limit,
-            "offset": offset,
-            "has_more": (offset + len(items)) < total,
-        }
+        items = [WorkspaceRead.model_validate(r) for r in rows]
+        return Paginated.of(items, total=total, limit=limit, offset=offset)
 
     @get_mapping("/by-slug/{slug}")
     async def read_by_slug(

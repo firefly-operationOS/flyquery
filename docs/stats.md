@@ -12,184 +12,63 @@
 
 ## 1. Overview
 
-> **v1+:** `GET /api/v1/stats` is not in the current release. The endpoint
-> shape below describes the planned v1 surface. Current workspace storage
-> information is available via `GET /api/v1/workspaces/{id}` (which includes
-> `storage_used_bytes`). Aggregate stats can be queried directly from
-> `flyquery_workspaces`, `flyquery_datasets`, `flyquery_tables`, and
-> `flyquery_queries` via the admin Postgres role.
+`GET /api/v1/stats` is **live as of 26.5.10** (see
+[`stats_controller.py:32`](../src/flyquery/web/controllers/stats_controller.py)).
+It returns a compact workspace summary in six fields, computed on demand
+from a small set of `COUNT(*)` queries — operator traffic, no caching.
 
-`GET /api/v1/stats` will return a one-shot workspace inventory snapshot
-aggregating:
-
-- Storage utilisation (bytes used vs workspace cap).
-- Query activity (total counts, recent history, top questions).
-- Dataset and table inventory.
-- Schema knowledge base size.
-- Top tables by query frequency.
-
-The endpoint will be read-only and cached with a short TTL (default 60 seconds)
-to avoid hammering Postgres on dashboard polling.
+The current v1 shape is deliberately small. Per-table activity, top
+questions, latency histograms, and `schema_objects` rollups remain on
+the roadmap; they require additional indexes on `flyquery_queries` that
+have not been added yet. See [api-reference.md § 5.12](api-reference.md#512-history-and-ops)
+for the wire reference.
 
 ---
 
 ## 2. GET /api/v1/stats response schema
 
-```
-GET /api/v1/stats
-X-Tenant-Id: acme
-X-Workspace-Id: analytics
+```bash
+curl -sS http://localhost:8520/api/v1/stats \
+  -H 'X-Tenant-Id: acme' \
+  -H 'X-Workspace-Id: analytics'
 ```
 
 ```json
 {
-  "workspace_id": "analytics",
-  "tenant_id": "acme",
-  "as_of": "2026-05-23T10:00:00Z",
-
-  "storage": {
-    "used_bytes": 524288000,
-    "cap_bytes": 214748364800,
-    "used_pct": 0.24,
-    "object_store_breakdown": {
-      "files_bytes": 209715200,
-      "tables_bytes": 262144000,
-      "results_bytes": 52428800
-    }
-  },
-
-  "datasets": {
-    "total": 5,
-    "active": 4,
-    "archived": 1
-  },
-
-  "tables": {
-    "total": 23,
-    "uploaded": 20,
-    "derived": 3,
-    "with_ready_snapshot": 22,
-    "with_null_embeddings": 0
-  },
-
-  "schema_objects": {
-    "total_columns": 284,
-    "described": 271,
-    "pii_tagged": 18,
-    "pii_tagged_active": 4
-  },
-
-  "queries": {
-    "total_all_time": 1402,
-    "last_30_days": 312,
-    "last_7_days": 89,
-    "last_24_hours": 14,
-    "semantic_layer_path_pct": 0.12,
-    "avg_latency_ms_last_7_days": 2840,
-    "p95_latency_ms_last_7_days": 6200,
-    "success_rate_last_7_days": 0.94,
-    "avg_retries_last_7_days": 0.08
-  },
-
-  "top_questions": [
-    {
-      "question": "Total revenue by region",
-      "count": 42,
-      "last_asked_at": "2026-05-23T09:45:00Z"
-    },
-    ...
-  ],
-
-  "top_tables": [
-    {
-      "table_id": "t_01",
-      "qualified_name": "ds_sales.orders",
-      "query_count_last_30_days": 128
-    },
-    ...
-  ],
-
-  "examples": {
-    "total_approved": 34,
-    "total_proposed": 12,
-    "total_rejected": 3
-  },
-
-  "relations": {
-    "total_approved": 8,
-    "total_proposed": 15,
-    "heuristic_proposed": 12,
-    "agent_proposed": 3
-  }
+  "storage_used_bytes": 524288000,
+  "dataset_count": 5,
+  "table_count": 23,
+  "query_count_last_30d": 312,
+  "token_count_last_30d": 412380,
+  "ingest_job_count_pending": 0
 }
 ```
+
+The shape is `WorkspaceStats` from
+[`src/flyquery/interfaces/ops.py:90`](../src/flyquery/interfaces/ops.py).
 
 ---
 
 ## 3. Fields reference
 
-### storage
-
 | Field | Type | Notes |
 |-------|------|-------|
-| `used_bytes` | int | Current workspace storage (from `flyquery_workspaces.storage_used_bytes`; denormalised) |
-| `cap_bytes` | int | `FLYQUERY_MAX_WORKSPACE_GB` × 1024³ |
-| `used_pct` | float | `used_bytes / cap_bytes` |
-| `object_store_breakdown.files_bytes` | int | Original upload blobs |
-| `object_store_breakdown.tables_bytes` | int | Parquet snapshots for all tables |
-| `object_store_breakdown.results_bytes` | int | Query results (within TTL) |
-
-### datasets
-
-Active = `status=ACTIVE`; archived = `status=ARCHIVED`.
-
-### tables
-
-- `with_ready_snapshot` — tables where `current_snapshot_id IS NOT NULL`
-  (queryable).
-- `with_null_embeddings` — schema objects with `embedding IS NULL AND is_active=true`;
-  should be 0 after ingestion completes. Non-zero indicates a stuck embed stage.
-
-### schema_objects
-
-- `described` — columns with non-null `description`.
-- `pii_tagged` — columns with `pii_tag != 'NONE'` (including inactive).
-- `pii_tagged_active` — PII-tagged columns with `is_active=true` AND
-  `policy=reject` (i.e., currently blocking queries).
-
-### queries
-
-- `semantic_layer_path_pct` — fraction of queries that used the
-  `SEMANTIC_LAYER` path (deterministic MetricFlow compilation; cheaper).
-- `avg_retries_last_7_days` — average `retries` per query; higher values
-  indicate the Grounding / Generation quality needs attention.
-
-### top_questions
-
-The 10 most-asked questions in the last 30 days (normalised by similarity;
-minor phrasing variations are grouped). Useful for identifying candidates
-for semantic-layer metrics.
-
-### top_tables
-
-The 10 tables most frequently referenced in query `snapshot_pins_json` over
-the last 30 days.
+| `storage_used_bytes` | int | Current workspace storage (from `flyquery_workspaces.storage_used_bytes`; denormalised cache, updated as files land + as datasets purge). |
+| `dataset_count` | int | Count of `flyquery_datasets` rows for the workspace (any status). |
+| `table_count` | int | Count of `flyquery_tables` rows for the workspace (UPLOADED + DERIVED). |
+| `query_count_last_30d` | int | Count of `flyquery_queries` rows with `created_at >= now() - 30 days`. |
+| `token_count_last_30d` | int | Sum of `input_tokens + output_tokens` in `flyquery_cost_events` for the same 30-day window. |
+| `ingest_job_count_pending` | int | Count of `flyquery_ingest_jobs` with `status='PENDING'`. Use this + [`workers.md`](workers.md) to detect a stalled worker fleet — a non-zero, slowly-growing value when no ingests are accepted means the worker is down. |
 
 ---
 
 ## 4. Access and scoping
 
-The endpoint is scoped to the workspace in `X-Workspace-Id`. A caller cannot
-read stats for a different workspace without switching headers.
+The endpoint is scoped to the workspace in `X-Workspace-Id`. A caller
+cannot read stats for a different workspace without switching headers.
 
-Scope required: none for user-tier (any authenticated user in the workspace
-can read stats). For agent-tier:
-```
-GET /api/v1/agent/stats    (no scope restriction; all agent tokens can read)
-```
-
-Cache TTL: 60 seconds. The `as_of` field reflects when the snapshot was
-computed.
+Scope required: `flyquery.billing:read` (shared with the billing
+rollup; both are operator-tier reads).
 
 ---
 
@@ -198,37 +77,25 @@ computed.
 ### Workspace overview widget
 
 ```python
-stats = await client.stats.get()
-print(f"Storage: {stats.storage.used_pct:.1%} of cap")
-print(f"Tables: {stats.tables.total} ({stats.tables.with_ready_snapshot} queryable)")
-print(f"Queries today: {stats.queries.last_24_hours}")
-print(f"Success rate (7d): {stats.queries.success_rate_last_7_days:.0%}")
+stats = await client.get("/api/v1/stats")
+print(f"Storage: {stats['storage_used_bytes'] / (1024**3):.2f} GB")
+print(f"Datasets: {stats['dataset_count']}")
+print(f"Tables: {stats['table_count']}")
+print(f"Queries (30d): {stats['query_count_last_30d']}")
+print(f"Tokens (30d): {stats['token_count_last_30d']:,}")
+print(f"Pending ingest jobs: {stats['ingest_job_count_pending']}")
 ```
 
-### PII attention needed
+### Ingest-fleet liveness alert
 
-```python
-if stats.schema_objects.pii_tagged_active > 0:
-    print(f"WARNING: {stats.schema_objects.pii_tagged_active} columns blocked by PII (policy=reject)")
-    # Surface to operator: GET /api/v1/schema-objects?pii_tag_set=true&is_active=false
-```
+If `ingest_job_count_pending` keeps creeping up while `dataset_count`
+grows in step, the IngestWorker fleet is likely down — every new upload
+queues a job but nothing claims it. Cross-check with the worker logs
+documented in [workers.md](workers.md) and the queue-depth metric
+documented in [scale-and-performance.md § 6](scale-and-performance.md#6-observability-for-performance).
 
-### Embedding health alert
+### Cost dashboards
 
-```python
-if stats.tables.with_null_embeddings > 0:
-    print(f"ALERT: {stats.tables.with_null_embeddings} tables have null embeddings")
-    print("Run: POST /api/v1/ingest-jobs {job_kind: 'REPARSE', ...} to fix")
-```
-
-### Top-question → semantic-metric candidates
-
-If the same question appears in `top_questions` with count > 20, consider
-creating a MetricFlow metric for it:
-
-```python
-for q in stats.top_questions:
-    if q.count > 20:
-        print(f"Metric candidate: '{q.question}' (asked {q.count}× in 30d)")
-        # POST /api/v1/semantic/metrics with the compiled SQL
-```
+For finer-grained cost dashboards (per-period split, per-agent
+breakdown), use [`GET /api/v1/billing`](billing.md) — `stats` only
+exposes the aggregate token volume so a single dashboard tile can fit.

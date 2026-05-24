@@ -2,6 +2,7 @@ package com.firefly.flyquery.api;
 
 import com.firefly.flyquery.ApiClient;
 
+import java.util.UUID;
 
 import java.util.HashMap;
 import java.util.List;
@@ -25,7 +26,7 @@ import org.springframework.web.reactive.function.client.WebClientResponseExcepti
 import reactor.core.publisher.Mono;
 import reactor.core.publisher.Flux;
 
-@javax.annotation.Generated(value = "org.openapitools.codegen.languages.JavaClientCodegen", date = "2026-05-24T00:36:39.059958+02:00[Europe/Madrid]", comments = "Generator version: 7.22.0")
+@jakarta.annotation.Generated(value = "org.openapitools.codegen.languages.JavaClientCodegen", date = "2026-05-24T14:41:07.623178+02:00[Europe/Madrid]", comments = "Generator version: 7.22.0")
 public class AgentVersionApi {
     private ApiClient apiClient;
 
@@ -49,10 +50,16 @@ public class AgentVersionApi {
      * Return service name + CalVer version tag.
      * Requires a valid &#x60;&#x60;X-Agent-Token&#x60;&#x60; with &#x60;&#x60;flyquery.audit:read&#x60;&#x60; scope. Missing or invalid tokens return 401 / 403 respectively.
      * <p><b>200</b> - Successful response
+     * @param xAgentToken Machine-to-machine bearer token. Replaces X-Tenant-Id and X-Workspace-Id on agent-tier endpoints -- the token&#39;s claims encode the tenant + workspace + scopes. Issue via &#x60;&#x60;POST /api/v1/agent-tokens&#x60;&#x60;.
+     * @param xCorrelationId Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.
      * @throws WebClientResponseException if an error occurs while attempting to invoke the API
      */
-    private ResponseSpec versionRequestCreation() throws WebClientResponseException {
+    private ResponseSpec versionRequestCreation(@jakarta.annotation.Nonnull String xAgentToken, @jakarta.annotation.Nullable UUID xCorrelationId) throws WebClientResponseException {
         Object postBody = null;
+        // verify the required parameter 'xAgentToken' is set
+        if (xAgentToken == null) {
+            throw new WebClientResponseException("Missing the required parameter 'xAgentToken' when calling version", HttpStatus.BAD_REQUEST.value(), HttpStatus.BAD_REQUEST.getReasonPhrase(), null, null, null);
+        }
         // create path and map variables
         final Map<String, Object> pathParams = new HashMap<String, Object>();
 
@@ -61,12 +68,16 @@ public class AgentVersionApi {
         final MultiValueMap<String, String> cookieParams = new LinkedMultiValueMap<String, String>();
         final MultiValueMap<String, Object> formParams = new LinkedMultiValueMap<String, Object>();
 
+        if (xAgentToken != null)
+        headerParams.add("X-Agent-Token", apiClient.parameterToString(xAgentToken));
+        if (xCorrelationId != null)
+        headerParams.add("X-Correlation-Id", apiClient.parameterToString(xCorrelationId));
         final String[] localVarAccepts = { };
         final List<MediaType> localVarAccept = apiClient.selectHeaderAccept(localVarAccepts);
         final String[] localVarContentTypes = { };
         final MediaType localVarContentType = apiClient.selectHeaderContentType(localVarContentTypes);
 
-        String[] localVarAuthNames = new String[] {  };
+        String[] localVarAuthNames = new String[] { "AgentToken" };
 
         ParameterizedTypeReference<Void> localVarReturnType = new ParameterizedTypeReference<Void>() {};
         return apiClient.invokeAPI("/api/v1/agent/version", HttpMethod.GET, pathParams, queryParams, postBody, headerParams, cookieParams, formParams, localVarAccept, localVarContentType, localVarAuthNames, localVarReturnType);
@@ -76,32 +87,38 @@ public class AgentVersionApi {
      * Return service name + CalVer version tag.
      * Requires a valid &#x60;&#x60;X-Agent-Token&#x60;&#x60; with &#x60;&#x60;flyquery.audit:read&#x60;&#x60; scope. Missing or invalid tokens return 401 / 403 respectively.
      * <p><b>200</b> - Successful response
+     * @param xAgentToken Machine-to-machine bearer token. Replaces X-Tenant-Id and X-Workspace-Id on agent-tier endpoints -- the token&#39;s claims encode the tenant + workspace + scopes. Issue via &#x60;&#x60;POST /api/v1/agent-tokens&#x60;&#x60;.
+     * @param xCorrelationId Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.
      * @throws WebClientResponseException if an error occurs while attempting to invoke the API
      */
-    public Mono<Void> version() throws WebClientResponseException {
+    public Mono<Void> version(@jakarta.annotation.Nonnull String xAgentToken, @jakarta.annotation.Nullable UUID xCorrelationId) throws WebClientResponseException {
         ParameterizedTypeReference<Void> localVarReturnType = new ParameterizedTypeReference<Void>() {};
-        return versionRequestCreation().bodyToMono(localVarReturnType);
+        return versionRequestCreation(xAgentToken, xCorrelationId).bodyToMono(localVarReturnType);
     }
 
     /**
      * Return service name + CalVer version tag.
      * Requires a valid &#x60;&#x60;X-Agent-Token&#x60;&#x60; with &#x60;&#x60;flyquery.audit:read&#x60;&#x60; scope. Missing or invalid tokens return 401 / 403 respectively.
      * <p><b>200</b> - Successful response
+     * @param xAgentToken Machine-to-machine bearer token. Replaces X-Tenant-Id and X-Workspace-Id on agent-tier endpoints -- the token&#39;s claims encode the tenant + workspace + scopes. Issue via &#x60;&#x60;POST /api/v1/agent-tokens&#x60;&#x60;.
+     * @param xCorrelationId Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.
      * @throws WebClientResponseException if an error occurs while attempting to invoke the API
      */
-    public Mono<ResponseEntity<Void>> versionWithHttpInfo() throws WebClientResponseException {
+    public Mono<ResponseEntity<Void>> versionWithHttpInfo(@jakarta.annotation.Nonnull String xAgentToken, @jakarta.annotation.Nullable UUID xCorrelationId) throws WebClientResponseException {
         ParameterizedTypeReference<Void> localVarReturnType = new ParameterizedTypeReference<Void>() {};
-        return versionRequestCreation().toEntity(localVarReturnType);
+        return versionRequestCreation(xAgentToken, xCorrelationId).toEntity(localVarReturnType);
     }
 
     /**
      * Return service name + CalVer version tag.
      * Requires a valid &#x60;&#x60;X-Agent-Token&#x60;&#x60; with &#x60;&#x60;flyquery.audit:read&#x60;&#x60; scope. Missing or invalid tokens return 401 / 403 respectively.
      * <p><b>200</b> - Successful response
+     * @param xAgentToken Machine-to-machine bearer token. Replaces X-Tenant-Id and X-Workspace-Id on agent-tier endpoints -- the token&#39;s claims encode the tenant + workspace + scopes. Issue via &#x60;&#x60;POST /api/v1/agent-tokens&#x60;&#x60;.
+     * @param xCorrelationId Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.
      * @return ResponseSpec
      * @throws WebClientResponseException if an error occurs while attempting to invoke the API
      */
-    public ResponseSpec versionWithResponseSpec() throws WebClientResponseException {
-        return versionRequestCreation();
+    public ResponseSpec versionWithResponseSpec(@jakarta.annotation.Nonnull String xAgentToken, @jakarta.annotation.Nullable UUID xCorrelationId) throws WebClientResponseException {
+        return versionRequestCreation(xAgentToken, xCorrelationId);
     }
 }

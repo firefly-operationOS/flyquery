@@ -5,20 +5,22 @@ GET /api/v1/schema-objects/{object_id}
 PUT /api/v1/schema-objects/{object_id}
   -- update description (sets description_source='HUMAN'), pii_tag (pii_source='HUMAN'),
      business_owner, governance_json, synonyms_json
+
+The controller is a thin HTTP adapter -- all SQL + the source-tagging
+policy live in :class:`SchemaObjectService`.
 """
 
 from __future__ import annotations
 
-import json
 import uuid
-from datetime import UTC, datetime
 
-import sqlalchemy as sa
 from pyfly.container import rest_controller
 from pyfly.web import Body, PathVar, Valid, get_mapping, put_mapping, request_mapping
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from starlette.requests import Request
 
+from flyquery.core.services.schema_objects.schema_object_service import (
+    SchemaObjectService,
+)
 from flyquery.interfaces.files import SchemaObjectRead, SchemaObjectUpdate
 from flyquery.web.conventions import ResourceNotFound, tenant_context_from_request
 
@@ -28,8 +30,8 @@ from flyquery.web.conventions import ResourceNotFound, tenant_context_from_reque
 class SchemaObjectsController:
     """REST adapter for schema knowledge-base column/table objects."""
 
-    def __init__(self, session: async_sessionmaker[AsyncSession]) -> None:
-        self._factory = session
+    def __init__(self, service: SchemaObjectService) -> None:
+        self._service = service
 
     @get_mapping("/{object_id}")
     async def get_object(
@@ -39,20 +41,10 @@ class SchemaObjectsController:
     ) -> SchemaObjectRead:
         """Get a single schema object by ID."""
         ctx = tenant_context_from_request(http_request)
-        async with self._factory() as s:
-            result = await s.execute(
-                sa.text(
-                    """
-                    SELECT * FROM flyquery_schema_objects
-                    WHERE id = :oid AND tenant_id = :tenant
-                    """
-                ),
-                {"oid": object_id, "tenant": ctx.tenant_id},
-            )
-            row = result.mappings().one_or_none()
+        row = await self._service.get(object_id, tenant_id=ctx.tenant_id)
         if row is None:
             raise ResourceNotFound(f"schema object {object_id!r} not found")
-        return _row_to_read(dict(row))
+        return _row_to_read(row)
 
     @put_mapping("/{object_id}", status_code=200)
     async def update_object(
@@ -67,75 +59,14 @@ class SchemaObjectsController:
         Sets pii_source='HUMAN' when pii_tag is provided.
         """
         ctx = tenant_context_from_request(http_request)
-        now = datetime.now(UTC)
-
-        async with self._factory() as s, s.begin():
-            # Lock and load existing row
-            result = await s.execute(
-                sa.text(
-                    """
-                    SELECT * FROM flyquery_schema_objects
-                    WHERE id = :oid AND tenant_id = :tenant
-                    FOR UPDATE
-                    """
-                ),
-                {"oid": object_id, "tenant": ctx.tenant_id},
-            )
-            row = result.mappings().one_or_none()
-            if row is None:
-                raise ResourceNotFound(f"schema object {object_id!r} not found")
-
-            row = dict(row)
-
-            # Build update fields
-            updates: dict[str, object] = {"last_changed_at": now}
-            if body.description is not None:
-                updates["description"] = body.description
-                updates["description_source"] = "HUMAN"
-            if body.pii_tag is not None:
-                updates["pii_tag"] = body.pii_tag
-                updates["pii_source"] = "HUMAN"
-            if body.business_owner is not None:
-                updates["business_owner"] = body.business_owner
-            if body.governance_json is not None:
-                updates["governance_json"] = json.dumps(body.governance_json)
-            if body.synonyms_json is not None:
-                updates["synonyms_json"] = json.dumps(body.synonyms_json)
-
-            if len(updates) > 1:  # more than just last_changed_at
-                set_clauses = ", ".join(
-                    f"{k} = :{k}"
-                    if k != "governance_json" and k != "synonyms_json"
-                    else f"{k} = CAST(:{k} AS jsonb)"
-                    for k in updates
-                )
-                await s.execute(
-                    sa.text(
-                        f"""
-                        UPDATE flyquery_schema_objects
-                        SET {set_clauses}
-                        WHERE id = :oid
-                        """
-                    ),
-                    {**updates, "oid": object_id},
-                )
-
-        # Return the updated row
-        async with self._factory() as s:
-            result = await s.execute(
-                sa.text(
-                    """
-                    SELECT * FROM flyquery_schema_objects
-                    WHERE id = :oid AND tenant_id = :tenant
-                    """
-                ),
-                {"oid": object_id, "tenant": ctx.tenant_id},
-            )
-            row = result.mappings().one_or_none()
-
+        row = await self._service.update(
+            object_id,
+            tenant_id=ctx.tenant_id,
+            body=body,
+        )
         if row is None:
-            raise ResourceNotFound(f"schema object {object_id!r} not found after update")
-        return _row_to_read(dict(row))
+            raise ResourceNotFound(f"schema object {object_id!r} not found")
+        return _row_to_read(row)
 
 
 def _row_to_read(row: dict) -> SchemaObjectRead:

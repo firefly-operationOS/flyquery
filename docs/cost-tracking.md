@@ -5,6 +5,22 @@ token usage + dollar cost + latency per agent stage. The numbers
 ride back on the API response so callers can show consumption to
 end users and feed a billing pipeline.
 
+> **Status — write path is live as of 26.5.10.** Both the in-response
+> `usage` block AND the persistent `flyquery_cost_events` /
+> `flyquery_audit_events` ledgers are populated by real callsites:
+> dataset CRUD writes audit events
+> ([`audit_event_service.record`](../src/flyquery/core/services/ops/audit_event_service.py)),
+> and every LLM call in the `flyquery.core.agents.*` modules writes a
+> cost event through
+> [`cost_event_service.record`](../src/flyquery/core/services/ops/cost_event_service.py).
+> The callsites surface is still expanding — every new authoring or
+> action endpoint adds an `audit_events.record` call, every new agent
+> adds a `cost_events.record` call. Read endpoints
+> ([`GET /api/v1/cost-events`](api-reference.md#5.12-history-and-ops),
+> [`GET /api/v1/audit-events`](api-reference.md#5.12-history-and-ops),
+> [`GET /api/v1/billing`](billing.md)) are now part of the supported
+> wire contract.
+
 ## What gets tracked
 
 * **Per-agent stage** (grounding / generation / critic / explainer

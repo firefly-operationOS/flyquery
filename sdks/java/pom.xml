@@ -5,29 +5,29 @@
     <artifactId>flyquery-sdk</artifactId>
     <packaging>jar</packaging>
     <name>flyquery-sdk</name>
-    <version>26.5.6</version>
-    <url>https://github.com/openapitools/openapi-generator</url>
-    <description>OpenAPI Java</description>
+    <version>26.5.10</version>
+    <url>https://github.com/firefly-operationOS/flyquery</url>
+    <description>Java SDK for flyquery -- Operational Structured-Data Intelligence. Auto-generated from the flyquery OpenAPI 3.1 spec. Targets Java 25 + Spring Boot 3.5.9 + WebFlux.</description>
     <scm>
-        <connection>scm:git:git@github.com:openapitools/openapi-generator.git</connection>
-        <developerConnection>scm:git:git@github.com:openapitools/openapi-generator.git</developerConnection>
-        <url>https://github.com/openapitools/openapi-generator</url>
+        <connection>scm:git:git@github.com:firefly-operationOS/flyquery.git</connection>
+        <developerConnection>scm:git:git@github.com:firefly-operationOS/flyquery.git</developerConnection>
+        <url>https://github.com/firefly-operationOS/flyquery</url>
     </scm>
 
     <licenses>
         <license>
-            <name>Unlicense</name>
-            <url>https://github.com/firefly-operationOS/flyquery/blob/main/LICENSE</url>
+            <name>Apache License, Version 2.0</name>
+            <url>https://www.apache.org/licenses/LICENSE-2.0.txt</url>
             <distribution>repo</distribution>
         </license>
     </licenses>
 
     <developers>
         <developer>
-            <name>OpenAPI-Generator Contributors</name>
-            <email>team@openapitools.org</email>
-            <organization>OpenAPITools.org</organization>
-            <organizationUrl>http://openapitools.org</organizationUrl>
+            <name>Firefly Software Solutions Inc</name>
+            <email>opensource@firefly.com</email>
+            <organization>Firefly Software Solutions Inc</organization>
+            <organizationUrl>https://github.com/firefly-operationOS</organizationUrl>
         </developer>
     </developers>
 
@@ -38,8 +38,7 @@
                 <artifactId>maven-compiler-plugin</artifactId>
                 <version>3.13.0</version>
                 <configuration>
-                    <source>1.8</source>
-                    <target>1.8</target>
+                    <release>${java.version}</release>
                 </configuration>
             </plugin>
             <plugin>
@@ -130,13 +129,20 @@
     </dependencies>
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <!-- Track the toolchain documented in sdks/java/README.md. Java 25
+             is the LTS the publish workflow installs (see
+             .github/workflows/publish-sdks.yaml). -->
+        <java.version>25</java.version>
+        <maven.compiler.release>${java.version}</maven.compiler.release>
         <jackson-version>2.21.1</jackson-version>
-        <jackson-databind-nullable-version>0.2.10</jackson-databind-nullable-version>
-        <spring-boot-version>2.7.17</spring-boot-version>
-        <jakarta-annotation-version>1.3.5</jakarta-annotation-version>
-        <reactor-version>3.4.34</reactor-version>
-        <reactor-netty-version>1.2.8</reactor-netty-version>
         <jackson-annotations-version>2.21</jackson-annotations-version>
+        <jackson-databind-nullable-version>0.2.10</jackson-databind-nullable-version>
+        <!-- Spring Boot 3.5.x requires Java 17+, Jakarta EE 10
+             (jakarta.* not javax.*), and Reactor 2023.x. -->
+        <spring-boot-version>3.5.9</spring-boot-version>
+        <jakarta-annotation-version>3.0.0</jakarta-annotation-version>
+        <reactor-version>3.7.4</reactor-version>
+        <reactor-netty-version>1.2.4</reactor-netty-version>
         <junit-version>5.14.3</junit-version>
     </properties>
     <distributionManagement>

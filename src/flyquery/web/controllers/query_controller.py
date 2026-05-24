@@ -56,7 +56,12 @@ from flyquery.interfaces.query import (
     QueryRequest,
     ValidateResponse,
 )
-from flyquery.web.conventions import InvalidRequest, tenant_context_from_request
+from flyquery.web.conventions import (
+    IdempotencyStore,
+    InvalidRequest,
+    tenant_context_from_request,
+)
+from flyquery.web.idempotent_handler import replay_dedup
 
 logger = logging.getLogger(__name__)
 
@@ -95,6 +100,7 @@ class QueryController:
         query_repository: QueryRepository,
         examples_service: ExamplesService,
         embedder: Embedder,
+        idempotency_store: IdempotencyStore,
     ) -> None:
         self._settings = settings
         self._session_factory = session
@@ -102,6 +108,7 @@ class QueryController:
         self._query_repo = query_repository
         self._examples_service = examples_service
         self._embedder = embedder
+        self._idempotency_store = idempotency_store
 
         # Singletons that don't need a session
         self._ast_classifier = AstClassifier()
@@ -214,6 +221,11 @@ class QueryController:
         comparison reports (same question against M datasets), or SDK
         callers that want to amortise auth + tenant context across many
         questions.
+
+        Replay-dedup'd via ``Idempotency-Key`` when present (optional on
+        the user tier). A retried batch with the same key returns the
+        cached aggregate without re-running any question -- important
+        when a single batch represents tens of LLM calls.
         """
         ctx = tenant_context_from_request(http_request)
         workspace_id = _parse_workspace_id(ctx.workspace_id)
@@ -250,13 +262,23 @@ class QueryController:
                     error=str(exc),
                 )
 
-        results = await asyncio.gather(*[_ask(i, item) for i, item in enumerate(body.queries)])
-        succeeded = sum(1 for r in results if r.status == "OK")
-        return BatchQueryResponse(
-            results=list(results),
-            total_queries=len(results),
-            succeeded=succeeded,
-            failed=len(results) - succeeded,
+        async def _do_batch() -> BatchQueryResponse:
+            results = await asyncio.gather(*[_ask(i, item) for i, item in enumerate(body.queries)])
+            succeeded = sum(1 for r in results if r.status == "OK")
+            return BatchQueryResponse(
+                results=list(results),
+                total_queries=len(results),
+                succeeded=succeeded,
+                failed=len(results) - succeeded,
+            )
+
+        return await replay_dedup(
+            request=http_request,
+            store=self._idempotency_store,
+            tenant_id=ctx.tenant_id,
+            route="POST /api/v1/query:batch",
+            handler=_do_batch,
+            status_code=200,
         )
 
     # ------------------------------------------------------------------

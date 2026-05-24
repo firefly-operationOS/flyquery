@@ -18,32 +18,80 @@ def test_imports():
 
 
 def test_split_api_classes():
-    """All major resource groups must have a dedicated API class."""
+    """All major resource groups must have a dedicated API class.
+
+    Class names track the current OpenAPI tag taxonomy:
+        - SchemaApi   -> SchemaChangesApi + SchemaObjectsApi
+        - SemanticApi -> SemanticMetricsApi + SemanticDimensionsApi
+        - IngestApi   -> IngestJobsApi
+        - SqlApi      -> SqlExecuteApi
+        - MetaApi     -> VersionApi
+        - AgentSqlApi -> AgentSqlExecuteApi
+    """
     from flyquery_sdk.api import (  # noqa: F401
-        WorkspacesApi,
-        DatasetsApi,
-        FilesApi,
-        TablesApi,
-        SchemaApi,
-        RelationsApi,
-        SemanticApi,
-        GlossaryApi,
-        ExamplesApi,
-        QueryApi,
-        ConversationsApi,
-        IngestApi,
-        SqlApi,
-        AgentTokensApi,
-        MetaApi,
         AgentExamplesApi,
         AgentQueryApi,
-        AgentSqlApi,
+        AgentSqlExecuteApi,
+        AgentTokensApi,
+        AgentVersionApi,
+        AuditEventsApi,
+        BillingApi,
+        ConversationsApi,
+        CostEventsApi,
+        DatasetsApi,
+        ExamplesApi,
+        FilesApi,
+        GlossaryApi,
+        IngestJobsApi,
+        QueriesApi,
+        QueryApi,
+        RelationsApi,
+        SchemaChangesApi,
+        SchemaObjectsApi,
+        SemanticDimensionsApi,
+        SemanticMetricsApi,
+        SqlExecuteApi,
+        StatsApi,
+        TablesApi,
+        TablesDeriveApi,
+        VersionApi,
+        WorkspacesApi,
     )
     assert WorkspacesApi.__module__.endswith(".workspaces_api")
     assert DatasetsApi.__module__.endswith(".datasets_api")
     assert QueryApi.__module__.endswith(".query_api")
     assert FilesApi.__module__.endswith(".files_api")
     assert AgentQueryApi.__module__.endswith(".agent_query_api")
+    assert SchemaChangesApi.__module__.endswith(".schema_changes_api")
+    assert SemanticMetricsApi.__module__.endswith(".semantic_metrics_api")
+
+
+def test_no_stale_split_classes_leaked():
+    """Stale class names from prior OpenAPI splits must not still be exported.
+
+    Regression: ``task sdk:python`` used to skip the pruning of stale
+    api/*.py files, so importable but useless ``IngestApi`` / ``SqlApi`` /
+    ``SchemaApi`` classes from older spec versions stayed around long
+    after the tags had been split. New spec runs now ``rm -rf`` the
+    api/ + models/ directories before regeneration.
+    """
+    import importlib
+
+    api_pkg = importlib.import_module("flyquery_sdk.api")
+    forbidden = {
+        "DefaultApi",
+        "IngestApi",
+        "MetaApi",
+        "SchemaApi",
+        "SemanticApi",
+        "SqlApi",
+        "AgentSqlApi",
+    }
+    leaked = forbidden & set(dir(api_pkg))
+    assert not leaked, (
+        f"Stale API classes still exported: {leaked}. "
+        "Re-run `task sdk:python` after pulling latest Taskfile.yml."
+    )
 
 
 def test_configuration_can_be_constructed():
@@ -58,3 +106,33 @@ def test_api_client_can_be_constructed():
     client = ApiClient(configuration=cfg)
     assert client is not None
     # Don't close the async client in sync context — just verify construction
+
+
+def test_flyquery_client_exposes_v1_accessors():
+    """The hand-written FlyqueryClient must surface every v1.0 (26.5.10) API."""
+    from flyquery_sdk.client import FlyqueryClient
+
+    fc = FlyqueryClient(
+        base_url="http://localhost:8520",
+        tenant_id="acme",
+        workspace_id="finance",
+    )
+    # v1 read surfaces
+    assert fc.queries is not None
+    assert fc.billing is not None
+    assert fc.stats is not None
+    assert fc.audit_events is not None
+    assert fc.cost_events is not None
+    # legacy accessors still present
+    assert fc.workspaces is not None
+    assert fc.datasets is not None
+    assert fc.files is not None
+    assert fc.tables is not None
+    assert fc.query is not None
+    # ergonomic helpers exist (sync mirrors so we don't need an event loop)
+    assert callable(fc.recent_queries_sync)
+    assert callable(fc.get_query_sync)
+    assert callable(fc.fetch_query_result_sync)
+    assert callable(fc.billing_rollup_sync)
+    assert callable(fc.workspace_stats_sync)
+    assert callable(fc.upload_async_sync)

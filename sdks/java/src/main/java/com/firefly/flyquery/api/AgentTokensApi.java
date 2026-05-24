@@ -6,6 +6,7 @@ import com.firefly.flyquery.model.AgentTokenCreated;
 import com.firefly.flyquery.model.AgentTokenMintRequest;
 import com.firefly.flyquery.model.AgentTokenSummaryDto;
 import com.firefly.flyquery.model.HTTPValidationError;
+import java.util.UUID;
 
 import java.util.HashMap;
 import java.util.List;
@@ -29,7 +30,7 @@ import org.springframework.web.reactive.function.client.WebClientResponseExcepti
 import reactor.core.publisher.Mono;
 import reactor.core.publisher.Flux;
 
-@javax.annotation.Generated(value = "org.openapitools.codegen.languages.JavaClientCodegen", date = "2026-05-24T00:36:39.059958+02:00[Europe/Madrid]", comments = "Generator version: 7.22.0")
+@jakarta.annotation.Generated(value = "org.openapitools.codegen.languages.JavaClientCodegen", date = "2026-05-24T14:41:07.623178+02:00[Europe/Madrid]", comments = "Generator version: 7.22.0")
 public class AgentTokensApi {
     private ApiClient apiClient;
 
@@ -53,11 +54,22 @@ public class AgentTokensApi {
      * List tokens for the current tenant (newest first).
      * Returns the summary shape only -- the secret is never round-tripped on this endpoint.
      * <p><b>200</b> - Successful response
+     * @param xTenantId Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present.
+     * @param xWorkspaceId Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation.
+     * @param xCorrelationId Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.
      * @return List&lt;AgentTokenSummaryDto&gt;
      * @throws WebClientResponseException if an error occurs while attempting to invoke the API
      */
-    private ResponseSpec listTokensRequestCreation() throws WebClientResponseException {
+    private ResponseSpec listTokensRequestCreation(@jakarta.annotation.Nonnull String xTenantId, @jakarta.annotation.Nonnull String xWorkspaceId, @jakarta.annotation.Nullable UUID xCorrelationId) throws WebClientResponseException {
         Object postBody = null;
+        // verify the required parameter 'xTenantId' is set
+        if (xTenantId == null) {
+            throw new WebClientResponseException("Missing the required parameter 'xTenantId' when calling listTokens", HttpStatus.BAD_REQUEST.value(), HttpStatus.BAD_REQUEST.getReasonPhrase(), null, null, null);
+        }
+        // verify the required parameter 'xWorkspaceId' is set
+        if (xWorkspaceId == null) {
+            throw new WebClientResponseException("Missing the required parameter 'xWorkspaceId' when calling listTokens", HttpStatus.BAD_REQUEST.value(), HttpStatus.BAD_REQUEST.getReasonPhrase(), null, null, null);
+        }
         // create path and map variables
         final Map<String, Object> pathParams = new HashMap<String, Object>();
 
@@ -66,6 +78,12 @@ public class AgentTokensApi {
         final MultiValueMap<String, String> cookieParams = new LinkedMultiValueMap<String, String>();
         final MultiValueMap<String, Object> formParams = new LinkedMultiValueMap<String, Object>();
 
+        if (xTenantId != null)
+        headerParams.add("X-Tenant-Id", apiClient.parameterToString(xTenantId));
+        if (xWorkspaceId != null)
+        headerParams.add("X-Workspace-Id", apiClient.parameterToString(xWorkspaceId));
+        if (xCorrelationId != null)
+        headerParams.add("X-Correlation-Id", apiClient.parameterToString(xCorrelationId));
         final String[] localVarAccepts = { 
             "application/json"
         };
@@ -73,7 +91,7 @@ public class AgentTokensApi {
         final String[] localVarContentTypes = { };
         final MediaType localVarContentType = apiClient.selectHeaderContentType(localVarContentTypes);
 
-        String[] localVarAuthNames = new String[] {  };
+        String[] localVarAuthNames = new String[] { "WorkspaceContext", "TenantContext" };
 
         ParameterizedTypeReference<AgentTokenSummaryDto> localVarReturnType = new ParameterizedTypeReference<AgentTokenSummaryDto>() {};
         return apiClient.invokeAPI("/api/v1/agent-tokens", HttpMethod.GET, pathParams, queryParams, postBody, headerParams, cookieParams, formParams, localVarAccept, localVarContentType, localVarAuthNames, localVarReturnType);
@@ -83,35 +101,44 @@ public class AgentTokensApi {
      * List tokens for the current tenant (newest first).
      * Returns the summary shape only -- the secret is never round-tripped on this endpoint.
      * <p><b>200</b> - Successful response
+     * @param xTenantId Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present.
+     * @param xWorkspaceId Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation.
+     * @param xCorrelationId Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.
      * @return List&lt;AgentTokenSummaryDto&gt;
      * @throws WebClientResponseException if an error occurs while attempting to invoke the API
      */
-    public Flux<AgentTokenSummaryDto> listTokens() throws WebClientResponseException {
+    public Flux<AgentTokenSummaryDto> listTokens(@jakarta.annotation.Nonnull String xTenantId, @jakarta.annotation.Nonnull String xWorkspaceId, @jakarta.annotation.Nullable UUID xCorrelationId) throws WebClientResponseException {
         ParameterizedTypeReference<AgentTokenSummaryDto> localVarReturnType = new ParameterizedTypeReference<AgentTokenSummaryDto>() {};
-        return listTokensRequestCreation().bodyToFlux(localVarReturnType);
+        return listTokensRequestCreation(xTenantId, xWorkspaceId, xCorrelationId).bodyToFlux(localVarReturnType);
     }
 
     /**
      * List tokens for the current tenant (newest first).
      * Returns the summary shape only -- the secret is never round-tripped on this endpoint.
      * <p><b>200</b> - Successful response
+     * @param xTenantId Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present.
+     * @param xWorkspaceId Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation.
+     * @param xCorrelationId Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.
      * @return ResponseEntity&lt;List&lt;AgentTokenSummaryDto&gt;&gt;
      * @throws WebClientResponseException if an error occurs while attempting to invoke the API
      */
-    public Mono<ResponseEntity<List<AgentTokenSummaryDto>>> listTokensWithHttpInfo() throws WebClientResponseException {
+    public Mono<ResponseEntity<List<AgentTokenSummaryDto>>> listTokensWithHttpInfo(@jakarta.annotation.Nonnull String xTenantId, @jakarta.annotation.Nonnull String xWorkspaceId, @jakarta.annotation.Nullable UUID xCorrelationId) throws WebClientResponseException {
         ParameterizedTypeReference<AgentTokenSummaryDto> localVarReturnType = new ParameterizedTypeReference<AgentTokenSummaryDto>() {};
-        return listTokensRequestCreation().toEntityList(localVarReturnType);
+        return listTokensRequestCreation(xTenantId, xWorkspaceId, xCorrelationId).toEntityList(localVarReturnType);
     }
 
     /**
      * List tokens for the current tenant (newest first).
      * Returns the summary shape only -- the secret is never round-tripped on this endpoint.
      * <p><b>200</b> - Successful response
+     * @param xTenantId Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present.
+     * @param xWorkspaceId Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation.
+     * @param xCorrelationId Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.
      * @return ResponseSpec
      * @throws WebClientResponseException if an error occurs while attempting to invoke the API
      */
-    public ResponseSpec listTokensWithResponseSpec() throws WebClientResponseException {
-        return listTokensRequestCreation();
+    public ResponseSpec listTokensWithResponseSpec(@jakarta.annotation.Nonnull String xTenantId, @jakarta.annotation.Nonnull String xWorkspaceId, @jakarta.annotation.Nullable UUID xCorrelationId) throws WebClientResponseException {
+        return listTokensRequestCreation(xTenantId, xWorkspaceId, xCorrelationId);
     }
 
     /**
@@ -119,12 +146,24 @@ public class AgentTokensApi {
      * Returns 201 with the full &#x60;&#x60;token&#x60;&#x60; populated. The token is only returned this once -- subsequent reads expose only &#x60;&#x60;prefix&#x60;&#x60;. Refuses agent-tier callers with &#x60;&#x60;403 agent_cannot_mint&#x60;&#x60;.
      * <p><b>201</b> - Successful response
      * <p><b>422</b> - Validation Error
+     * @param xTenantId Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present.
+     * @param xWorkspaceId Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation.
      * @param agentTokenMintRequest The agentTokenMintRequest parameter
+     * @param xCorrelationId Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.
+     * @param idempotencyKey Optional client-supplied idempotency key for mutating operations. The first request with a key persists its result; subsequent requests with the same key + same tenant return the cached response. Keys expire after 24h.
      * @return AgentTokenCreated
      * @throws WebClientResponseException if an error occurs while attempting to invoke the API
      */
-    private ResponseSpec mintRequestCreation(@javax.annotation.Nonnull AgentTokenMintRequest agentTokenMintRequest) throws WebClientResponseException {
+    private ResponseSpec mintRequestCreation(@jakarta.annotation.Nonnull String xTenantId, @jakarta.annotation.Nonnull String xWorkspaceId, @jakarta.annotation.Nonnull AgentTokenMintRequest agentTokenMintRequest, @jakarta.annotation.Nullable UUID xCorrelationId, @jakarta.annotation.Nullable String idempotencyKey) throws WebClientResponseException {
         Object postBody = agentTokenMintRequest;
+        // verify the required parameter 'xTenantId' is set
+        if (xTenantId == null) {
+            throw new WebClientResponseException("Missing the required parameter 'xTenantId' when calling mint", HttpStatus.BAD_REQUEST.value(), HttpStatus.BAD_REQUEST.getReasonPhrase(), null, null, null);
+        }
+        // verify the required parameter 'xWorkspaceId' is set
+        if (xWorkspaceId == null) {
+            throw new WebClientResponseException("Missing the required parameter 'xWorkspaceId' when calling mint", HttpStatus.BAD_REQUEST.value(), HttpStatus.BAD_REQUEST.getReasonPhrase(), null, null, null);
+        }
         // verify the required parameter 'agentTokenMintRequest' is set
         if (agentTokenMintRequest == null) {
             throw new WebClientResponseException("Missing the required parameter 'agentTokenMintRequest' when calling mint", HttpStatus.BAD_REQUEST.value(), HttpStatus.BAD_REQUEST.getReasonPhrase(), null, null, null);
@@ -137,6 +176,14 @@ public class AgentTokensApi {
         final MultiValueMap<String, String> cookieParams = new LinkedMultiValueMap<String, String>();
         final MultiValueMap<String, Object> formParams = new LinkedMultiValueMap<String, Object>();
 
+        if (xTenantId != null)
+        headerParams.add("X-Tenant-Id", apiClient.parameterToString(xTenantId));
+        if (xWorkspaceId != null)
+        headerParams.add("X-Workspace-Id", apiClient.parameterToString(xWorkspaceId));
+        if (xCorrelationId != null)
+        headerParams.add("X-Correlation-Id", apiClient.parameterToString(xCorrelationId));
+        if (idempotencyKey != null)
+        headerParams.add("Idempotency-Key", apiClient.parameterToString(idempotencyKey));
         final String[] localVarAccepts = { 
             "application/json"
         };
@@ -146,7 +193,7 @@ public class AgentTokensApi {
         };
         final MediaType localVarContentType = apiClient.selectHeaderContentType(localVarContentTypes);
 
-        String[] localVarAuthNames = new String[] {  };
+        String[] localVarAuthNames = new String[] { "WorkspaceContext", "TenantContext" };
 
         ParameterizedTypeReference<AgentTokenCreated> localVarReturnType = new ParameterizedTypeReference<AgentTokenCreated>() {};
         return apiClient.invokeAPI("/api/v1/agent-tokens", HttpMethod.POST, pathParams, queryParams, postBody, headerParams, cookieParams, formParams, localVarAccept, localVarContentType, localVarAuthNames, localVarReturnType);
@@ -157,13 +204,17 @@ public class AgentTokensApi {
      * Returns 201 with the full &#x60;&#x60;token&#x60;&#x60; populated. The token is only returned this once -- subsequent reads expose only &#x60;&#x60;prefix&#x60;&#x60;. Refuses agent-tier callers with &#x60;&#x60;403 agent_cannot_mint&#x60;&#x60;.
      * <p><b>201</b> - Successful response
      * <p><b>422</b> - Validation Error
+     * @param xTenantId Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present.
+     * @param xWorkspaceId Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation.
      * @param agentTokenMintRequest The agentTokenMintRequest parameter
+     * @param xCorrelationId Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.
+     * @param idempotencyKey Optional client-supplied idempotency key for mutating operations. The first request with a key persists its result; subsequent requests with the same key + same tenant return the cached response. Keys expire after 24h.
      * @return AgentTokenCreated
      * @throws WebClientResponseException if an error occurs while attempting to invoke the API
      */
-    public Mono<AgentTokenCreated> mint(@javax.annotation.Nonnull AgentTokenMintRequest agentTokenMintRequest) throws WebClientResponseException {
+    public Mono<AgentTokenCreated> mint(@jakarta.annotation.Nonnull String xTenantId, @jakarta.annotation.Nonnull String xWorkspaceId, @jakarta.annotation.Nonnull AgentTokenMintRequest agentTokenMintRequest, @jakarta.annotation.Nullable UUID xCorrelationId, @jakarta.annotation.Nullable String idempotencyKey) throws WebClientResponseException {
         ParameterizedTypeReference<AgentTokenCreated> localVarReturnType = new ParameterizedTypeReference<AgentTokenCreated>() {};
-        return mintRequestCreation(agentTokenMintRequest).bodyToMono(localVarReturnType);
+        return mintRequestCreation(xTenantId, xWorkspaceId, agentTokenMintRequest, xCorrelationId, idempotencyKey).bodyToMono(localVarReturnType);
     }
 
     /**
@@ -171,13 +222,17 @@ public class AgentTokensApi {
      * Returns 201 with the full &#x60;&#x60;token&#x60;&#x60; populated. The token is only returned this once -- subsequent reads expose only &#x60;&#x60;prefix&#x60;&#x60;. Refuses agent-tier callers with &#x60;&#x60;403 agent_cannot_mint&#x60;&#x60;.
      * <p><b>201</b> - Successful response
      * <p><b>422</b> - Validation Error
+     * @param xTenantId Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present.
+     * @param xWorkspaceId Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation.
      * @param agentTokenMintRequest The agentTokenMintRequest parameter
+     * @param xCorrelationId Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.
+     * @param idempotencyKey Optional client-supplied idempotency key for mutating operations. The first request with a key persists its result; subsequent requests with the same key + same tenant return the cached response. Keys expire after 24h.
      * @return ResponseEntity&lt;AgentTokenCreated&gt;
      * @throws WebClientResponseException if an error occurs while attempting to invoke the API
      */
-    public Mono<ResponseEntity<AgentTokenCreated>> mintWithHttpInfo(@javax.annotation.Nonnull AgentTokenMintRequest agentTokenMintRequest) throws WebClientResponseException {
+    public Mono<ResponseEntity<AgentTokenCreated>> mintWithHttpInfo(@jakarta.annotation.Nonnull String xTenantId, @jakarta.annotation.Nonnull String xWorkspaceId, @jakarta.annotation.Nonnull AgentTokenMintRequest agentTokenMintRequest, @jakarta.annotation.Nullable UUID xCorrelationId, @jakarta.annotation.Nullable String idempotencyKey) throws WebClientResponseException {
         ParameterizedTypeReference<AgentTokenCreated> localVarReturnType = new ParameterizedTypeReference<AgentTokenCreated>() {};
-        return mintRequestCreation(agentTokenMintRequest).toEntity(localVarReturnType);
+        return mintRequestCreation(xTenantId, xWorkspaceId, agentTokenMintRequest, xCorrelationId, idempotencyKey).toEntity(localVarReturnType);
     }
 
     /**
@@ -185,12 +240,16 @@ public class AgentTokensApi {
      * Returns 201 with the full &#x60;&#x60;token&#x60;&#x60; populated. The token is only returned this once -- subsequent reads expose only &#x60;&#x60;prefix&#x60;&#x60;. Refuses agent-tier callers with &#x60;&#x60;403 agent_cannot_mint&#x60;&#x60;.
      * <p><b>201</b> - Successful response
      * <p><b>422</b> - Validation Error
+     * @param xTenantId Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present.
+     * @param xWorkspaceId Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation.
      * @param agentTokenMintRequest The agentTokenMintRequest parameter
+     * @param xCorrelationId Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.
+     * @param idempotencyKey Optional client-supplied idempotency key for mutating operations. The first request with a key persists its result; subsequent requests with the same key + same tenant return the cached response. Keys expire after 24h.
      * @return ResponseSpec
      * @throws WebClientResponseException if an error occurs while attempting to invoke the API
      */
-    public ResponseSpec mintWithResponseSpec(@javax.annotation.Nonnull AgentTokenMintRequest agentTokenMintRequest) throws WebClientResponseException {
-        return mintRequestCreation(agentTokenMintRequest);
+    public ResponseSpec mintWithResponseSpec(@jakarta.annotation.Nonnull String xTenantId, @jakarta.annotation.Nonnull String xWorkspaceId, @jakarta.annotation.Nonnull AgentTokenMintRequest agentTokenMintRequest, @jakarta.annotation.Nullable UUID xCorrelationId, @jakarta.annotation.Nullable String idempotencyKey) throws WebClientResponseException {
+        return mintRequestCreation(xTenantId, xWorkspaceId, agentTokenMintRequest, xCorrelationId, idempotencyKey);
     }
 
     /**
@@ -198,13 +257,25 @@ public class AgentTokensApi {
      * Unknown &#x60;&#x60;token_id&#x60;&#x60; returns &#x60;&#x60;404 resource_not_found&#x60;&#x60;.
      * <p><b>204</b> - No Content
      * @param tokenId The tokenId parameter
+     * @param xTenantId Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present.
+     * @param xWorkspaceId Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation.
+     * @param xCorrelationId Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.
+     * @param idempotencyKey Optional client-supplied idempotency key for mutating operations. The first request with a key persists its result; subsequent requests with the same key + same tenant return the cached response. Keys expire after 24h.
      * @throws WebClientResponseException if an error occurs while attempting to invoke the API
      */
-    private ResponseSpec revokeRequestCreation(@javax.annotation.Nullable String tokenId) throws WebClientResponseException {
+    private ResponseSpec revokeRequestCreation(@jakarta.annotation.Nullable String tokenId, @jakarta.annotation.Nonnull String xTenantId, @jakarta.annotation.Nonnull String xWorkspaceId, @jakarta.annotation.Nullable UUID xCorrelationId, @jakarta.annotation.Nullable String idempotencyKey) throws WebClientResponseException {
         Object postBody = null;
         // verify the required parameter 'tokenId' is set
         if (tokenId == null) {
             throw new WebClientResponseException("Missing the required parameter 'tokenId' when calling revoke", HttpStatus.BAD_REQUEST.value(), HttpStatus.BAD_REQUEST.getReasonPhrase(), null, null, null);
+        }
+        // verify the required parameter 'xTenantId' is set
+        if (xTenantId == null) {
+            throw new WebClientResponseException("Missing the required parameter 'xTenantId' when calling revoke", HttpStatus.BAD_REQUEST.value(), HttpStatus.BAD_REQUEST.getReasonPhrase(), null, null, null);
+        }
+        // verify the required parameter 'xWorkspaceId' is set
+        if (xWorkspaceId == null) {
+            throw new WebClientResponseException("Missing the required parameter 'xWorkspaceId' when calling revoke", HttpStatus.BAD_REQUEST.value(), HttpStatus.BAD_REQUEST.getReasonPhrase(), null, null, null);
         }
         // create path and map variables
         final Map<String, Object> pathParams = new HashMap<String, Object>();
@@ -216,12 +287,20 @@ public class AgentTokensApi {
         final MultiValueMap<String, String> cookieParams = new LinkedMultiValueMap<String, String>();
         final MultiValueMap<String, Object> formParams = new LinkedMultiValueMap<String, Object>();
 
+        if (xTenantId != null)
+        headerParams.add("X-Tenant-Id", apiClient.parameterToString(xTenantId));
+        if (xWorkspaceId != null)
+        headerParams.add("X-Workspace-Id", apiClient.parameterToString(xWorkspaceId));
+        if (xCorrelationId != null)
+        headerParams.add("X-Correlation-Id", apiClient.parameterToString(xCorrelationId));
+        if (idempotencyKey != null)
+        headerParams.add("Idempotency-Key", apiClient.parameterToString(idempotencyKey));
         final String[] localVarAccepts = { };
         final List<MediaType> localVarAccept = apiClient.selectHeaderAccept(localVarAccepts);
         final String[] localVarContentTypes = { };
         final MediaType localVarContentType = apiClient.selectHeaderContentType(localVarContentTypes);
 
-        String[] localVarAuthNames = new String[] {  };
+        String[] localVarAuthNames = new String[] { "WorkspaceContext", "TenantContext" };
 
         ParameterizedTypeReference<Void> localVarReturnType = new ParameterizedTypeReference<Void>() {};
         return apiClient.invokeAPI("/api/v1/agent-tokens/{token_id}", HttpMethod.DELETE, pathParams, queryParams, postBody, headerParams, cookieParams, formParams, localVarAccept, localVarContentType, localVarAuthNames, localVarReturnType);
@@ -232,11 +311,15 @@ public class AgentTokensApi {
      * Unknown &#x60;&#x60;token_id&#x60;&#x60; returns &#x60;&#x60;404 resource_not_found&#x60;&#x60;.
      * <p><b>204</b> - No Content
      * @param tokenId The tokenId parameter
+     * @param xTenantId Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present.
+     * @param xWorkspaceId Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation.
+     * @param xCorrelationId Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.
+     * @param idempotencyKey Optional client-supplied idempotency key for mutating operations. The first request with a key persists its result; subsequent requests with the same key + same tenant return the cached response. Keys expire after 24h.
      * @throws WebClientResponseException if an error occurs while attempting to invoke the API
      */
-    public Mono<Void> revoke(@javax.annotation.Nullable String tokenId) throws WebClientResponseException {
+    public Mono<Void> revoke(@jakarta.annotation.Nullable String tokenId, @jakarta.annotation.Nonnull String xTenantId, @jakarta.annotation.Nonnull String xWorkspaceId, @jakarta.annotation.Nullable UUID xCorrelationId, @jakarta.annotation.Nullable String idempotencyKey) throws WebClientResponseException {
         ParameterizedTypeReference<Void> localVarReturnType = new ParameterizedTypeReference<Void>() {};
-        return revokeRequestCreation(tokenId).bodyToMono(localVarReturnType);
+        return revokeRequestCreation(tokenId, xTenantId, xWorkspaceId, xCorrelationId, idempotencyKey).bodyToMono(localVarReturnType);
     }
 
     /**
@@ -244,11 +327,15 @@ public class AgentTokensApi {
      * Unknown &#x60;&#x60;token_id&#x60;&#x60; returns &#x60;&#x60;404 resource_not_found&#x60;&#x60;.
      * <p><b>204</b> - No Content
      * @param tokenId The tokenId parameter
+     * @param xTenantId Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present.
+     * @param xWorkspaceId Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation.
+     * @param xCorrelationId Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.
+     * @param idempotencyKey Optional client-supplied idempotency key for mutating operations. The first request with a key persists its result; subsequent requests with the same key + same tenant return the cached response. Keys expire after 24h.
      * @throws WebClientResponseException if an error occurs while attempting to invoke the API
      */
-    public Mono<ResponseEntity<Void>> revokeWithHttpInfo(@javax.annotation.Nullable String tokenId) throws WebClientResponseException {
+    public Mono<ResponseEntity<Void>> revokeWithHttpInfo(@jakarta.annotation.Nullable String tokenId, @jakarta.annotation.Nonnull String xTenantId, @jakarta.annotation.Nonnull String xWorkspaceId, @jakarta.annotation.Nullable UUID xCorrelationId, @jakarta.annotation.Nullable String idempotencyKey) throws WebClientResponseException {
         ParameterizedTypeReference<Void> localVarReturnType = new ParameterizedTypeReference<Void>() {};
-        return revokeRequestCreation(tokenId).toEntity(localVarReturnType);
+        return revokeRequestCreation(tokenId, xTenantId, xWorkspaceId, xCorrelationId, idempotencyKey).toEntity(localVarReturnType);
     }
 
     /**
@@ -256,10 +343,14 @@ public class AgentTokensApi {
      * Unknown &#x60;&#x60;token_id&#x60;&#x60; returns &#x60;&#x60;404 resource_not_found&#x60;&#x60;.
      * <p><b>204</b> - No Content
      * @param tokenId The tokenId parameter
+     * @param xTenantId Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present.
+     * @param xWorkspaceId Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation.
+     * @param xCorrelationId Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.
+     * @param idempotencyKey Optional client-supplied idempotency key for mutating operations. The first request with a key persists its result; subsequent requests with the same key + same tenant return the cached response. Keys expire after 24h.
      * @return ResponseSpec
      * @throws WebClientResponseException if an error occurs while attempting to invoke the API
      */
-    public ResponseSpec revokeWithResponseSpec(@javax.annotation.Nullable String tokenId) throws WebClientResponseException {
-        return revokeRequestCreation(tokenId);
+    public ResponseSpec revokeWithResponseSpec(@jakarta.annotation.Nullable String tokenId, @jakarta.annotation.Nonnull String xTenantId, @jakarta.annotation.Nonnull String xWorkspaceId, @jakarta.annotation.Nullable UUID xCorrelationId, @jakarta.annotation.Nullable String idempotencyKey) throws WebClientResponseException {
+        return revokeRequestCreation(tokenId, xTenantId, xWorkspaceId, xCorrelationId, idempotencyKey);
     }
 }

@@ -25,6 +25,7 @@ import asyncio
 import logging
 import time
 import uuid
+from dataclasses import dataclass
 from typing import Any
 
 import sqlalchemy as sa
@@ -159,8 +160,16 @@ class IngestWorker:
             logger.warning("IngestWorker drain timed out; cancelling %d task(s)", len(self._inflight))
             for task in list(self._inflight):
                 task.cancel()
-            with asyncio.timeout(5):
-                await asyncio.gather(*list(self._inflight), return_exceptions=True)
+            # asyncio.timeout is an ASYNC context manager -- `with`
+            # raises TypeError. Use a wait_for fallback so the
+            # post-cancel cleanup gets at most 5s before we give up.
+            try:
+                await asyncio.wait_for(
+                    asyncio.gather(*list(self._inflight), return_exceptions=True),
+                    timeout=5,
+                )
+            except TimeoutError:
+                logger.error("IngestWorker drain hard-timeout; leaking %d task(s)", len(self._inflight))
 
     # ------------------------------------------------------------------
     # Handler
@@ -333,9 +342,15 @@ class IngestWorker:
         # Cooperative cancel before each stage
         await self._check_cancelled(job_id)
 
-        # Load file bytes from object store
+        # Load file bytes from object store. ObjectStore.get() returns
+        # AsyncIterator[bytes]; materialise chunks here once so downstream
+        # consumers can use it as a plain ``bytes`` value (len/hash/slice).
         try:
-            file_bytes = await object_store.get(file_info["object_store_key"])
+            stream = await object_store.get(file_info["object_store_key"])
+            chunks: list[bytes] = []
+            async for chunk in stream:
+                chunks.append(chunk)
+            file_bytes = b"".join(chunks)
         except Exception as exc:
             exc._stage = "receive"  # type: ignore[attr-defined]
             raise
@@ -349,28 +364,74 @@ class IngestWorker:
         ws = await ws_service.get(workspace_id)
         storage_used = ws["storage_used_bytes"] if ws else 0
 
-        recv = await run_receive(
-            tenant_id=tenant_id,
-            workspace_id=workspace_id,
-            dataset_id=dataset_id,
-            filename=file_info["original_filename"],
-            file_bytes=file_bytes,
-            actor=request_json.get("actor", "worker"),
-            object_store=object_store,
-            session_factory=self._session_factory,
-            settings=self._settings,
-            workspace_storage_used_bytes=storage_used,
-        )
-        await emit_stage(
-            ingest_job_id=job_id,
-            tenant_id=tenant_id,
-            workspace_id=workspace_id,
-            stage="received",
-            message="stage 1 complete",
-            payload={"file_id": str(recv.file_id)},
-            session_factory=self._session_factory,
-        )
-        await ws_service.track_storage(workspace_id, recv.size_bytes)
+        # When the async upload endpoint queued this job it already
+        # ran Stage 1 (the file row + bytes exist). Re-running run_receive
+        # would create a duplicate file_id + duplicate object-store key,
+        # so honour the ``already_received`` flag and reuse the existing
+        # row instead. REPARSE callers and the legacy
+        # PARSE_AND_INGEST re-queue path still get a fresh receive (which
+        # is what they want -- new file_id + new snapshot version).
+        already_received = bool(request_json.get("already_received"))
+        if already_received:
+            # Synthesise a ReceiveResult-ish shim so the rest of the
+            # function keeps using the same field names. We need a local
+            # temp file for the parse stage; persist the bytes once here.
+            import tempfile as _tempfile
+
+            ext = _suffix_from_key(str(file_info["object_store_key"]))
+            fd, local_temp_path = _tempfile.mkstemp(suffix=ext)
+            try:
+                with open(fd, "wb") as fh:
+                    fh.write(file_bytes)
+            except Exception:
+                import os as _os
+
+                _os.close(fd)
+                raise
+            from flyquery.core.services.ingestion.format_detect import detect_format
+
+            file_format, compression = detect_format(file_info["original_filename"], file_bytes[:512])
+            recv = _AlreadyReceived(
+                file_id=uuid.UUID(str(file_info["id"])),
+                file_format=file_format,
+                compression=compression,
+                size_bytes=len(file_bytes),
+                object_store_key=str(file_info["object_store_key"]),
+                local_temp_path=local_temp_path,
+            )
+            await emit_stage(
+                ingest_job_id=job_id,
+                tenant_id=tenant_id,
+                workspace_id=workspace_id,
+                stage="received",
+                message="stage 1 skipped (already received via async upload)",
+                payload={"file_id": str(recv.file_id), "skipped": True},
+                session_factory=self._session_factory,
+            )
+            # Storage already tracked by the endpoint -- do NOT track again.
+        else:
+            recv = await run_receive(
+                tenant_id=tenant_id,
+                workspace_id=workspace_id,
+                dataset_id=dataset_id,
+                filename=file_info["original_filename"],
+                file_bytes=file_bytes,
+                actor=request_json.get("actor", "worker"),
+                object_store=object_store,
+                session_factory=self._session_factory,
+                settings=self._settings,
+                workspace_storage_used_bytes=storage_used,
+            )
+            await emit_stage(
+                ingest_job_id=job_id,
+                tenant_id=tenant_id,
+                workspace_id=workspace_id,
+                stage="received",
+                message="stage 1 complete",
+                payload={"file_id": str(recv.file_id)},
+                session_factory=self._session_factory,
+            )
+            await ws_service.track_storage(workspace_id, recv.size_bytes)
 
         # Stage 2: parse
         await self._check_cancelled(job_id)
@@ -622,13 +683,10 @@ class IngestWorker:
             return dict(row) if row else None
 
     async def _load_file(self, file_id: Any) -> dict[str, Any] | None:
-        async with self._session_factory() as s:
-            result = await s.execute(
-                sa.text("SELECT id, original_filename, object_store_key FROM flyquery_files WHERE id = :id"),
-                {"id": file_id},
-            )
-            row = result.mappings().first()
-            return dict(row) if row else None
+        from flyquery.core.services.files.file_repository import FileRepository
+
+        repo = FileRepository(self._session_factory)
+        return await repo.get(file_id)
 
     async def _mark_running(self, job_id: uuid.UUID) -> bool:
         """Atomic claim: flip PENDING → RUNNING. Returns True on success."""
@@ -731,3 +789,34 @@ def _json_dumps(obj: Any) -> str:
     import json
 
     return json.dumps(obj)
+
+
+def _suffix_from_key(key: str) -> str:
+    """Recover the file suffix from an object-store key.
+
+    Receive writes keys like ``flyquery/.../files/{uuid}.csv.gz`` -- we
+    need the same suffix when re-materialising the bytes to a local temp
+    file so the parse stage's format detection still works on the path.
+    """
+    import os
+
+    base = os.path.basename(key)
+    # Strip the UUID prefix and keep everything after the first dot.
+    dot = base.find(".")
+    return base[dot:] if dot >= 0 else ""
+
+
+@dataclass
+class _AlreadyReceived:
+    """Drop-in replacement for ReceiveResult used by the ``already_received`` branch.
+
+    Mirrors :class:`ReceiveResult` shape so downstream stages don't need
+    to know they got a synthesised value instead of a real Stage 1 run.
+    """
+
+    file_id: uuid.UUID
+    file_format: str
+    compression: str
+    size_bytes: int
+    object_store_key: str
+    local_temp_path: str

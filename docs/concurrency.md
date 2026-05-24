@@ -103,25 +103,39 @@ until the next request on that connection — a cross-tenant data leak.
 
 ## 4. EDA worker concurrency
 
+> See [workers.md](workers.md) for the full operator-facing fleet doc.
+> This section covers the concurrency primitives — semaphore + atomic
+> claim + drain — that make it correct.
+
 ### Job claiming
 
-`IngestWorker` goroutines claim jobs via:
+`IngestWorker` claims jobs via an atomic `UPDATE … WHERE status='PENDING'`
+on `flyquery_ingest_jobs.status` inside a transaction
+(`ingest_job_repository._mark_running`). The `UPDATE` returns the
+claimed row's id; if zero rows came back (another worker or the
+RetentionWorker beat us to it), the handler short-circuits. This
+provides work-queue semantics across both processes (concurrent ingest
+workers) AND cross-process recovery (the retention worker's stuck-job
+reaper can republish a job onto the bus, and the next worker to pick
+it up uses the same atomic claim to dedupe).
 
-```sql
-SELECT id, job_kind, request_json FROM flyquery_ingest_jobs
-WHERE status = 'PENDING'
-  AND tenant_id = current_setting('app.tenant_id')
-  AND workspace_id = current_setting('app.workspace_id')
-ORDER BY created_at ASC
-LIMIT 1
-FOR UPDATE SKIP LOCKED
-```
+### Concurrency primitives
 
-`SKIP LOCKED` ensures that if another goroutine has already locked the row,
-this query skips it and picks the next available job. This provides work
-queue semantics without explicit locking infrastructure.
+`IngestWorker` uses a four-piece pattern (semaphore + wait_for + Event
++ inflight set) — see
+[`workers.py`](../src/flyquery/core/services/ingestion/workers.py):
 
-The claim and the `status='RUNNING'` update happen in the same transaction.
+| Primitive | Role |
+|---|---|
+| `asyncio.Semaphore(_CONCURRENCY)` | Bounds simultaneous handler tasks. |
+| `asyncio.wait_for(handler, timeout=ingest_handler_timeout_s)` | Caps any one job's wall-clock. |
+| `asyncio.Event` (`_shutdown`) | Cooperative SIGTERM signal. |
+| `self._inflight: set[Task]` | Tracked so the drain step can wait on (or cancel) them. |
+
+This pattern is verified by
+[`tests/unit/test_ingest_worker_concurrency.py`](../tests/unit/test_ingest_worker_concurrency.py)
+(4 tests: semaphore cap enforcement under burst, timed-out handler
+isolation, drain wait + drain cancel).
 
 ### Concurrency limits
 
@@ -131,7 +145,9 @@ its own `AsyncSession` and Postgres connection.
 
 With N worker pods each running C coroutines, the total concurrent job
 capacity is `N × C`. The Postgres connection pool size should be at least
-`N × C + headroom_for_api` connections.
+`N × C + headroom_for_api` connections. See
+[scale-and-performance.md § 5](scale-and-performance.md#5-capacity-planning-rules-of-thumb)
+for the horizontal-scale formula.
 
 ### Worker shutdown sequence
 
@@ -139,19 +155,38 @@ capacity is `N × C`. The Postgres connection pool size should be at least
 SIGTERM received
     │
     ▼
-Stop accepting new job claims
+Stop accepting new job claims (set _shutdown Event)
     │
     ▼
-Wait for in-flight coroutines to reach the next checkpoint
-(max FLYQUERY_INGEST_SHUTDOWN_GRACE_S = 30 s)
+_drain_inflight():
+   1. asyncio.wait_for(gather(*self._inflight), grace)
+   2. on TimeoutError: cancel() each task, then a second 5s
+      asyncio.wait_for to give cleanup a chance.
     │
     ▼
 Exit
 ```
 
-Jobs that were in-flight and did not complete are left in `RUNNING`. The
-heartbeat-timeout recovery task resets them to `PENDING` within
-`FLYQUERY_INGEST_HANDLER_TIMEOUT_S` (default 600 s).
+Jobs that did not complete are left in `RUNNING`. The
+**RetentionWorker** (added in 26.5.10) resets them to `PENDING` and
+republishes them onto the bus after `processing_lease_s` (default
+1800s); see
+[`retention_worker.py:162`](../src/flyquery/core/services/retention/retention_worker.py).
+This is the recovery primitive that replaces the planned-but-not-shipped
+heartbeat scheme.
+
+### Drain bug (fixed in 26.5.10)
+
+The previous `_drain_inflight` implementation used
+`with asyncio.timeout(5)` for the post-cancel cleanup window — but
+`asyncio.timeout()` is an ASYNC context manager (`async with` only),
+so the synchronous `with` raised `TypeError` at runtime. The bug was
+latent because no test exercised the drain-with-cancel path. Replaced
+with `asyncio.wait_for(...)` and a warning log if the hard timeout
+elapses
+([`workers.py:163`](../src/flyquery/core/services/ingestion/workers.py)).
+The regression test that catches it is in
+[`tests/unit/test_ingest_worker_concurrency.py`](../tests/unit/test_ingest_worker_concurrency.py).
 
 ---
 

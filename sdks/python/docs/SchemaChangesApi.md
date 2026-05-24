@@ -8,7 +8,7 @@ Method | HTTP request | Description
 
 
 # **confirm**
-> SchemaChangeRead confirm(change_id)
+> SchemaChangeRead confirm(change_id, x_tenant_id, x_workspace_id, x_correlation_id=x_correlation_id, idempotency_key=idempotency_key)
 
 Flip a RENAMED_CANDIDATE row to RENAMED.
 
@@ -19,6 +19,8 @@ Also updates last_changed_at on the corresponding schema_objects column row.
 
 ### Example
 
+* Api Key Authentication (WorkspaceContext):
+* Api Key Authentication (TenantContext):
 
 ```python
 import flyquery_sdk
@@ -32,16 +34,36 @@ configuration = flyquery_sdk.Configuration(
     host = "http://localhost"
 )
 
+# The client must configure the authentication and authorization parameters
+# in accordance with the API server security policy.
+# Examples for each auth method are provided below, use the example that
+# satisfies your auth use case.
+
+# Configure API key authorization: WorkspaceContext
+configuration.api_key['WorkspaceContext'] = os.environ["API_KEY"]
+
+# Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
+# configuration.api_key_prefix['WorkspaceContext'] = 'Bearer'
+
+# Configure API key authorization: TenantContext
+configuration.api_key['TenantContext'] = os.environ["API_KEY"]
+
+# Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
+# configuration.api_key_prefix['TenantContext'] = 'Bearer'
 
 # Enter a context with an instance of the API client
 async with flyquery_sdk.ApiClient(configuration) as api_client:
     # Create an instance of the API class
     api_instance = flyquery_sdk.SchemaChangesApi(api_client)
     change_id = 'change_id_example' # str | 
+    x_tenant_id = 'acme-corp' # str | Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present.
+    x_workspace_id = '00000000-0000-0000-0000-000000000001' # str | Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation.
+    x_correlation_id = UUID('550e8400-e29b-41d4-a716-446655440000') # UUID | Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header. (optional)
+    idempotency_key = 'ingest-2026-05-23-abc123' # str | Optional client-supplied idempotency key for mutating operations. The first request with a key persists its result; subsequent requests with the same key + same tenant return the cached response. Keys expire after 24h. (optional)
 
     try:
         # Flip a RENAMED_CANDIDATE row to RENAMED.
-        api_response = await api_instance.confirm(change_id)
+        api_response = await api_instance.confirm(change_id, x_tenant_id, x_workspace_id, x_correlation_id=x_correlation_id, idempotency_key=idempotency_key)
         print("The response of SchemaChangesApi->confirm:\n")
         pprint(api_response)
     except Exception as e:
@@ -56,6 +78,10 @@ async with flyquery_sdk.ApiClient(configuration) as api_client:
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
  **change_id** | **str**|  | 
+ **x_tenant_id** | **str**| Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present. | 
+ **x_workspace_id** | **str**| Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation. | 
+ **x_correlation_id** | **UUID**| Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header. | [optional] 
+ **idempotency_key** | **str**| Optional client-supplied idempotency key for mutating operations. The first request with a key persists its result; subsequent requests with the same key + same tenant return the cached response. Keys expire after 24h. | [optional] 
 
 ### Return type
 
@@ -63,7 +89,7 @@ Name | Type | Description  | Notes
 
 ### Authorization
 
-No authorization required
+[WorkspaceContext](../README.md#WorkspaceContext), [TenantContext](../README.md#TenantContext)
 
 ### HTTP request headers
 

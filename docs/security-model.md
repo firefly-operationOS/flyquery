@@ -67,14 +67,23 @@ because RLS filters silently.
 
 | Role | BYPASSRLS | Purpose |
 |------|-----------|---------|
-| `flyquery_admin` | Yes | Alembic migrations, cross-workspace workers, retention sweeps |
+| `flyquery_admin` | Yes | Alembic migrations + **both** background workers (`IngestWorker` and `RetentionWorker`) |
 | `flyquery_app` | No | All request-scoped database operations |
 
 `flyquery_app` is the role in `FLYQUERY_DATABASE_URL` (the runtime URL).
-`flyquery_admin` is the role in `FLYQUERY_DATABASE_URL_ADMIN` (migrations only).
+`flyquery_admin` is the role in `FLYQUERY_DATABASE_URL_ADMIN`. Both the
+ingest worker and the retention worker connect using the admin URL
+because they sweep across all tenants and workspaces — there is no
+single request tenant context to bind the RLS GUCs to. The ingest
+worker re-binds `app.tenant_id` and `app.workspace_id` from the job
+row on each handler invocation, but the retention worker operates over
+the entire database (TTL deletes across all tenants, stuck-job sweep
+across all workspaces); BYPASSRLS is the simplest model.
 
-**Never use `flyquery_admin` for request-scoped queries.** A misconfiguration
-that uses the admin URL for the app URL silently bypasses RLS in production.
+**Never use `flyquery_admin` for request-scoped queries.** A
+misconfiguration that uses the admin URL for the app URL silently
+bypasses RLS in production. The API server (`flyquery serve`) MUST
+use the non-bypass `flyquery_app` role.
 
 ### FORCE ROW LEVEL SECURITY
 

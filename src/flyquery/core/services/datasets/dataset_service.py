@@ -9,6 +9,7 @@ from typing import Any, Protocol
 from pyfly.container import service as service_bean
 
 from flyquery.core.services.datasets.dataset_repository import DatasetRepository
+from flyquery.core.services.storage.object_store import ObjectStore
 from flyquery.interfaces.datasets import DatasetCreate, DatasetUpdate
 
 
@@ -35,6 +36,7 @@ class _Repo(Protocol):
     ) -> dict[str, Any] | None: ...
     async def update(self, dataset_id: uuid.UUID, **fields: Any) -> dict[str, Any]: ...
     async def archive(self, dataset_id: uuid.UUID) -> None: ...
+    async def mark_purging(self, dataset_id: uuid.UUID) -> None: ...
 
 
 @service_bean
@@ -99,3 +101,40 @@ class DatasetService:
 
     async def archive(self, dataset_id: uuid.UUID) -> None:
         await self._repo.archive(dataset_id)
+
+    async def purge(
+        self,
+        dataset_id: uuid.UUID,
+        *,
+        object_store: ObjectStore,
+        tenant_id: str,
+        workspace_id: uuid.UUID,
+    ) -> None:
+        """Hard-delete a dataset's blobs and flip status to PURGING.
+
+        Mirrors :meth:`WorkspaceService.purge` at one level down --
+        ``DELETE /datasets/{id}`` only archived (status='ARCHIVED'),
+        leaving the dataset's sample / snapshot / result / derived
+        Parquet blobs orphaned on the object store. This method:
+
+        1. Flips ``status`` to ``PURGING`` so concurrent reads see the
+           in-flight purge.
+        2. Walks the canonical dataset prefix
+           ``flyquery/{tenant}/{workspace}/{dataset}/`` and deletes
+           every key under it. The four subprefixes that exist today
+           are ``files/``, ``tables/``, ``derived/`` and ``results/``;
+           all are reclaimed in one walk.
+        3. Leaves the SQL row in place with status=PURGING. A separate
+           retention job is expected to hard-delete the row after the
+           tombstone window (90 days by convention -- same as
+           ``conv_ttl_days``). Keeping the row preserves audit + lineage
+           pointers for any historical reference.
+
+        Caller is responsible for ensuring the dataset belongs to the
+        passed ``(tenant_id, workspace_id)`` before invoking this --
+        the controller checks tenant context, then forwards.
+        """
+        await self._repo.mark_purging(dataset_id)
+        prefix = f"flyquery/{tenant_id}/{workspace_id}/{dataset_id}/"
+        async for meta in await object_store.list(prefix):
+            await object_store.delete(meta.key)

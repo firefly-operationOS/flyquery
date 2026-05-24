@@ -5,6 +5,8 @@ import com.firefly.flyquery.ApiClient;
 import com.firefly.flyquery.model.ExampleCreate;
 import com.firefly.flyquery.model.ExampleRead;
 import com.firefly.flyquery.model.HTTPValidationError;
+import com.firefly.flyquery.model.PaginatedExampleRead;
+import java.util.UUID;
 
 import java.util.HashMap;
 import java.util.List;
@@ -28,7 +30,7 @@ import org.springframework.web.reactive.function.client.WebClientResponseExcepti
 import reactor.core.publisher.Mono;
 import reactor.core.publisher.Flux;
 
-@javax.annotation.Generated(value = "org.openapitools.codegen.languages.JavaClientCodegen", date = "2026-05-24T00:36:39.059958+02:00[Europe/Madrid]", comments = "Generator version: 7.22.0")
+@jakarta.annotation.Generated(value = "org.openapitools.codegen.languages.JavaClientCodegen", date = "2026-05-24T14:41:07.623178+02:00[Europe/Madrid]", comments = "Generator version: 7.22.0")
 public class AgentExamplesApi {
     private ApiClient apiClient;
 
@@ -50,15 +52,22 @@ public class AgentExamplesApi {
 
     /**
      * Create an example (agent-tier — source&#x3D;AGENT_LEARNED, quality&#x3D;PROPOSED).
-     * :param http_request: Starlette request :param body: validated ExampleCreate :return: ExampleRead with created fields
+     * Replay-dedup&#39;d via &#x60;&#x60;Idempotency-Key&#x60;&#x60; (required). Without this gate an agent retrying a network blip would persist duplicate (question, SQL) PROPOSED rows that an operator would then have to manually reject.
      * <p><b>201</b> - Successful response
      * <p><b>422</b> - Validation Error
+     * @param xAgentToken Machine-to-machine bearer token. Replaces X-Tenant-Id and X-Workspace-Id on agent-tier endpoints -- the token&#39;s claims encode the tenant + workspace + scopes. Issue via &#x60;&#x60;POST /api/v1/agent-tokens&#x60;&#x60;.
      * @param exampleCreate The exampleCreate parameter
+     * @param xCorrelationId Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.
+     * @param idempotencyKey Optional client-supplied idempotency key for mutating operations. The first request with a key persists its result; subsequent requests with the same key + same tenant return the cached response. Keys expire after 24h.
      * @return ExampleRead
      * @throws WebClientResponseException if an error occurs while attempting to invoke the API
      */
-    private ResponseSpec createRequestCreation(@javax.annotation.Nonnull ExampleCreate exampleCreate) throws WebClientResponseException {
+    private ResponseSpec createRequestCreation(@jakarta.annotation.Nonnull String xAgentToken, @jakarta.annotation.Nonnull ExampleCreate exampleCreate, @jakarta.annotation.Nullable UUID xCorrelationId, @jakarta.annotation.Nullable String idempotencyKey) throws WebClientResponseException {
         Object postBody = exampleCreate;
+        // verify the required parameter 'xAgentToken' is set
+        if (xAgentToken == null) {
+            throw new WebClientResponseException("Missing the required parameter 'xAgentToken' when calling create", HttpStatus.BAD_REQUEST.value(), HttpStatus.BAD_REQUEST.getReasonPhrase(), null, null, null);
+        }
         // verify the required parameter 'exampleCreate' is set
         if (exampleCreate == null) {
             throw new WebClientResponseException("Missing the required parameter 'exampleCreate' when calling create", HttpStatus.BAD_REQUEST.value(), HttpStatus.BAD_REQUEST.getReasonPhrase(), null, null, null);
@@ -71,6 +80,12 @@ public class AgentExamplesApi {
         final MultiValueMap<String, String> cookieParams = new LinkedMultiValueMap<String, String>();
         final MultiValueMap<String, Object> formParams = new LinkedMultiValueMap<String, Object>();
 
+        if (xAgentToken != null)
+        headerParams.add("X-Agent-Token", apiClient.parameterToString(xAgentToken));
+        if (xCorrelationId != null)
+        headerParams.add("X-Correlation-Id", apiClient.parameterToString(xCorrelationId));
+        if (idempotencyKey != null)
+        headerParams.add("Idempotency-Key", apiClient.parameterToString(idempotencyKey));
         final String[] localVarAccepts = { 
             "application/json"
         };
@@ -80,7 +95,7 @@ public class AgentExamplesApi {
         };
         final MediaType localVarContentType = apiClient.selectHeaderContentType(localVarContentTypes);
 
-        String[] localVarAuthNames = new String[] {  };
+        String[] localVarAuthNames = new String[] { "AgentToken" };
 
         ParameterizedTypeReference<ExampleRead> localVarReturnType = new ParameterizedTypeReference<ExampleRead>() {};
         return apiClient.invokeAPI("/api/v1/agent/examples", HttpMethod.POST, pathParams, queryParams, postBody, headerParams, cookieParams, formParams, localVarAccept, localVarContentType, localVarAuthNames, localVarReturnType);
@@ -88,55 +103,73 @@ public class AgentExamplesApi {
 
     /**
      * Create an example (agent-tier — source&#x3D;AGENT_LEARNED, quality&#x3D;PROPOSED).
-     * :param http_request: Starlette request :param body: validated ExampleCreate :return: ExampleRead with created fields
+     * Replay-dedup&#39;d via &#x60;&#x60;Idempotency-Key&#x60;&#x60; (required). Without this gate an agent retrying a network blip would persist duplicate (question, SQL) PROPOSED rows that an operator would then have to manually reject.
      * <p><b>201</b> - Successful response
      * <p><b>422</b> - Validation Error
+     * @param xAgentToken Machine-to-machine bearer token. Replaces X-Tenant-Id and X-Workspace-Id on agent-tier endpoints -- the token&#39;s claims encode the tenant + workspace + scopes. Issue via &#x60;&#x60;POST /api/v1/agent-tokens&#x60;&#x60;.
      * @param exampleCreate The exampleCreate parameter
+     * @param xCorrelationId Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.
+     * @param idempotencyKey Optional client-supplied idempotency key for mutating operations. The first request with a key persists its result; subsequent requests with the same key + same tenant return the cached response. Keys expire after 24h.
      * @return ExampleRead
      * @throws WebClientResponseException if an error occurs while attempting to invoke the API
      */
-    public Mono<ExampleRead> create(@javax.annotation.Nonnull ExampleCreate exampleCreate) throws WebClientResponseException {
+    public Mono<ExampleRead> create(@jakarta.annotation.Nonnull String xAgentToken, @jakarta.annotation.Nonnull ExampleCreate exampleCreate, @jakarta.annotation.Nullable UUID xCorrelationId, @jakarta.annotation.Nullable String idempotencyKey) throws WebClientResponseException {
         ParameterizedTypeReference<ExampleRead> localVarReturnType = new ParameterizedTypeReference<ExampleRead>() {};
-        return createRequestCreation(exampleCreate).bodyToMono(localVarReturnType);
+        return createRequestCreation(xAgentToken, exampleCreate, xCorrelationId, idempotencyKey).bodyToMono(localVarReturnType);
     }
 
     /**
      * Create an example (agent-tier — source&#x3D;AGENT_LEARNED, quality&#x3D;PROPOSED).
-     * :param http_request: Starlette request :param body: validated ExampleCreate :return: ExampleRead with created fields
+     * Replay-dedup&#39;d via &#x60;&#x60;Idempotency-Key&#x60;&#x60; (required). Without this gate an agent retrying a network blip would persist duplicate (question, SQL) PROPOSED rows that an operator would then have to manually reject.
      * <p><b>201</b> - Successful response
      * <p><b>422</b> - Validation Error
+     * @param xAgentToken Machine-to-machine bearer token. Replaces X-Tenant-Id and X-Workspace-Id on agent-tier endpoints -- the token&#39;s claims encode the tenant + workspace + scopes. Issue via &#x60;&#x60;POST /api/v1/agent-tokens&#x60;&#x60;.
      * @param exampleCreate The exampleCreate parameter
+     * @param xCorrelationId Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.
+     * @param idempotencyKey Optional client-supplied idempotency key for mutating operations. The first request with a key persists its result; subsequent requests with the same key + same tenant return the cached response. Keys expire after 24h.
      * @return ResponseEntity&lt;ExampleRead&gt;
      * @throws WebClientResponseException if an error occurs while attempting to invoke the API
      */
-    public Mono<ResponseEntity<ExampleRead>> createWithHttpInfo(@javax.annotation.Nonnull ExampleCreate exampleCreate) throws WebClientResponseException {
+    public Mono<ResponseEntity<ExampleRead>> createWithHttpInfo(@jakarta.annotation.Nonnull String xAgentToken, @jakarta.annotation.Nonnull ExampleCreate exampleCreate, @jakarta.annotation.Nullable UUID xCorrelationId, @jakarta.annotation.Nullable String idempotencyKey) throws WebClientResponseException {
         ParameterizedTypeReference<ExampleRead> localVarReturnType = new ParameterizedTypeReference<ExampleRead>() {};
-        return createRequestCreation(exampleCreate).toEntity(localVarReturnType);
+        return createRequestCreation(xAgentToken, exampleCreate, xCorrelationId, idempotencyKey).toEntity(localVarReturnType);
     }
 
     /**
      * Create an example (agent-tier — source&#x3D;AGENT_LEARNED, quality&#x3D;PROPOSED).
-     * :param http_request: Starlette request :param body: validated ExampleCreate :return: ExampleRead with created fields
+     * Replay-dedup&#39;d via &#x60;&#x60;Idempotency-Key&#x60;&#x60; (required). Without this gate an agent retrying a network blip would persist duplicate (question, SQL) PROPOSED rows that an operator would then have to manually reject.
      * <p><b>201</b> - Successful response
      * <p><b>422</b> - Validation Error
+     * @param xAgentToken Machine-to-machine bearer token. Replaces X-Tenant-Id and X-Workspace-Id on agent-tier endpoints -- the token&#39;s claims encode the tenant + workspace + scopes. Issue via &#x60;&#x60;POST /api/v1/agent-tokens&#x60;&#x60;.
      * @param exampleCreate The exampleCreate parameter
+     * @param xCorrelationId Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.
+     * @param idempotencyKey Optional client-supplied idempotency key for mutating operations. The first request with a key persists its result; subsequent requests with the same key + same tenant return the cached response. Keys expire after 24h.
      * @return ResponseSpec
      * @throws WebClientResponseException if an error occurs while attempting to invoke the API
      */
-    public ResponseSpec createWithResponseSpec(@javax.annotation.Nonnull ExampleCreate exampleCreate) throws WebClientResponseException {
-        return createRequestCreation(exampleCreate);
+    public ResponseSpec createWithResponseSpec(@jakarta.annotation.Nonnull String xAgentToken, @jakarta.annotation.Nonnull ExampleCreate exampleCreate, @jakarta.annotation.Nullable UUID xCorrelationId, @jakarta.annotation.Nullable String idempotencyKey) throws WebClientResponseException {
+        return createRequestCreation(xAgentToken, exampleCreate, xCorrelationId, idempotencyKey);
     }
 
     /**
      * List examples for the caller&#39;s workspace (agent-tier).
-     * :param http_request: Starlette request :param quality: optional quality filter (PROPOSED/APPROVED/REJECTED) :param dataset_id: optional dataset filter :return: &#x60;&#x60;{\&quot;items\&quot;: [...]}&#x60;&#x60;
+     * :param http_request: Starlette request :param quality: optional quality filter (PROPOSED/APPROVED/REJECTED) :param dataset_id: optional dataset filter :param limit: page size (default 100) :param offset: starting offset (default 0) :return: Paginated[ExampleRead]
      * <p><b>200</b> - Successful response
+     * @param xAgentToken Machine-to-machine bearer token. Replaces X-Tenant-Id and X-Workspace-Id on agent-tier endpoints -- the token&#39;s claims encode the tenant + workspace + scopes. Issue via &#x60;&#x60;POST /api/v1/agent-tokens&#x60;&#x60;.
      * @param quality The quality parameter
      * @param datasetId The datasetId parameter
+     * @param limit The limit parameter
+     * @param offset The offset parameter
+     * @param xCorrelationId Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.
+     * @return PaginatedExampleRead
      * @throws WebClientResponseException if an error occurs while attempting to invoke the API
      */
-    private ResponseSpec listExamplesRequestCreation(@javax.annotation.Nullable String quality, @javax.annotation.Nullable String datasetId) throws WebClientResponseException {
+    private ResponseSpec listExamplesRequestCreation(@jakarta.annotation.Nonnull String xAgentToken, @jakarta.annotation.Nullable String quality, @jakarta.annotation.Nullable String datasetId, @jakarta.annotation.Nullable Integer limit, @jakarta.annotation.Nullable Integer offset, @jakarta.annotation.Nullable UUID xCorrelationId) throws WebClientResponseException {
         Object postBody = null;
+        // verify the required parameter 'xAgentToken' is set
+        if (xAgentToken == null) {
+            throw new WebClientResponseException("Missing the required parameter 'xAgentToken' when calling listExamples", HttpStatus.BAD_REQUEST.value(), HttpStatus.BAD_REQUEST.getReasonPhrase(), null, null, null);
+        }
         // create path and map variables
         final Map<String, Object> pathParams = new HashMap<String, Object>();
 
@@ -147,54 +180,76 @@ public class AgentExamplesApi {
 
         queryParams.putAll(apiClient.parameterToMultiValueMap(null, "quality", quality));
         queryParams.putAll(apiClient.parameterToMultiValueMap(null, "dataset_id", datasetId));
+        queryParams.putAll(apiClient.parameterToMultiValueMap(null, "limit", limit));
+        queryParams.putAll(apiClient.parameterToMultiValueMap(null, "offset", offset));
 
-        final String[] localVarAccepts = { };
+        if (xAgentToken != null)
+        headerParams.add("X-Agent-Token", apiClient.parameterToString(xAgentToken));
+        if (xCorrelationId != null)
+        headerParams.add("X-Correlation-Id", apiClient.parameterToString(xCorrelationId));
+        final String[] localVarAccepts = { 
+            "application/json"
+        };
         final List<MediaType> localVarAccept = apiClient.selectHeaderAccept(localVarAccepts);
         final String[] localVarContentTypes = { };
         final MediaType localVarContentType = apiClient.selectHeaderContentType(localVarContentTypes);
 
-        String[] localVarAuthNames = new String[] {  };
+        String[] localVarAuthNames = new String[] { "AgentToken" };
 
-        ParameterizedTypeReference<Void> localVarReturnType = new ParameterizedTypeReference<Void>() {};
+        ParameterizedTypeReference<PaginatedExampleRead> localVarReturnType = new ParameterizedTypeReference<PaginatedExampleRead>() {};
         return apiClient.invokeAPI("/api/v1/agent/examples", HttpMethod.GET, pathParams, queryParams, postBody, headerParams, cookieParams, formParams, localVarAccept, localVarContentType, localVarAuthNames, localVarReturnType);
     }
 
     /**
      * List examples for the caller&#39;s workspace (agent-tier).
-     * :param http_request: Starlette request :param quality: optional quality filter (PROPOSED/APPROVED/REJECTED) :param dataset_id: optional dataset filter :return: &#x60;&#x60;{\&quot;items\&quot;: [...]}&#x60;&#x60;
+     * :param http_request: Starlette request :param quality: optional quality filter (PROPOSED/APPROVED/REJECTED) :param dataset_id: optional dataset filter :param limit: page size (default 100) :param offset: starting offset (default 0) :return: Paginated[ExampleRead]
      * <p><b>200</b> - Successful response
+     * @param xAgentToken Machine-to-machine bearer token. Replaces X-Tenant-Id and X-Workspace-Id on agent-tier endpoints -- the token&#39;s claims encode the tenant + workspace + scopes. Issue via &#x60;&#x60;POST /api/v1/agent-tokens&#x60;&#x60;.
      * @param quality The quality parameter
      * @param datasetId The datasetId parameter
+     * @param limit The limit parameter
+     * @param offset The offset parameter
+     * @param xCorrelationId Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.
+     * @return PaginatedExampleRead
      * @throws WebClientResponseException if an error occurs while attempting to invoke the API
      */
-    public Mono<Void> listExamples(@javax.annotation.Nullable String quality, @javax.annotation.Nullable String datasetId) throws WebClientResponseException {
-        ParameterizedTypeReference<Void> localVarReturnType = new ParameterizedTypeReference<Void>() {};
-        return listExamplesRequestCreation(quality, datasetId).bodyToMono(localVarReturnType);
+    public Mono<PaginatedExampleRead> listExamples(@jakarta.annotation.Nonnull String xAgentToken, @jakarta.annotation.Nullable String quality, @jakarta.annotation.Nullable String datasetId, @jakarta.annotation.Nullable Integer limit, @jakarta.annotation.Nullable Integer offset, @jakarta.annotation.Nullable UUID xCorrelationId) throws WebClientResponseException {
+        ParameterizedTypeReference<PaginatedExampleRead> localVarReturnType = new ParameterizedTypeReference<PaginatedExampleRead>() {};
+        return listExamplesRequestCreation(xAgentToken, quality, datasetId, limit, offset, xCorrelationId).bodyToMono(localVarReturnType);
     }
 
     /**
      * List examples for the caller&#39;s workspace (agent-tier).
-     * :param http_request: Starlette request :param quality: optional quality filter (PROPOSED/APPROVED/REJECTED) :param dataset_id: optional dataset filter :return: &#x60;&#x60;{\&quot;items\&quot;: [...]}&#x60;&#x60;
+     * :param http_request: Starlette request :param quality: optional quality filter (PROPOSED/APPROVED/REJECTED) :param dataset_id: optional dataset filter :param limit: page size (default 100) :param offset: starting offset (default 0) :return: Paginated[ExampleRead]
      * <p><b>200</b> - Successful response
+     * @param xAgentToken Machine-to-machine bearer token. Replaces X-Tenant-Id and X-Workspace-Id on agent-tier endpoints -- the token&#39;s claims encode the tenant + workspace + scopes. Issue via &#x60;&#x60;POST /api/v1/agent-tokens&#x60;&#x60;.
      * @param quality The quality parameter
      * @param datasetId The datasetId parameter
+     * @param limit The limit parameter
+     * @param offset The offset parameter
+     * @param xCorrelationId Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.
+     * @return ResponseEntity&lt;PaginatedExampleRead&gt;
      * @throws WebClientResponseException if an error occurs while attempting to invoke the API
      */
-    public Mono<ResponseEntity<Void>> listExamplesWithHttpInfo(@javax.annotation.Nullable String quality, @javax.annotation.Nullable String datasetId) throws WebClientResponseException {
-        ParameterizedTypeReference<Void> localVarReturnType = new ParameterizedTypeReference<Void>() {};
-        return listExamplesRequestCreation(quality, datasetId).toEntity(localVarReturnType);
+    public Mono<ResponseEntity<PaginatedExampleRead>> listExamplesWithHttpInfo(@jakarta.annotation.Nonnull String xAgentToken, @jakarta.annotation.Nullable String quality, @jakarta.annotation.Nullable String datasetId, @jakarta.annotation.Nullable Integer limit, @jakarta.annotation.Nullable Integer offset, @jakarta.annotation.Nullable UUID xCorrelationId) throws WebClientResponseException {
+        ParameterizedTypeReference<PaginatedExampleRead> localVarReturnType = new ParameterizedTypeReference<PaginatedExampleRead>() {};
+        return listExamplesRequestCreation(xAgentToken, quality, datasetId, limit, offset, xCorrelationId).toEntity(localVarReturnType);
     }
 
     /**
      * List examples for the caller&#39;s workspace (agent-tier).
-     * :param http_request: Starlette request :param quality: optional quality filter (PROPOSED/APPROVED/REJECTED) :param dataset_id: optional dataset filter :return: &#x60;&#x60;{\&quot;items\&quot;: [...]}&#x60;&#x60;
+     * :param http_request: Starlette request :param quality: optional quality filter (PROPOSED/APPROVED/REJECTED) :param dataset_id: optional dataset filter :param limit: page size (default 100) :param offset: starting offset (default 0) :return: Paginated[ExampleRead]
      * <p><b>200</b> - Successful response
+     * @param xAgentToken Machine-to-machine bearer token. Replaces X-Tenant-Id and X-Workspace-Id on agent-tier endpoints -- the token&#39;s claims encode the tenant + workspace + scopes. Issue via &#x60;&#x60;POST /api/v1/agent-tokens&#x60;&#x60;.
      * @param quality The quality parameter
      * @param datasetId The datasetId parameter
+     * @param limit The limit parameter
+     * @param offset The offset parameter
+     * @param xCorrelationId Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.
      * @return ResponseSpec
      * @throws WebClientResponseException if an error occurs while attempting to invoke the API
      */
-    public ResponseSpec listExamplesWithResponseSpec(@javax.annotation.Nullable String quality, @javax.annotation.Nullable String datasetId) throws WebClientResponseException {
-        return listExamplesRequestCreation(quality, datasetId);
+    public ResponseSpec listExamplesWithResponseSpec(@jakarta.annotation.Nonnull String xAgentToken, @jakarta.annotation.Nullable String quality, @jakarta.annotation.Nullable String datasetId, @jakarta.annotation.Nullable Integer limit, @jakarta.annotation.Nullable Integer offset, @jakarta.annotation.Nullable UUID xCorrelationId) throws WebClientResponseException {
+        return listExamplesRequestCreation(xAgentToken, quality, datasetId, limit, offset, xCorrelationId);
     }
 }

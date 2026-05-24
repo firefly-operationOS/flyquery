@@ -28,6 +28,7 @@ from starlette.requests import Request
 
 from flyquery.core.services.examples.examples_service import ExamplesService
 from flyquery.interfaces.examples import ExampleCreate, ExampleRead
+from flyquery.interfaces.pagination import Paginated
 from flyquery.web.conventions import ResourceNotFound, tenant_context_from_request
 
 
@@ -57,7 +58,9 @@ class ExamplesController:
         http_request: Request,
         quality: QueryParam[str] = None,
         dataset_id: QueryParam[uuid.UUID] = None,
-    ) -> dict:
+        limit: QueryParam[int] = 100,
+        offset: QueryParam[int] = 0,
+    ) -> Paginated[ExampleRead]:
         """List examples for the caller's workspace, with optional filters."""
         ctx = tenant_context_from_request(http_request)
         ws = uuid.UUID(ctx.workspace_id)
@@ -67,7 +70,20 @@ class ExamplesController:
             quality=quality,
             dataset_id=dataset_id,
         )
-        return {"items": [ExampleRead.model_validate(r).model_dump(mode="json") for r in rows]}
+        items = [ExampleRead.model_validate(r) for r in rows]
+        # The service does not paginate yet -- we apply the slice here
+        # so the wire contract is stable. When the service grows real
+        # pagination this becomes a no-op.
+        sliced = items[offset : offset + limit]
+        return Paginated.of(sliced, total=len(items), limit=limit, offset=offset)
+
+    @get_mapping("/{example_id}")
+    async def get_example(self, example_id: PathVar[uuid.UUID]) -> ExampleRead:
+        """Fetch a single example by id. Returns 404 if not found."""
+        row = await self._service.get(example_id)
+        if row is None:
+            raise ResourceNotFound(f"example {example_id!r} not found")
+        return ExampleRead.model_validate(row)
 
     @post_mapping("/{example_id}:approve")
     async def approve(self, example_id: PathVar[uuid.UUID]) -> ExampleRead:

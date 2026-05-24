@@ -11,11 +11,11 @@ All URIs are relative to *http://localhost*
 
 ## create
 
-> ExampleRead create(exampleCreate)
+> ExampleRead create(xAgentToken, exampleCreate, xCorrelationId, idempotencyKey)
 
 Create an example (agent-tier — source&#x3D;AGENT_LEARNED, quality&#x3D;PROPOSED).
 
-:param http_request: Starlette request :param body: validated ExampleCreate :return: ExampleRead with created fields
+Replay-dedup&#39;d via &#x60;&#x60;Idempotency-Key&#x60;&#x60; (required). Without this gate an agent retrying a network blip would persist duplicate (question, SQL) PROPOSED rows that an operator would then have to manually reject.
 
 ### Example
 
@@ -24,6 +24,7 @@ Create an example (agent-tier — source&#x3D;AGENT_LEARNED, quality&#x3D;PROPOS
 import com.firefly.flyquery.ApiClient;
 import com.firefly.flyquery.ApiException;
 import com.firefly.flyquery.Configuration;
+import com.firefly.flyquery.auth.*;
 import com.firefly.flyquery.models.*;
 import com.firefly.flyquery.api.AgentExamplesApi;
 
@@ -31,11 +32,20 @@ public class Example {
     public static void main(String[] args) {
         ApiClient defaultClient = Configuration.getDefaultApiClient();
         defaultClient.setBasePath("http://localhost");
+        
+        // Configure API key authorization: AgentToken
+        ApiKeyAuth AgentToken = (ApiKeyAuth) defaultClient.getAuthentication("AgentToken");
+        AgentToken.setApiKey("YOUR API KEY");
+        // Uncomment the following line to set a prefix for the API key, e.g. "Token" (defaults to null)
+        //AgentToken.setApiKeyPrefix("Token");
 
         AgentExamplesApi apiInstance = new AgentExamplesApi(defaultClient);
+        String xAgentToken = "fqt_live_aBcDeF1234567890aBcDeF1234567890"; // String | Machine-to-machine bearer token. Replaces X-Tenant-Id and X-Workspace-Id on agent-tier endpoints -- the token's claims encode the tenant + workspace + scopes. Issue via ``POST /api/v1/agent-tokens``.
         ExampleCreate exampleCreate = new ExampleCreate(); // ExampleCreate | 
+        UUID xCorrelationId = UUID.fromString("550e8400-e29b-41d4-a716-446655440000"); // UUID | Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.
+        String idempotencyKey = "ingest-2026-05-23-abc123"; // String | Optional client-supplied idempotency key for mutating operations. The first request with a key persists its result; subsequent requests with the same key + same tenant return the cached response. Keys expire after 24h.
         try {
-            ExampleRead result = apiInstance.create(exampleCreate);
+            ExampleRead result = apiInstance.create(xAgentToken, exampleCreate, xCorrelationId, idempotencyKey);
             System.out.println(result);
         } catch (ApiException e) {
             System.err.println("Exception when calling AgentExamplesApi#create");
@@ -53,7 +63,10 @@ public class Example {
 
 | Name | Type | Description  | Notes |
 |------------- | ------------- | ------------- | -------------|
+| **xAgentToken** | **String**| Machine-to-machine bearer token. Replaces X-Tenant-Id and X-Workspace-Id on agent-tier endpoints -- the token&#39;s claims encode the tenant + workspace + scopes. Issue via &#x60;&#x60;POST /api/v1/agent-tokens&#x60;&#x60;. | |
 | **exampleCreate** | [**ExampleCreate**](ExampleCreate.md)|  | |
+| **xCorrelationId** | **UUID**| Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header. | [optional] |
+| **idempotencyKey** | **String**| Optional client-supplied idempotency key for mutating operations. The first request with a key persists its result; subsequent requests with the same key + same tenant return the cached response. Keys expire after 24h. | [optional] |
 
 ### Return type
 
@@ -61,7 +74,7 @@ public class Example {
 
 ### Authorization
 
-No authorization required
+[AgentToken](../README.md#AgentToken)
 
 ### HTTP request headers
 
@@ -78,11 +91,11 @@ No authorization required
 
 ## listExamples
 
-> listExamples(quality, datasetId)
+> PaginatedExampleRead listExamples(xAgentToken, quality, datasetId, limit, offset, xCorrelationId)
 
 List examples for the caller&#39;s workspace (agent-tier).
 
-:param http_request: Starlette request :param quality: optional quality filter (PROPOSED/APPROVED/REJECTED) :param dataset_id: optional dataset filter :return: &#x60;&#x60;{\&quot;items\&quot;: [...]}&#x60;&#x60;
+:param http_request: Starlette request :param quality: optional quality filter (PROPOSED/APPROVED/REJECTED) :param dataset_id: optional dataset filter :param limit: page size (default 100) :param offset: starting offset (default 0) :return: Paginated[ExampleRead]
 
 ### Example
 
@@ -91,6 +104,7 @@ List examples for the caller&#39;s workspace (agent-tier).
 import com.firefly.flyquery.ApiClient;
 import com.firefly.flyquery.ApiException;
 import com.firefly.flyquery.Configuration;
+import com.firefly.flyquery.auth.*;
 import com.firefly.flyquery.models.*;
 import com.firefly.flyquery.api.AgentExamplesApi;
 
@@ -98,12 +112,23 @@ public class Example {
     public static void main(String[] args) {
         ApiClient defaultClient = Configuration.getDefaultApiClient();
         defaultClient.setBasePath("http://localhost");
+        
+        // Configure API key authorization: AgentToken
+        ApiKeyAuth AgentToken = (ApiKeyAuth) defaultClient.getAuthentication("AgentToken");
+        AgentToken.setApiKey("YOUR API KEY");
+        // Uncomment the following line to set a prefix for the API key, e.g. "Token" (defaults to null)
+        //AgentToken.setApiKeyPrefix("Token");
 
         AgentExamplesApi apiInstance = new AgentExamplesApi(defaultClient);
-        String quality = "null"; // String | 
+        String xAgentToken = "fqt_live_aBcDeF1234567890aBcDeF1234567890"; // String | Machine-to-machine bearer token. Replaces X-Tenant-Id and X-Workspace-Id on agent-tier endpoints -- the token's claims encode the tenant + workspace + scopes. Issue via ``POST /api/v1/agent-tokens``.
+        String quality = "quality_example"; // String | 
         String datasetId = "datasetId_example"; // String | 
+        Integer limit = 100; // Integer | 
+        Integer offset = 0; // Integer | 
+        UUID xCorrelationId = UUID.fromString("550e8400-e29b-41d4-a716-446655440000"); // UUID | Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.
         try {
-            apiInstance.listExamples(quality, datasetId);
+            PaginatedExampleRead result = apiInstance.listExamples(xAgentToken, quality, datasetId, limit, offset, xCorrelationId);
+            System.out.println(result);
         } catch (ApiException e) {
             System.err.println("Exception when calling AgentExamplesApi#listExamples");
             System.err.println("Status code: " + e.getCode());
@@ -120,21 +145,25 @@ public class Example {
 
 | Name | Type | Description  | Notes |
 |------------- | ------------- | ------------- | -------------|
-| **quality** | **String**|  | [optional] [default to null] |
+| **xAgentToken** | **String**| Machine-to-machine bearer token. Replaces X-Tenant-Id and X-Workspace-Id on agent-tier endpoints -- the token&#39;s claims encode the tenant + workspace + scopes. Issue via &#x60;&#x60;POST /api/v1/agent-tokens&#x60;&#x60;. | |
+| **quality** | **String**|  | [optional] |
 | **datasetId** | **String**|  | [optional] |
+| **limit** | **Integer**|  | [optional] [default to 100] |
+| **offset** | **Integer**|  | [optional] [default to 0] |
+| **xCorrelationId** | **UUID**| Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header. | [optional] |
 
 ### Return type
 
-null (empty response body)
+[**PaginatedExampleRead**](PaginatedExampleRead.md)
 
 ### Authorization
 
-No authorization required
+[AgentToken](../README.md#AgentToken)
 
 ### HTTP request headers
 
 - **Content-Type**: Not defined
-- **Accept**: Not defined
+- **Accept**: application/json
 
 
 ### HTTP response details

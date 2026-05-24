@@ -6,6 +6,18 @@
 # is loaded after pyfly merges its config sources.
 
 pyfly:
+  # Surfaced at /actuator/info -- the @pyfly_application decorator sets
+  # these on the application class but the InfoEndpoint reads from
+  # ``pyfly.app.*`` config keys, so we mirror them here so health probes
+  # and admin tooling identify the service correctly.
+  app:
+    name: flyquery
+    version: 26.5.10
+    description: >-
+      Operational Structured-Data Intelligence (upload-driven).
+      Multi-tenant ingestion + Text-to-SQL over user-uploaded structured
+      files. Part of Firefly OperationOS.
+
   web:
     enabled: true
     base-path: /api

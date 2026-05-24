@@ -1,32 +1,39 @@
 # Copyright 2026 Firefly Software Solutions Inc
 """Tables controller.
 
-GET  /api/v1/tables                         -- list + search/filter (NEW)
-GET  /api/v1/tables/by-name/{name}          -- resolve by dataset + name (NEW)
+GET  /api/v1/tables                         -- list + search/filter
+GET  /api/v1/tables/by-name/{name}          -- resolve by dataset + name
 GET  /api/v1/datasets/{dataset_id}/tables   -- list tables for a dataset
 GET  /api/v1/tables/{table_id}              -- get single table
 GET  /api/v1/tables/{table_id}/snapshots    -- list snapshots
 GET  /api/v1/tables/{table_id}/objects      -- list schema_objects (cols+table)
 GET  /api/v1/tables/{table_id}/changes      -- list schema changes
 
-The ``/tables`` list takes ``q`` (free-text on name + qualified_name),
+The controller is a thin HTTP adapter -- every read goes through
+:class:`TableService`, which composes
+:class:`TableRepository` + :class:`SchemaSnapshotRepository`. The
+``/tables`` list takes ``q`` (free-text on name + qualified_name),
 ``name`` (exact), ``dataset_id``, ``kind`` (UPLOADED/VIEW/DERIVED),
-``is_active``, ``limit``, ``offset``. Response is an envelope with
-``{items, total, limit, offset, has_more}``.
+``is_active``, ``limit``, ``offset``. Response is
+:class:`Paginated[TableRead]`.
 """
 
 from __future__ import annotations
 
 import uuid
-from typing import Any
 
-import sqlalchemy as sa
 from pyfly.container import rest_controller
 from pyfly.web import PathVar, QueryParam, get_mapping, request_mapping
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from starlette.requests import Request
 
-from flyquery.interfaces.files import SchemaChangeRead, SchemaObjectRead, SnapshotRead, TableRead
+from flyquery.core.services.tables.table_service import TableNameAmbiguous, TableService
+from flyquery.interfaces.files import (
+    SchemaChangeRead,
+    SchemaObjectRead,
+    SnapshotRead,
+    TableRead,
+)
+from flyquery.interfaces.pagination import Paginated
 from flyquery.web.conventions import ResourceNotFound, tenant_context_from_request
 
 
@@ -35,8 +42,8 @@ from flyquery.web.conventions import ResourceNotFound, tenant_context_from_reque
 class TablesController:
     """REST adapter for schema knowledge-base tables."""
 
-    def __init__(self, session: async_sessionmaker[AsyncSession]) -> None:
-        self._factory = session
+    def __init__(self, service: TableService) -> None:
+        self._service = service
 
     # ------------------------------------------------------------------ #
     # List tables for a dataset                                           #
@@ -47,28 +54,11 @@ class TablesController:
         self,
         http_request: Request,
         dataset_id: PathVar[uuid.UUID],
-    ) -> dict:
+    ) -> Paginated[TableRead]:
         ctx = tenant_context_from_request(http_request)
-        async with self._factory() as s:
-            result = await s.execute(
-                sa.text(
-                    """
-                    SELECT
-                        t.*,
-                        ss.n_columns
-                    FROM flyquery_tables t
-                    LEFT JOIN flyquery_schema_snapshots ss
-                        ON ss.id = t.current_snapshot_id
-                    WHERE t.dataset_id = :ds_id
-                      AND t.tenant_id = :tenant
-                      AND t.is_active = true
-                    ORDER BY t.created_at
-                    """
-                ),
-                {"ds_id": dataset_id, "tenant": ctx.tenant_id},
-            )
-            rows = [dict(r) for r in result.mappings().all()]
-        return {"items": [_table_row_to_read(r).model_dump(mode="json") for r in rows]}
+        rows = await self._service.list_for_dataset(dataset_id, tenant_id=ctx.tenant_id)
+        items = [_table_row_to_read(r) for r in rows]
+        return Paginated.of(items, total=len(items))
 
     # ------------------------------------------------------------------ #
     # Search/filter tables across one or all datasets                     #
@@ -85,7 +75,7 @@ class TablesController:
         is_active: QueryParam[bool] = None,
         limit: QueryParam[int] = 100,
         offset: QueryParam[int] = 0,
-    ) -> dict:
+    ) -> Paginated[TableRead]:
         """Search/filter tables across the caller's workspace.
 
         Query parameters
@@ -100,89 +90,32 @@ class TablesController:
         * ``limit``      -- page size, clamped to [1, 1000]. Default 100.
         * ``offset``     -- starting offset. Default 0.
 
-        Response envelope: ``{items, total, limit, offset, has_more}``.
+        Response envelope: ``Paginated[TableRead]``.
         """
         ctx = tenant_context_from_request(http_request)
-        like = f"%{q}%" if q else None
+        workspace_id = uuid.UUID(ctx.workspace_id) if isinstance(ctx.workspace_id, str) else ctx.workspace_id
+        rows, total = await self._service.search(
+            tenant_id=ctx.tenant_id,
+            workspace_id=workspace_id,
+            q=q,
+            name=name,
+            dataset_id=dataset_id,
+            kind=kind,
+            is_active=is_active,
+            limit=limit,
+            offset=offset,
+        )
+        items = [_table_row_to_read(r) for r in rows]
+        # Use service-clamped values for the envelope so the
+        # consumer sees the actual paging applied.
         clamped_limit = max(1, min(1000, int(limit)))
         clamped_offset = max(0, int(offset))
-        effective_active = True if is_active is None else bool(is_active)
-        params: dict[str, Any] = {
-            "tenant": ctx.tenant_id,
-            "workspace": uuid.UUID(ctx.workspace_id)
-            if isinstance(ctx.workspace_id, str)
-            else ctx.workspace_id,
-            "q": like,
-            "name": name,
-            "ds_id": dataset_id,
-            "kind": kind,
-            "active": effective_active,
-            "limit": clamped_limit,
-            "offset": clamped_offset,
-        }
-        async with self._factory() as s:
-            result = await s.execute(
-                sa.text(
-                    """
-                    SELECT
-                        t.*,
-                        ss.n_columns,
-                        COUNT(*) OVER () AS _total
-                    FROM flyquery_tables t
-                    LEFT JOIN flyquery_schema_snapshots ss
-                        ON ss.id = t.current_snapshot_id
-                    WHERE t.tenant_id = :tenant
-                      AND t.workspace_id = :workspace
-                      AND t.is_active = :active
-                      AND (CAST(:ds_id AS uuid) IS NULL OR t.dataset_id = CAST(:ds_id AS uuid))
-                      AND (CAST(:kind AS text) IS NULL OR t.kind = CAST(:kind AS text))
-                      AND (CAST(:name AS text) IS NULL OR t.name = CAST(:name AS text))
-                      AND (CAST(:q AS text) IS NULL
-                           OR t.name ILIKE CAST(:q AS text)
-                           OR t.qualified_name ILIKE CAST(:q AS text))
-                    ORDER BY t.created_at DESC
-                    LIMIT :limit OFFSET :offset
-                    """
-                ),
-                params,
-            )
-            rows = [dict(r) for r in result.mappings().all()]
-        if rows:
-            total = int(rows[0].pop("_total"))
-            for r in rows[1:]:
-                r.pop("_total", None)
-        else:
-            total = await self._count_tables(params)
-        items = [_table_row_to_read(r).model_dump(mode="json") for r in rows]
-        return {
-            "items": items,
-            "total": total,
-            "limit": clamped_limit,
-            "offset": clamped_offset,
-            "has_more": (clamped_offset + len(items)) < total,
-        }
-
-    async def _count_tables(self, params: dict[str, Any]) -> int:
-        async with self._factory() as s:
-            result = await s.execute(
-                sa.text(
-                    """
-                    SELECT COUNT(*) AS n
-                    FROM flyquery_tables t
-                    WHERE t.tenant_id = :tenant
-                      AND t.workspace_id = :workspace
-                      AND t.is_active = :active
-                      AND (CAST(:ds_id AS uuid) IS NULL OR t.dataset_id = CAST(:ds_id AS uuid))
-                      AND (CAST(:kind AS text) IS NULL OR t.kind = CAST(:kind AS text))
-                      AND (CAST(:name AS text) IS NULL OR t.name = CAST(:name AS text))
-                      AND (CAST(:q AS text) IS NULL
-                           OR t.name ILIKE CAST(:q AS text)
-                           OR t.qualified_name ILIKE CAST(:q AS text))
-                    """
-                ),
-                params,
-            )
-            return int(result.scalar_one())
+        return Paginated.of(
+            items,
+            total=total,
+            limit=clamped_limit,
+            offset=clamped_offset,
+        )
 
     # ------------------------------------------------------------------ #
     # Resolve a table by (dataset_id, name)                               #
@@ -198,42 +131,23 @@ class TablesController:
         """Resolve a table by ``name`` within the caller's workspace.
 
         Pass ``?dataset_id=...`` to scope the lookup to a single dataset.
-        Returns 404 if the name is not unique within the scope or no
-        match is found.
+        Returns 404 if the name is ambiguous (matches multiple datasets)
+        or no match is found.
         """
         ctx = tenant_context_from_request(http_request)
-        ws = uuid.UUID(ctx.workspace_id) if isinstance(ctx.workspace_id, str) else ctx.workspace_id
-        async with self._factory() as s:
-            result = await s.execute(
-                sa.text(
-                    """
-                    SELECT t.*, ss.n_columns
-                    FROM flyquery_tables t
-                    LEFT JOIN flyquery_schema_snapshots ss
-                        ON ss.id = t.current_snapshot_id
-                    WHERE t.tenant_id = :tenant
-                      AND t.workspace_id = :workspace
-                      AND t.name = :name
-                      AND t.is_active = true
-                      AND (CAST(:ds_id AS uuid) IS NULL OR t.dataset_id = CAST(:ds_id AS uuid))
-                    LIMIT 2
-                    """
-                ),
-                {
-                    "tenant": ctx.tenant_id,
-                    "workspace": ws,
-                    "name": name,
-                    "ds_id": dataset_id,
-                },
+        workspace_id = uuid.UUID(ctx.workspace_id) if isinstance(ctx.workspace_id, str) else ctx.workspace_id
+        try:
+            row = await self._service.find_by_name(
+                name,
+                tenant_id=ctx.tenant_id,
+                workspace_id=workspace_id,
+                dataset_id=dataset_id,
             )
-            rows = [dict(r) for r in result.mappings().all()]
-        if not rows:
+        except TableNameAmbiguous as exc:
+            raise ResourceNotFound(str(exc)) from exc
+        if row is None:
             raise ResourceNotFound(f"table with name {name!r} not found")
-        if len(rows) > 1:
-            raise ResourceNotFound(
-                f"table name {name!r} matches multiple datasets; pass ?dataset_id= to disambiguate"
-            )
-        return _table_row_to_read(rows[0])
+        return _table_row_to_read(row)
 
     # ------------------------------------------------------------------ #
     # Get single table                                                    #
@@ -246,25 +160,10 @@ class TablesController:
         table_id: PathVar[uuid.UUID],
     ) -> TableRead:
         ctx = tenant_context_from_request(http_request)
-        async with self._factory() as s:
-            result = await s.execute(
-                sa.text(
-                    """
-                    SELECT
-                        t.*,
-                        ss.n_columns
-                    FROM flyquery_tables t
-                    LEFT JOIN flyquery_schema_snapshots ss
-                        ON ss.id = t.current_snapshot_id
-                    WHERE t.id = :tid AND t.tenant_id = :tenant
-                    """
-                ),
-                {"tid": table_id, "tenant": ctx.tenant_id},
-            )
-            row = result.mappings().one_or_none()
+        row = await self._service.get(table_id, tenant_id=ctx.tenant_id)
         if row is None:
             raise ResourceNotFound(f"table {table_id!r} not found")
-        return _table_row_to_read(dict(row))
+        return _table_row_to_read(row)
 
     # ------------------------------------------------------------------ #
     # List snapshots                                                      #
@@ -275,40 +174,14 @@ class TablesController:
         self,
         http_request: Request,
         table_id: PathVar[uuid.UUID],
-    ) -> dict:
+    ) -> Paginated[SnapshotRead]:
         ctx = tenant_context_from_request(http_request)
-        async with self._factory() as s:
-            result = await s.execute(
-                sa.text(
-                    """
-                    SELECT *
-                    FROM flyquery_schema_snapshots
-                    WHERE table_id = :tid AND tenant_id = :tenant
-                    ORDER BY taken_at
-                    """
-                ),
-                {"tid": table_id, "tenant": ctx.tenant_id},
-            )
-            rows = [dict(r) for r in result.mappings().all()]
-        return {
-            "items": [
-                SnapshotRead(
-                    id=r["id"],
-                    table_id=r["table_id"],
-                    taken_at=r["taken_at"],
-                    n_columns=r["n_columns"],
-                    n_rows_actual=r.get("n_rows_actual"),
-                    n_rows_estimate=r.get("n_rows_estimate"),
-                    parquet_byte_size=r.get("parquet_byte_size"),
-                    status=r["status"],
-                    triggered_by=r["triggered_by"],
-                ).model_dump(mode="json")
-                for r in rows
-            ]
-        }
+        rows = await self._service.list_snapshots(table_id, tenant_id=ctx.tenant_id)
+        items = [_snapshot_row_to_read(r) for r in rows]
+        return Paginated.of(items, total=len(items))
 
     # ------------------------------------------------------------------ #
-    # List schema objects (columns + table rows) for current snapshot    #
+    # List schema objects for current snapshot                            #
     # ------------------------------------------------------------------ #
 
     @get_mapping("/tables/{table_id}/objects")
@@ -316,50 +189,12 @@ class TablesController:
         self,
         http_request: Request,
         table_id: PathVar[uuid.UUID],
-    ) -> dict:
+    ) -> Paginated[SchemaObjectRead]:
         """List schema_objects for the table's current snapshot."""
         ctx = tenant_context_from_request(http_request)
-        async with self._factory() as s:
-            result = await s.execute(
-                sa.text(
-                    """
-                    SELECT so.*
-                    FROM flyquery_schema_objects so
-                    JOIN flyquery_tables t ON t.current_snapshot_id = so.snapshot_id
-                    WHERE t.id = :tid AND t.tenant_id = :tenant
-                      AND so.tenant_id = :tenant
-                    ORDER BY so.kind DESC, so.qualified_name
-                    """
-                ),
-                {"tid": table_id, "tenant": ctx.tenant_id},
-            )
-            rows = [dict(r) for r in result.mappings().all()]
-        return {
-            "items": [
-                SchemaObjectRead(
-                    id=r["id"],
-                    tenant_id=r["tenant_id"],
-                    workspace_id=r["workspace_id"],
-                    table_id=r["table_id"],
-                    snapshot_id=r["snapshot_id"],
-                    kind=r["kind"],
-                    qualified_name=r["qualified_name"],
-                    data_type=r.get("data_type"),
-                    is_nullable=r.get("is_nullable"),
-                    description=r.get("description"),
-                    description_source=r.get("description_source"),
-                    synonyms_json=r.get("synonyms_json"),
-                    pii_tag=r.get("pii_tag"),
-                    pii_source=r.get("pii_source"),
-                    business_owner=r.get("business_owner"),
-                    governance_json=r.get("governance_json"),
-                    is_active=r.get("is_active", True),
-                    created_at=r["created_at"],
-                    last_changed_at=r["last_changed_at"],
-                ).model_dump(mode="json")
-                for r in rows
-            ]
-        }
+        rows = await self._service.list_objects(table_id, tenant_id=ctx.tenant_id)
+        items = [_object_row_to_read(r) for r in rows]
+        return Paginated.of(items, total=len(items))
 
     # ------------------------------------------------------------------ #
     # List schema changes                                                 #
@@ -370,44 +205,15 @@ class TablesController:
         self,
         http_request: Request,
         table_id: PathVar[uuid.UUID],
-    ) -> dict:
+    ) -> Paginated[SchemaChangeRead]:
         ctx = tenant_context_from_request(http_request)
-        async with self._factory() as s:
-            result = await s.execute(
-                sa.text(
-                    """
-                    SELECT *
-                    FROM flyquery_schema_changes
-                    WHERE table_id = :tid AND tenant_id = :tenant
-                    ORDER BY created_at
-                    """
-                ),
-                {"tid": table_id, "tenant": ctx.tenant_id},
-            )
-            rows = [dict(r) for r in result.mappings().all()]
-        return {
-            "items": [
-                SchemaChangeRead(
-                    id=r["id"],
-                    table_id=r["table_id"],
-                    prev_snapshot_id=r.get("prev_snapshot_id"),
-                    next_snapshot_id=r["next_snapshot_id"],
-                    column_name=r["column_name"],
-                    change=r["change"],
-                    before_json=r.get("before_json"),
-                    after_json=r.get("after_json"),
-                    llm_rationale=r.get("llm_rationale"),
-                    approved_by=r.get("approved_by"),
-                    approved_at=r.get("approved_at"),
-                    created_at=r["created_at"],
-                ).model_dump(mode="json")
-                for r in rows
-            ]
-        }
+        rows = await self._service.list_changes(table_id, tenant_id=ctx.tenant_id)
+        items = [_change_row_to_read(r) for r in rows]
+        return Paginated.of(items, total=len(items))
 
 
 # ------------------------------------------------------------------ #
-# Helper                                                              #
+# Row -> DTO helpers                                                   #
 # ------------------------------------------------------------------ #
 
 
@@ -430,4 +236,59 @@ def _table_row_to_read(row: dict) -> TableRead:
         created_at=row["created_at"],
         updated_at=row["updated_at"],
         n_columns=row.get("n_columns"),
+    )
+
+
+def _snapshot_row_to_read(row: dict) -> SnapshotRead:
+    return SnapshotRead(
+        id=row["id"],
+        table_id=row["table_id"],
+        taken_at=row["taken_at"],
+        n_columns=row["n_columns"],
+        n_rows_actual=row.get("n_rows_actual"),
+        n_rows_estimate=row.get("n_rows_estimate"),
+        parquet_byte_size=row.get("parquet_byte_size"),
+        status=row["status"],
+        triggered_by=row["triggered_by"],
+    )
+
+
+def _object_row_to_read(row: dict) -> SchemaObjectRead:
+    return SchemaObjectRead(
+        id=row["id"],
+        tenant_id=row["tenant_id"],
+        workspace_id=row["workspace_id"],
+        table_id=row["table_id"],
+        snapshot_id=row["snapshot_id"],
+        kind=row["kind"],
+        qualified_name=row["qualified_name"],
+        data_type=row.get("data_type"),
+        is_nullable=row.get("is_nullable"),
+        description=row.get("description"),
+        description_source=row.get("description_source"),
+        synonyms_json=row.get("synonyms_json"),
+        pii_tag=row.get("pii_tag"),
+        pii_source=row.get("pii_source"),
+        business_owner=row.get("business_owner"),
+        governance_json=row.get("governance_json"),
+        is_active=row.get("is_active", True),
+        created_at=row["created_at"],
+        last_changed_at=row["last_changed_at"],
+    )
+
+
+def _change_row_to_read(row: dict) -> SchemaChangeRead:
+    return SchemaChangeRead(
+        id=row["id"],
+        table_id=row["table_id"],
+        prev_snapshot_id=row.get("prev_snapshot_id"),
+        next_snapshot_id=row["next_snapshot_id"],
+        column_name=row["column_name"],
+        change=row["change"],
+        before_json=row.get("before_json"),
+        after_json=row.get("after_json"),
+        llm_rationale=row.get("llm_rationale"),
+        approved_by=row.get("approved_by"),
+        approved_at=row.get("approved_at"),
+        created_at=row["created_at"],
     )
