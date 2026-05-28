@@ -38,14 +38,21 @@ class TestRenameDetectionAgent:
 
 
 class TestDetectRenamesLogic:
-    """Test the _detect_renames helper with no agent (settings=None)."""
+    """Test the _detect_renames helper with no agent (settings=None).
+
+    ``_detect_renames`` returns a 3-tuple ``(confirmed, rationales, candidates)``
+    as of 26.5.12 so the LLM rename rationale can be persisted alongside the
+    auto-confirmed match. With ``settings=None`` the LLM agent is skipped, so
+    ambiguous removed-columns fall through to the unscored fallback candidates
+    list.
+    """
 
     @pytest.mark.asyncio
     async def test_unambiguous_rename_auto_confirmed(self):
         from flyquery.core.services.ingestion.stages.reconcile import _detect_renames
 
         # One removed col, one added col, same type → auto-confirmed
-        confirmed, candidates = await _detect_renames(
+        confirmed, rationales, candidates = await _detect_renames(
             removed_names=["old_email"],
             added_names=["contact_email"],
             prev_columns={"old_email": "VARCHAR"},
@@ -55,6 +62,10 @@ class TestDetectRenamesLogic:
         )
         assert "old_email" in confirmed
         assert confirmed["old_email"] == "contact_email"
+        # 1-to-1 type match emits a synthetic rationale so the persisted
+        # llm_rationale field is never empty for auto-confirmed renames.
+        assert "old_email" in rationales
+        assert rationales["old_email"]
         assert candidates == []
 
     @pytest.mark.asyncio
@@ -62,7 +73,7 @@ class TestDetectRenamesLogic:
         from flyquery.core.services.ingestion.stages.reconcile import _detect_renames
 
         # Two removed cols → two added cols, same type → ambiguous → candidates
-        confirmed, candidates = await _detect_renames(
+        confirmed, rationales, candidates = await _detect_renames(
             removed_names=["col_a", "col_b"],
             added_names=["new_a", "new_b"],
             prev_columns={"col_a": "INTEGER", "col_b": "INTEGER"},
@@ -70,15 +81,20 @@ class TestDetectRenamesLogic:
             prev_detail=[],
             settings=None,
         )
-        # Settings=None means agent is skipped → all go to candidates
+        # Settings=None → LLM agent skipped → fallback candidate list with
+        # ``confidence=None`` and ``rationale=None`` for every entry.
         assert len(candidates) >= 1
+        for _old_name, ranked in candidates:
+            assert isinstance(ranked, list)
+            for item in ranked:
+                assert set(item.keys()) == {"name", "confidence", "rationale"}
 
     @pytest.mark.asyncio
     async def test_type_mismatch_no_rename(self):
         from flyquery.core.services.ingestion.stages.reconcile import _detect_renames
 
         # Type mismatch → no rename detected
-        confirmed, candidates = await _detect_renames(
+        confirmed, rationales, candidates = await _detect_renames(
             removed_names=["old_col"],
             added_names=["new_col"],
             prev_columns={"old_col": "INTEGER"},
@@ -88,14 +104,14 @@ class TestDetectRenamesLogic:
         )
         # Different types → no match at all
         assert "old_col" not in confirmed
-        # may be in candidates if something else matched, but typically empty
         assert len(confirmed) == 0
+        assert rationales == {}
 
     @pytest.mark.asyncio
     async def test_empty_lists_no_op(self):
         from flyquery.core.services.ingestion.stages.reconcile import _detect_renames
 
-        confirmed, candidates = await _detect_renames(
+        confirmed, rationales, candidates = await _detect_renames(
             removed_names=[],
             added_names=[],
             prev_columns={},
@@ -104,6 +120,7 @@ class TestDetectRenamesLogic:
             settings=None,
         )
         assert confirmed == {}
+        assert rationales == {}
         assert candidates == []
 
 
