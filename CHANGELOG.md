@@ -5,6 +5,72 @@ follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and
 the project uses [CalVer](https://calver.org/) (YY.MM.PP) per the
 Firefly Framework convention (memory: `firefly_uses_calver`).
 
+## [26.5.12] - 2026-05-28
+
+### Fixed — Re-upload pipeline correctness + LLM rename detection
+
+Four cooperating bug fixes uncovered during multi-version re-upload
+testing of the same workbook. No public API or response-shape change:
+the PUT endpoint URL, multipart contract and `ReuploadResponse`
+DTO are byte-equivalent to `26.5.11`, so the Python and Java SDKs
+keep working without regeneration.
+
+1. **`PUT /api/v1/datasets/{ds}/tables/{tbl}:upload` no longer
+   corrupts the targeted snapshot of a multi-section workbook.**
+   `IngestService.ingest_reupload` now looks up the existing table's
+   `sheet_or_json_path` and sanitised `name` (single PK lookup) and
+   threads them into Stage 2. `run_parse` filters the proposed-table
+   list down to the matching section, with fallback by sanitised name
+   so a row insertion that shifts the section range
+   (`section[1:697]` → `section[1:698]`) still resolves correctly.
+   Before the fix, the parser kept whatever section came first in the
+   workbook (usually Sheet1), silently overwriting the targeted
+   table's snapshot with unrelated data.
+
+2. **LLM rename-detection agent is actually invoked.** Both call
+   sites of `run_reconcile` (`IngestService.ingest` sync path and
+   `IngestWorker` async path) now forward `settings=self._settings`.
+   Without this, `_invoke_rename_agent` short-circuited on
+   `if settings is None: return None`, so the Haiku-backed rename
+   resolver never ran and every ambiguous removed-column landed as a
+   `RENAMED_CANDIDATE` for human review instead of being auto-confirmed.
+
+3. **`flyquery_schema_changes.llm_rationale` is persisted.**
+   `_invoke_rename_agent` now returns the full ranked list
+   (`[{name, confidence, rationale}, ...]`) instead of just the top
+   `(confidence, name)` tuple. `_detect_renames` returns a third
+   `confirmed_rationales` map keyed by old column name.
+   `_write_schema_changes` writes the rationale into `RENAMED` rows
+   (LLM rationale or "Auto-confirmed by 1-to-1 type signature match"
+   for the unambiguous branch) and into `RENAMED_CANDIDATE` rows
+   (rationale of the top proposal hoisted for fast audit).
+
+4. **`RENAMED_CANDIDATE.after_json.candidates` carries the LLM's
+   ranking.** When the top proposal misses the 0.8 auto-confirm
+   threshold, the system now stores the ranked
+   `[{name, confidence, rationale}]` list from the agent. The old
+   behaviour stored the raw type-group of added columns with no
+   discrimination — every `RENAMED_CANDIDATE` for the same type
+   showed the same flat list. Operators reviewing pending renames
+   now see "best guess first" with the confidence and rationale per
+   alternative.
+
+### Changed — Internal-only
+
+- `run_parse` accepts two new keyword params: `target_sheet_or_json_path`
+  and `target_name`. Both default to `None`, so call sites that didn't
+  ask for targeted-section selection are unaffected. The OpenAPI
+  surface is unchanged.
+- `_detect_renames` signature changed from
+  `tuple[dict, list]` to `tuple[dict, dict, list]`. Internal helper;
+  not exported. Callers updated in the same change.
+
+### Fixed — CI
+
+- `ruff format` on `stages/parse.py` and `stages/reconcile.py`
+  (line-length wrapping). Caught by the `task lint` step on the
+  `26.5.11` PR; rewrapped without behavior change.
+
 ## [26.5.11] - 2026-05-24
 
 ### Added — Webhook callbacks for every async ingest job

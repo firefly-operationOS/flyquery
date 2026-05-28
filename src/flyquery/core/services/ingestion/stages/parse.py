@@ -327,11 +327,7 @@ async def run_parse(
             if match_idx is None and target_name:
                 target_norm = _sanitise_name(target_name)
                 match_idx = next(
-                    (
-                        i
-                        for i, p in enumerate(proposed)
-                        if _sanitise_name(p.name) == target_norm
-                    ),
+                    (i for i, p in enumerate(proposed) if _sanitise_name(p.name) == target_norm),
                     None,
                 )
                 if match_idx is not None:

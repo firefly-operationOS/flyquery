@@ -128,7 +128,9 @@ async def run_reconcile(
 
     confirmed_renames: dict[str, str] = {}  # old_name → new_name
     confirmed_rationales: dict[str, str] = {}  # old_name → LLM rationale
-    candidate_renames: list[tuple[str, list[dict[str, Any]]]] = []  # (old_name, [{name, confidence, rationale}])
+    candidate_renames: list[
+        tuple[str, list[dict[str, Any]]]
+    ] = []  # (old_name, [{name, confidence, rationale}])
 
     if prev_snapshot and removed and added:
         confirmed_renames, confirmed_rationales, candidate_renames = await _detect_renames(
@@ -700,10 +702,7 @@ async def _detect_renames(
                         # LLM unavailable / errored — fall back to the raw
                         # type-group as unscored candidates so the operator
                         # still has something to review.
-                        fallback = [
-                            {"name": c, "confidence": None, "rationale": None}
-                            for c in add_cols
-                        ]
+                        fallback = [{"name": c, "confidence": None, "rationale": None} for c in add_cols]
                         candidates.append((old_name, fallback))
                         unmatched_removed.discard(old_name)
 
