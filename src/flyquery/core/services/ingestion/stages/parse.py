@@ -271,6 +271,15 @@ async def run_parse(
     # When re-uploading into an existing table slot, pass the existing table_id.
     # When None, new table rows are inserted.
     existing_table_id: uuid.UUID | None = None,
+    # When re-uploading into a specific section of a multi-section workbook
+    # (XLSX/ODS), pass the target table's ``sheet_or_json_path`` and/or
+    # sanitised ``name`` so the parser can pick the matching section instead
+    # of defaulting to the first one. ``sheet_or_json_path`` is tried first
+    # (exact match), then ``target_name`` (sanitised-name match — robust
+    # across re-uploads where the section row range shifted slightly).
+    # Falls back to the first proposed table when neither matches.
+    target_sheet_or_json_path: str | None = None,
+    target_name: str | None = None,
     dataset_name: str = "dataset",
     workspace_locale: str = "en-US",
     original_filename: str | None = None,
@@ -288,6 +297,57 @@ async def run_parse(
         rules = TableExtractionRules()
         proposed = await reader.enumerate_tables(decompressed_path, rules)
         logger.info("stage=parse format=%s tables_found=%d", file_format, len(proposed))
+
+        # Targeted re-upload: when the caller supplies the section path or
+        # sanitised name of the existing table, isolate the matching section
+        # instead of taking whichever sheet comes first.
+        #
+        # Match precedence:
+        #   1. ``sheet_or_json_path`` — exact match (stable when the section
+        #      range is unchanged).
+        #   2. ``target_name`` (sanitised) — robust across re-uploads where
+        #      a row insertion shifts the section range (``section[1:697]``
+        #      → ``section[1:698]``) but the human-readable name is stable.
+        if existing_table_id is not None and proposed and (target_sheet_or_json_path or target_name):
+            match_idx: int | None = None
+            match_reason = ""
+
+            if target_sheet_or_json_path:
+                match_idx = next(
+                    (
+                        i
+                        for i, p in enumerate(proposed)
+                        if getattr(p, "sheet_or_json_path", None) == target_sheet_or_json_path
+                    ),
+                    None,
+                )
+                if match_idx is not None:
+                    match_reason = f"sheet_or_json_path={target_sheet_or_json_path!r}"
+
+            if match_idx is None and target_name:
+                target_norm = _sanitise_name(target_name)
+                match_idx = next(
+                    (
+                        i
+                        for i, p in enumerate(proposed)
+                        if _sanitise_name(p.name) == target_norm
+                    ),
+                    None,
+                )
+                if match_idx is not None:
+                    match_reason = f"name={target_name!r}"
+
+            if match_idx is None:
+                logger.warning(
+                    "re-upload target section not found in %d proposed tables "
+                    "(sheet=%r name=%r); falling back to first section",
+                    len(proposed),
+                    target_sheet_or_json_path,
+                    target_name,
+                )
+            else:
+                proposed = [proposed[match_idx]]
+                logger.info("re-upload: filtered proposed sections by %s", match_reason)
 
         parsed: list[ParsedTable] = []
 

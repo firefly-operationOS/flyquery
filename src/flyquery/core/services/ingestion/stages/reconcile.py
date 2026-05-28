@@ -127,10 +127,11 @@ async def run_reconcile(
         )
 
     confirmed_renames: dict[str, str] = {}  # old_name → new_name
-    candidate_renames: list[tuple[str, list[str]]] = []  # (old_name, [candidate_new_names])
+    confirmed_rationales: dict[str, str] = {}  # old_name → LLM rationale
+    candidate_renames: list[tuple[str, list[dict[str, Any]]]] = []  # (old_name, [{name, confidence, rationale}])
 
     if prev_snapshot and removed and added:
-        confirmed_renames, candidate_renames = await _detect_renames(
+        confirmed_renames, confirmed_rationales, candidate_renames = await _detect_renames(
             removed_names=removed,
             added_names=added,
             prev_columns=prev_columns,
@@ -169,6 +170,7 @@ async def run_reconcile(
             removed=removed,
             type_changed=type_changed,
             confirmed_renames=confirmed_renames,
+            confirmed_rationales=confirmed_rationales,
             candidate_renames=candidate_renames,
             session_factory=session_factory,
         )
@@ -424,7 +426,8 @@ async def _write_schema_changes(
     removed: list[str],
     type_changed: list[str],
     confirmed_renames: dict[str, str] | None = None,
-    candidate_renames: list[tuple[str, list[str]]] | None = None,
+    confirmed_rationales: dict[str, str] | None = None,
+    candidate_renames: list[tuple[str, list[dict[str, Any]]]] | None = None,
     session_factory: async_sessionmaker[AsyncSession],
 ) -> None:
     async with session_factory() as s, s.begin():
@@ -508,7 +511,8 @@ async def _write_schema_changes(
                 },
             )
 
-        # Confirmed renames (auto-confirmed by position+type or agent ≥ 0.8)
+        # Confirmed renames (auto-confirmed by 1-to-1 type signature OR LLM agent ≥ 0.8)
+        rationales_map = confirmed_rationales or {}
         for old_name, new_name in (confirmed_renames or {}).items():
             await s.execute(
                 sa.text(
@@ -516,11 +520,13 @@ async def _write_schema_changes(
                     INSERT INTO flyquery_schema_changes (
                         id, tenant_id, workspace_id, table_id,
                         prev_snapshot_id, next_snapshot_id,
-                        column_name, change, before_json, after_json
+                        column_name, change, before_json, after_json,
+                        llm_rationale
                     ) VALUES (
                         :id, :tenant_id, :workspace_id, :table_id,
                         :prev_snap, :next_snap,
-                        :col, 'RENAMED', CAST(:before AS jsonb), CAST(:after AS jsonb)
+                        :col, 'RENAMED', CAST(:before AS jsonb), CAST(:after AS jsonb),
+                        :rationale
                     )
                     """
                 ),
@@ -534,22 +540,34 @@ async def _write_schema_changes(
                     "col": old_name,
                     "before": json.dumps({"column_name": old_name, "data_type": prev_columns.get(old_name)}),
                     "after": json.dumps({"column_name": new_name, "data_type": new_columns.get(new_name)}),
+                    "rationale": rationales_map.get(old_name) or None,
                 },
             )
 
-        # Candidate renames (ambiguous — require human review)
-        for old_name, candidates in candidate_renames or []:
+        # Candidate renames (LLM ranking failed to pass threshold — human review)
+        # ``candidates_list`` holds dicts ``{name, confidence, rationale}`` sorted
+        # best-first by the LLM agent. The top entry's rationale is hoisted to
+        # ``llm_rationale`` so operators see WHY the system surfaced this row
+        # without parsing the JSON envelope.
+        for old_name, candidates_list in candidate_renames or []:
+            top_rationale: str | None = None
+            if candidates_list:
+                top = candidates_list[0]
+                if isinstance(top, dict):
+                    top_rationale = top.get("rationale") or None
             await s.execute(
                 sa.text(
                     """
                     INSERT INTO flyquery_schema_changes (
                         id, tenant_id, workspace_id, table_id,
                         prev_snapshot_id, next_snapshot_id,
-                        column_name, change, before_json, after_json
+                        column_name, change, before_json, after_json,
+                        llm_rationale
                     ) VALUES (
                         :id, :tenant_id, :workspace_id, :table_id,
                         :prev_snap, :next_snap,
-                        :col, 'RENAMED_CANDIDATE', CAST(:before AS jsonb), CAST(:after AS jsonb)
+                        :col, 'RENAMED_CANDIDATE', CAST(:before AS jsonb), CAST(:after AS jsonb),
+                        :rationale
                     )
                     """
                 ),
@@ -562,7 +580,8 @@ async def _write_schema_changes(
                     "next_snap": next_snapshot_id,
                     "col": old_name,
                     "before": json.dumps({"column_name": old_name, "data_type": prev_columns.get(old_name)}),
-                    "after": json.dumps({"candidates": candidates}),
+                    "after": json.dumps({"candidates": candidates_list}),
+                    "rationale": top_rationale,
                 },
             )
 
@@ -606,18 +625,26 @@ async def _detect_renames(
     new_columns: dict[str, str],
     prev_detail: list[dict[str, Any]],
     settings: Any | None,
-) -> tuple[dict[str, str], list[tuple[str, list[str]]]]:
+) -> tuple[dict[str, str], dict[str, str], list[tuple[str, list[dict[str, Any]]]]]:
     """Detect column renames via position+type signature + optional LLM agent.
 
-    Returns:
-      confirmed_renames: {old_name → new_name} (auto-confirmed)
-      candidate_renames: [(old_name, [candidate_new_names, ...])]
+    Returns a tuple of three structures:
+
+    * ``confirmed_renames``: ``{old_name → new_name}`` — auto-confirmed mappings
+      (either unambiguous 1-to-1 by type, or LLM top proposal ≥
+      :data:`_DEFAULT_AUTO_CONFIRM_THRESHOLD`).
+    * ``confirmed_rationales``: ``{old_name → rationale}`` — natural-language
+      rationale from the LLM (empty string for unambiguous 1-to-1 type matches).
+    * ``candidate_renames``: ``[(old_name, [{name, confidence, rationale}, ...])]``
+      — ranked candidate proposals when no candidate passed the auto-confirm
+      threshold. Order is best-first by ``confidence``.
     """
     confirmed: dict[str, str] = {}
-    candidates: list[tuple[str, list[str]]] = []
+    rationales: dict[str, str] = {}
+    candidates: list[tuple[str, list[dict[str, Any]]]] = []
 
     if not removed_names or not added_names:
-        return confirmed, candidates
+        return confirmed, rationales, candidates
 
     # Build type-signature groups for added and removed
     # Group removed columns by data_type
@@ -643,28 +670,44 @@ async def _detect_renames(
             old_name = rem_cols[0]
             new_name = add_cols[0]
             confirmed[old_name] = new_name
+            rationales[old_name] = (
+                f"Auto-confirmed by 1-to-1 type signature match ({dt}): "
+                f"only one removed column and one added column shared this type."
+            )
             unmatched_removed.discard(old_name)
         else:
-            # Ambiguous: multiple candidates
+            # Ambiguous: multiple candidates — ask the LLM agent to rank them
             for old_name in rem_cols:
                 if old_name in unmatched_removed:
-                    # Try LLM agent for disambiguation
-                    agent_result = await _invoke_rename_agent(
+                    ranked = await _invoke_rename_agent(
                         old_name=old_name,
                         candidate_names=add_cols,
                         prev_detail=prev_detail,
                         new_columns=new_columns,
                         settings=settings,
                     )
-                    if agent_result and agent_result[0] >= _DEFAULT_AUTO_CONFIRM_THRESHOLD:
-                        # Agent is confident enough
-                        confirmed[old_name] = agent_result[1]
+                    if ranked and ranked[0]["confidence"] >= _DEFAULT_AUTO_CONFIRM_THRESHOLD:
+                        # Top proposal passes the auto-confirm threshold.
+                        top = ranked[0]
+                        confirmed[old_name] = top["name"]
+                        rationales[old_name] = top.get("rationale") or ""
+                        unmatched_removed.discard(old_name)
+                    elif ranked:
+                        # Below threshold — surface the LLM's ranked list as candidates.
+                        candidates.append((old_name, ranked))
                         unmatched_removed.discard(old_name)
                     else:
-                        candidates.append((old_name, add_cols))
+                        # LLM unavailable / errored — fall back to the raw
+                        # type-group as unscored candidates so the operator
+                        # still has something to review.
+                        fallback = [
+                            {"name": c, "confidence": None, "rationale": None}
+                            for c in add_cols
+                        ]
+                        candidates.append((old_name, fallback))
                         unmatched_removed.discard(old_name)
 
-    return confirmed, candidates
+    return confirmed, rationales, candidates
 
 
 async def _invoke_rename_agent(
@@ -674,8 +717,13 @@ async def _invoke_rename_agent(
     prev_detail: list[dict[str, Any]],
     new_columns: dict[str, str],
     settings: Any | None,
-) -> tuple[float, str] | None:
-    """Call RenameDetectionAgent. Returns (confidence, new_name) or None on failure."""
+) -> list[dict[str, Any]] | None:
+    """Call RenameDetectionAgent. Returns the full ranked list of proposals
+    (each ``{name, confidence, rationale}``) or ``None`` on failure / no result.
+
+    The list is ranked from most to least likely. Callers pick the top entry
+    for auto-confirm and persist the rest as the ranked candidate list.
+    """
     if settings is None:
         return None
 
@@ -718,8 +766,14 @@ async def _invoke_rename_agent(
         if not proposals:
             return None
 
-        top = proposals[0]
-        return (top.confidence, top.new_column)
+        return [
+            {
+                "name": p.new_column,
+                "confidence": float(p.confidence),
+                "rationale": p.rationale,
+            }
+            for p in proposals
+        ]
 
     except Exception as exc:  # noqa: BLE001
         logger.warning("rename_detection_agent failed (graceful skip): %s", exc)

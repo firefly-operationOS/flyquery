@@ -496,6 +496,7 @@ class IngestWorker:
                 # worker re-parsing an already-uploaded file -> REPARSE.
                 triggered_by="REPARSE",
                 session_factory=self._session_factory,
+                settings=self._settings,
             )
             await emit_stage(
                 ingest_job_id=job_id,

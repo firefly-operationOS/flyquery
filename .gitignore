@@ -136,3 +136,6 @@ site/
 # personal design journal; they are not part of the public product surface
 # and never land in the repo.
 docs/superpowers/
+assets_test
+.local
+SESSION_SUMMARY.md

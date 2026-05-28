@@ -190,6 +190,7 @@ class IngestService:
                 actor=actor,
                 triggered_by="USER",
                 session_factory=self._session_factory,
+                settings=self._settings,
             )
 
             local_parquet = parsed.local_parquet_path or parsed.parquet_key
@@ -299,6 +300,18 @@ class IngestService:
         ws = await self._workspace_service.get(workspace_id)
         storage_used = ws["storage_used_bytes"] if ws else 0
 
+        # Look up the existing table's identifying fields so the parser can
+        # pick the matching section out of a multi-section workbook. Without
+        # this the parser defaults to the first proposed table, which for an
+        # XLSX is typically Sheet1 — corrupting the targeted snapshot.
+        #
+        # We fetch BOTH the section path and the sanitised name: the path is
+        # the exact identifier when the workbook structure is unchanged, the
+        # name survives section-range drift caused by row insertions/deletions.
+        target_sheet_or_json_path, target_name = await self._fetch_table_identifiers(
+            tenant_id=tenant_id, table_id=table_id
+        )
+
         # Stage 1
         recv = await run_receive(
             tenant_id=tenant_id,
@@ -328,6 +341,8 @@ class IngestService:
             session_factory=self._session_factory,
             settings=self._settings,
             existing_table_id=table_id,
+            target_sheet_or_json_path=target_sheet_or_json_path,
+            target_name=target_name,
             dataset_name=dataset_name,
             workspace_locale=locale,
             original_filename=filename,
@@ -349,3 +364,35 @@ class IngestService:
         ingested = [t for t in ingested_raw if t is not None]
 
         return IngestResult(file_id=str(recv.file_id), tables=ingested)
+
+    async def _fetch_table_identifiers(
+        self,
+        *,
+        tenant_id: str,
+        table_id: uuid.UUID,
+    ) -> tuple[str | None, str | None]:
+        """Return ``(sheet_or_json_path, name)`` from ``flyquery_tables``.
+
+        Used by :meth:`ingest_reupload` so the parser can isolate the
+        right section when the upload is an XLSX/ODS workbook with many
+        sheets. Both identifiers are returned so the parser can try the
+        exact section path first and fall back to the sanitised name
+        when the section range shifted (row insert/delete).
+
+        The query is a single primary-key lookup, so the targeted
+        re-upload path stays cheap.
+        """
+        import sqlalchemy as sa  # local import keeps top-level imports stable
+
+        async with self._session_factory() as s:
+            result = await s.execute(
+                sa.text(
+                    "SELECT sheet_or_json_path, name FROM flyquery_tables "
+                    "WHERE id = :tid AND tenant_id = :tenant"
+                ),
+                {"tid": table_id, "tenant": tenant_id},
+            )
+            row = result.one_or_none()
+            if row is None:
+                return None, None
+            return row[0], row[1]
