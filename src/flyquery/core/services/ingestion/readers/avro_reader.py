@@ -39,7 +39,9 @@ class AvroReader:
         with open(source_path, "rb") as f:
             reader = fastavro.reader(f)
             schema = reader.writer_schema
-        fields = schema.get("fields", [])
+        # A record-type Avro schema is a dict with a "fields" list; anything
+        # else (named-type str, union list, or missing) has no columns to count.
+        fields = schema.get("fields", []) if isinstance(schema, dict) else []
         n_cols = len(fields)
         # Row count requires full scan; estimate from file size.
         byte_size = Path(source_path).stat().st_size

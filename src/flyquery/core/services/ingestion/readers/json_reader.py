@@ -146,9 +146,10 @@ class JsonReader:
                     f"format='auto')) "
                     f"TO '{tgt}' (FORMAT PARQUET, COMPRESSION 'snappy')"
                 )
-                rows_ct = conn.execute(
+                rows_ct_row = conn.execute(
                     "SELECT count(*) FROM read_parquet(?)", [target_parquet_key]
-                ).fetchone()[0]
+                ).fetchone()
+                rows_ct = rows_ct_row[0] if rows_ct_row else 0
                 schema = conn.execute(
                     "SELECT * FROM (DESCRIBE SELECT * FROM read_parquet(?))", [target_parquet_key]
                 ).fetchall()

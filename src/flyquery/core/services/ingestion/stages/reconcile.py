@@ -16,7 +16,7 @@ import json
 import logging
 import uuid
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, cast
 
 import sqlalchemy as sa
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
@@ -153,7 +153,7 @@ async def run_reconcile(
     if prev_snapshot and removed:
         await _mark_removed_columns_inactive(
             tenant_id=tenant_id,
-            prev_snapshot_id=prev_snap_id,
+            prev_snapshot_id=cast("uuid.UUID", prev_snap_id),
             removed_names=removed,
             session_factory=session_factory,
         )
@@ -180,7 +180,9 @@ async def run_reconcile(
     # --- Load annotation transplant candidates from previous snapshot ---
     human_annotations: dict[str, dict[str, Any]] = {}
     if prev_snapshot:
-        human_annotations = await _load_human_annotations(prev_snap_id, tenant_id, session_factory)
+        human_annotations = await _load_human_annotations(
+            cast("uuid.UUID", prev_snap_id), tenant_id, session_factory
+        )
 
     # --- Insert schema_objects (TABLE + per-column COLUMN) ---
     table_obj_id = uuid.uuid4()

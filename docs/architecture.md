@@ -569,7 +569,7 @@ class DialectAdapter(Protocol):
 
 | Port | Adapters | Notes |
 |------|----------|-------|
-| `VectorStore` | `pgvector` (v0) | pgvector HNSW; sqlite-vec/Chroma/Qdrant/Pinecone available via fireflyframework-agentic |
+| `VectorStore` | `pgvector` | pgvector HNSW only — flyquery is pgvector-only by design; the corpus-factory pattern is intentionally not used |
 | `PiiScanner` | `regex`, `presidio`, `disabled` | Shared verbatim from canon |
 | `RateLimiter` | `memory`, `redis` | Per-token sliding 60 s window |
 | `IdempotencyStore` | `memory`, `redis` | Lock-step with canon/radar |

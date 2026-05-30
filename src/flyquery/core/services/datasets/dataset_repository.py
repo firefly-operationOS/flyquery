@@ -6,7 +6,7 @@ from __future__ import annotations
 import datetime  # noqa: F401  -- used by the retention sweep's type hint
 import json
 import uuid
-from typing import Any
+from typing import Any, cast
 
 import sqlalchemy as sa
 from pyfly.container import repository
@@ -229,7 +229,7 @@ class DatasetRepository:
                 sa.text("DELETE FROM flyquery_datasets WHERE status = 'PURGING' AND updated_at < :cutoff"),
                 {"cutoff": cutoff},
             )
-            return int(result.rowcount or 0)
+            return int(cast(sa.CursorResult[Any], result).rowcount or 0)
 
     async def mark_purging(self, dataset_id: uuid.UUID) -> None:
         """Flip dataset.status to PURGING.

@@ -59,10 +59,11 @@ class CsvReader:
         # delimiter sniff.
         conn = duckdb.connect()
         try:
-            cols = conn.execute(
+            cols_row = conn.execute(
                 "SELECT count(*) FROM (DESCRIBE SELECT * FROM read_csv_auto(?, sample_size=4096))",
                 [path],
-            ).fetchone()[0]
+            ).fetchone()
+            cols = cols_row[0] if cols_row else 0
             # Estimate via byte size; precise count happens during materialise.
             byte_size = Path(path).stat().st_size
             est = max(1, byte_size // 80)  # ~80 bytes per row rough guess
@@ -95,7 +96,8 @@ class CsvReader:
                 f"COPY (SELECT * FROM read_csv_auto('{src}', {opts})) "
                 f"TO '{tgt}' (FORMAT PARQUET, COMPRESSION 'snappy')"
             )
-            rows = conn.execute("SELECT count(*) FROM read_parquet(?)", [target_parquet_key]).fetchone()[0]
+            rows_row = conn.execute("SELECT count(*) FROM read_parquet(?)", [target_parquet_key]).fetchone()
+            rows = rows_row[0] if rows_row else 0
             schema = conn.execute(
                 "SELECT * FROM (DESCRIBE SELECT * FROM read_parquet(?))", [target_parquet_key]
             ).fetchall()

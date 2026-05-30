@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import uuid
 from collections.abc import Sequence
+from decimal import Decimal
 from typing import Any
 
 from pyfly.container import service as service_bean
@@ -310,7 +311,7 @@ def _to_read(row: dict[str, Any]) -> IngestJobRead:
         attempts=row["attempts"],
         request_json=row.get("request_json") or {},
         result_json=row.get("result_json") or {},
-        cost_cents=row.get("cost_cents") or 0,
+        cost_cents=Decimal(str(row.get("cost_cents") or 0)),
         elapsed_ms=row.get("elapsed_ms"),
         started_at=row.get("started_at"),
         finished_at=row.get("finished_at"),

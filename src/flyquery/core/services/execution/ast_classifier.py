@@ -59,7 +59,9 @@ class AstClassifier:
 
         single = len(non_null) == 1
         stmt = non_null[0]
-        kind = self._kind(stmt)
+        # sqlglot.parse() is typed to yield its internal ``Expr`` alias, which
+        # pyright does not unify with the public ``Expression`` base below.
+        kind = self._kind(stmt)  # pyright: ignore[reportArgumentType]
 
         # Collect table refs — skip anonymous subquery aliases
         tables = tuple(sorted({t.name for t in stmt.find_all(sqlglot.expressions.Table) if t.name}))
@@ -76,7 +78,9 @@ class AstClassifier:
 
     @staticmethod
     def _kind(
-        stmt: sqlglot.expressions.Expression,
+        # ``Expression`` is the public base class but sqlglot omits it from
+        # ``expressions.__all__``, so pyright flags it as a private import.
+        stmt: sqlglot.expressions.Expression,  # pyright: ignore[reportPrivateImportUsage]
     ) -> Literal["SELECT", "INSERT", "UPDATE", "DELETE", "DDL", "UNKNOWN"]:
         if isinstance(stmt, sqlglot.expressions.Select):
             return "SELECT"

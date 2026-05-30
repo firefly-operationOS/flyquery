@@ -5,7 +5,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime
-from typing import Any
+from typing import Any, cast
 
 import sqlalchemy as sa
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker, create_async_engine
@@ -134,7 +134,7 @@ class AgentTokenRepository:
                 ),
                 {"id": token_id, "tenant_id": tenant_id, "at": at},
             )
-            rowcount = result.rowcount or 0
+            rowcount = cast(sa.CursorResult[Any], result).rowcount or 0
             return rowcount > 0
 
     async def mark_used(self, token_id: str, *, tenant_id: str, at: datetime) -> None:

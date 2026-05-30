@@ -6,7 +6,7 @@ from __future__ import annotations
 import uuid
 from collections.abc import Sequence
 from datetime import datetime
-from typing import Any
+from typing import Any, cast
 
 import sqlalchemy as sa
 from pyfly.container import repository
@@ -217,7 +217,7 @@ class IngestJobRepository:
                 ),
                 {"cutoff": older_than},
             )
-            return int(result.rowcount or 0)
+            return int(cast(sa.CursorResult[Any], result).rowcount or 0)
 
     async def list_orphaned_pending_ids(
         self,
@@ -254,7 +254,7 @@ class IngestJobRepository:
                 sa.text("DELETE FROM flyquery_ingest_events WHERE created_at < :cutoff"),
                 {"cutoff": cutoff},
             )
-            return int(result.rowcount or 0)
+            return int(cast(sa.CursorResult[Any], result).rowcount or 0)
 
     async def merge_request_json(
         self,

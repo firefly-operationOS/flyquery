@@ -57,7 +57,11 @@ class FileReader(Protocol):
     decorator-wrapped via core.services.ingestion.compression (Task 7).
     """
 
-    formats: tuple[str, ...]  # e.g., ("csv", "tsv")
+    @property
+    def formats(self) -> tuple[str, ...]:  # e.g., ("csv", "tsv")
+        """Formats this reader handles. Read-only so concrete readers can
+        declare a narrower literal tuple (``("csv", "tsv")``)."""
+        ...
 
     async def enumerate_tables(
         self, source_path: str, rules: TableExtractionRules

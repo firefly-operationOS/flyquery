@@ -13,9 +13,13 @@ dependencies = [
     # Firefly Framework runtime -- same extras canon uses so a fresh
     # `uv sync` boots the full stack.
     "pyfly[fastapi,observability,security,data-relational,postgresql,eda,redis,client,scheduling,cli]>=26.5.4",
-    # GenAI metaframework -- FireflyAgent over pydantic-ai + retrieval
-    # primitives (used in Plans 2-3; harmless to install in Plan 1).
-    "fireflyframework-agentic[rest,security,redis,corpus-search]>=26.5.11",
+    # GenAI metaframework -- FireflyAgent over pydantic-ai + the OpenAI
+    # embeddings provider. flyquery builds its own pgvector hybrid retriever
+    # and does not import the framework's retrieval module, so the
+    # ``corpus-search`` extra -- which only bundled sqlite-vec / sqlglot /
+    # markitdown for the now-removed ``rag`` module -- is gone. sqlglot is
+    # declared directly below (flyquery's Text-to-SQL pipeline needs it).
+    "fireflyframework-agentic[rest,security,redis,openai-embeddings]>=26.5.11",
 
     # HTTP + tenacity (outbound).
     "httpx>=0.28.0",
@@ -42,6 +46,12 @@ dependencies = [
     # extras boundary stays stable.
     "duckdb>=1.1",
     "pyarrow>=17.0",
+
+    # sqlglot -- SQL AST parser / validator / transpiler for the
+    # Text-to-SQL pipeline (query classification, example mining,
+    # dialect handling). Previously pulled transitively via the agentic
+    # ``corpus-search`` extra; declared directly now that the extra is gone.
+    "sqlglot>=26.0.0",
 
     # Logging.
     "structlog>=25.5.0",
@@ -105,10 +115,21 @@ file-readers = [
 requires = ["hatchling>=1.18"]
 build-backend = "hatchling.build"
 
+[tool.uv]
+# fireflyframework-agentic depends on pydantic-ai>=1.99, whose transitive
+# ``pydantic-ai-slim[mistral]`` drags in ``mistralai>=2.0.0`` (PyPI pre-release
+# only) and forces ``opentelemetry-semantic-conventions==0.60b1``. flyquery
+# never uses the mistral provider, so pin mistralai to the stable 1.x line.
+# Drop once mistralai 2.x reaches stable or pydantic-ai stops requesting it.
+override-dependencies = [
+    "mistralai>=1.0.0,<2.0.0",
+]
+
 [tool.uv.sources]
-# Sibling-repo path sources (same as canon).
+# Agentic is consumed from its published git tag so fresh clones / CI resolve
+# it without the sibling path; pyfly stays on the local checkout.
 pyfly = { path = "../../fireflyframework/fireflyframework-pyfly", editable = true }
-fireflyframework-agentic = { path = "../../fireflyframework/fireflyframework-agentic", editable = true }
+fireflyframework-agentic = { git = "https://github.com/fireflyframework/fireflyframework-agentic.git", tag = "v26.05.30" }
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/flyquery"]
@@ -185,8 +206,16 @@ reportAssignmentType = "warning"
 reportReturnType = "warning"
 
 [[tool.pyright.executionEnvironments]]
+# The controller layer is shaped by pyfly's metaprogramming: handlers
+# annotate the success response model (consumed for OpenAPI schema
+# generation) but return ``JSONResponse`` for non-2xx / multi-status
+# escape hatches, and parameter binding uses ``Annotated[...]``
+# subscripts pyright's basic mode can't resolve. Silence the resulting
+# false positives here rather than scattering per-line ignores.
 root = "src/flyquery/web/controllers"
 reportArgumentType = "none"
 reportAttributeAccessIssue = "none"
 reportOperatorIssue = "none"
 reportAssignmentType = "none"
+reportReturnType = "none"
+reportCallIssue = "none"

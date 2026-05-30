@@ -5,6 +5,24 @@ follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and
 the project uses [CalVer](https://calver.org/) (YY.MM.PP) per the
 Firefly Framework convention (memory: `firefly_uses_calver`).
 
+## [26.5.13] - 2026-05-31
+
+### Changed — agentic 26.05.30 (RAG/MCP-free) + pyright-clean + logger isolation
+
+- `fireflyframework-agentic` is consumed from its published git tag `v26.05.30`
+  (RAG + MCP subsystems removed; unified `content.binary` normalization).
+  flyquery builds its own pgvector hybrid retriever and no longer references
+  the framework's removed `rag` module.
+- Dropped the unused agentic `corpus-search` extra; `sqlglot` is now a direct
+  dependency (was transitive via `corpus-search`); `openai-embeddings` retained.
+- Pinned `mistralai<2.0.0` (pydantic-ai 1.99 transitive pre-release conflict).
+- Resolved every `pyright` warning with real fixes (SQLAlchemy `CursorResult`
+  cast for DML rowcount, `FileReader.formats` read-only property, Azure embedder
+  requires `AZURE_OPENAI_ENDPOINT`, DuckDB `fetchone()` None-guards, avro/sqlglot
+  narrowing, controller `executionEnvironments`).
+- `migrations/env.py`: `fileConfig(disable_existing_loggers=False)` so migrations
+  no longer mute loggers the app created at import time.
+
 ## [26.5.12] - 2026-05-28
 
 ### Fixed — Re-upload pipeline correctness + LLM rename detection

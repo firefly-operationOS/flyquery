@@ -262,7 +262,15 @@ def _construct_inner(
     if provider == "azure":
         from fireflyframework_agentic.embeddings.providers.azure import AzureEmbedder
 
-        return AzureEmbedder(model=model, dimensions=native_dim)
+        endpoint = os.environ.get("AZURE_OPENAI_ENDPOINT")
+        if not endpoint:
+            raise RuntimeError("AZURE_OPENAI_ENDPOINT not set")
+        return AzureEmbedder(
+            model=model,
+            dimensions=native_dim,
+            azure_endpoint=endpoint,
+            api_key=os.environ.get("AZURE_OPENAI_API_KEY"),
+        )
     if provider == "google":
         from fireflyframework_agentic.embeddings.providers.google import GoogleEmbedder
 

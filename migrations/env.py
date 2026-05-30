@@ -69,7 +69,10 @@ if url:
     config.set_main_option("sqlalchemy.url", sync_url)
 
 if config.config_file_name is not None:
-    fileConfig(config.config_file_name)
+    # disable_existing_loggers=False: running migrations must not silently
+    # disable loggers the application already created at import time
+    # (alembic/fileConfig defaults to True, which otherwise mutes them).
+    fileConfig(config.config_file_name, disable_existing_loggers=False)
 
 target_metadata = _resolve_metadata()
 

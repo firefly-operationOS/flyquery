@@ -6,7 +6,7 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 from decimal import Decimal
-from typing import Any
+from typing import Any, cast
 
 import sqlalchemy as sa
 from pyfly.container import repository
@@ -133,7 +133,7 @@ class CostEventRepository:
                 sa.text("DELETE FROM flyquery_cost_events WHERE created_at < :cutoff"),
                 {"cutoff": cutoff},
             )
-            return int(result.rowcount or 0)
+            return int(cast(sa.CursorResult[Any], result).rowcount or 0)
 
     async def _count_filtered(self, params: dict[str, Any]) -> int:
         async with self._factory() as s:
