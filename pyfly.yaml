@@ -1,4 +1,4 @@
-# Copyright 2026 Firefly Software Solutions Inc
+# Copyright 2026 Firefly Software Foundation
 #
 # PyFly application configuration. Values override the property-driven
 # defaults activated by ``enable_core_stack``. Anything in the

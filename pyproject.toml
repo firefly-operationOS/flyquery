@@ -5,8 +5,11 @@ version = "26.5.13"
 description = "Operational Structured-Data Intelligence (upload-driven) -- multi-tenant ingestion + Text-to-SQL service over user-uploaded structured files. Part of Firefly OperationOS."
 readme = "README.md"
 requires-python = ">=3.13,<3.14"
+# Released under the Apache License 2.0 -- see the LICENSE file. The SDKs
+# under ``sdks/python`` and ``sdks/java`` carry their own LICENSE files.
+license = { text = "Apache-2.0" }
 authors = [
-    { name = "Firefly Software Solutions Inc" },
+    { name = "Firefly Software Foundation" },
 ]
 
 dependencies = [

@@ -1,4 +1,4 @@
-# Copyright 2026 Firefly Software Solutions Inc
+# Copyright 2026 Firefly Software Foundation
 #
 # Multi-arch image build + GHCR push.
 #
@@ -115,7 +115,7 @@ jobs:
             org.opencontainers.image.description=flyquery -- Operational Structured-Data Intelligence (upload-driven). Multi-tenant ingestion + Text-to-SQL service over user-uploaded structured files (CSV / TSV / XLSX / XLS / ODS / JSON / JSONL / Parquet / Avro / ORC / Arrow / Feather + compression variants). Materialises uploads to Parquet on object storage; indexes a long-lived schema knowledge base; answers natural-language questions via a multi-agent pipeline. Part of Firefly OperationOS.
             org.opencontainers.image.source=https://github.com/${{ github.repository }}
             org.opencontainers.image.licenses=Proprietary
-            org.opencontainers.image.vendor=Firefly Software Solutions Inc
+            org.opencontainers.image.vendor=Firefly Software Foundation
 
       - name: Build + push (linux/amd64+arm64)
         id: build
