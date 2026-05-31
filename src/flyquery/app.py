@@ -35,7 +35,7 @@ from pyfly.starters.core import enable_core_stack
 @enable_core_stack
 @pyfly_application(
     name="flyquery",
-    version="26.5.12",
+    version="26.5.14",
     description=(
         "flyquery -- Operational Structured-Data Intelligence "
         "(upload-driven). Multi-tenant ingestion + Text-to-SQL "

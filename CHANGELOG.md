@@ -5,6 +5,19 @@ follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and
 the project uses [CalVer](https://calver.org/) (YY.MM.PP) per the
 Firefly Framework convention (memory: `firefly_uses_calver`).
 
+## [26.5.14] - 2026-05-31
+
+### Changed
+
+- **Open-sourced under the Apache License 2.0.** Replaced the proprietary
+  notice with the full Apache 2.0 `LICENSE` (root + both SDKs) and prepended
+  the Apache 2.0 header to every source file. The copyright holder is now
+  Firefly Software Foundation, and the repository is public.
+- Set the OpenAPI `info.license`, the image `licenses` label, the README
+  badge, the bundled SDK spec/`setup.py`, and `pyproject` metadata to Apache-2.0.
+- Realigned `__version__` with the packaged release version; refreshed the
+  lock-step SHA pins after the header changes.
+
 ## [26.5.13] - 2026-05-31
 
 ### Changed — agentic 26.05.30 pin + pyright-clean + logger isolation
