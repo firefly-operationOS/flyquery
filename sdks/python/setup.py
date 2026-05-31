@@ -54,7 +54,7 @@ setup(
     install_requires=REQUIRES,
     packages=find_packages(exclude=["test", "tests"]),
     include_package_data=True,
-    license="Proprietary -- service",
+    license="Apache-2.0",
     long_description_content_type='text/markdown',
     long_description="""\
     Operational Structured-Data Intelligence (upload-driven) -- multi-tenant ingestion + Text-to-SQL over user-uploaded structured files (CSV / TSV / XLSX / XLS / ODS / JSON / JSONL / Parquet / Avro / ORC / Arrow / Feather + .gz/.zip/.bz2 variants). Materialises uploads to Parquet on object storage; indexes a long-lived schema knowledge base; answers natural-language questions via a multi-agent pipeline. Part of Firefly OperationOS.

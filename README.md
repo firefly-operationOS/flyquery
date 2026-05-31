@@ -26,7 +26,7 @@ JSONL, Parquet, Avro, ORC, Arrow and Feather, plus their `.gz`,
 [![DuckDB](https://img.shields.io/badge/query%20engine-duckdb-yellow)](docs/architecture.md)
 [![pgvector](https://img.shields.io/badge/vector--store-pgvector-336791)](docs/architecture.md)
 [![Version](https://img.shields.io/badge/version-26.5.12-green.svg)](#)
-[![License](https://img.shields.io/badge/license-Proprietary-lightgrey.svg)](LICENSE)
+[![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 
 </div>
 
@@ -295,8 +295,8 @@ See [docs/architecture.md](docs/architecture.md) for the full picture.
 
 ## License
 
-The flyquery service is **Proprietary**. See [`LICENSE`](LICENSE).
+flyquery is released under the [Apache License 2.0](LICENSE) —
+copyright 2024-2026 Firefly Software Foundation.
 
-The Python SDK (`sdks/python/`) and Java SDK (`sdks/java/`) are licensed under
-[Apache 2.0](sdks/python/LICENSE) and intended for public consumption by
-service integrators.
+The bundled Python SDK (`sdks/python/`) and Java SDK (`sdks/java/`) ship
+their own Apache License 2.0 files.

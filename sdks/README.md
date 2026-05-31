@@ -13,7 +13,7 @@ Wire-protocol clients for the
 Intelligence service. Both SDKs are auto-generated from the
 service's [`openapi.json`](../openapi.json) committed snapshot via
 [`openapi-generator-cli`](https://openapi-generator.tech/) and ship
-under **Apache-2.0** — the upstream service remains proprietary.
+under **Apache-2.0** — the same license as the upstream service.
 
 Each SDK exposes **18 split API classes**, one per resource family
 (workspaces, datasets, files, tables, schema, relations, semantic,

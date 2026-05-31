@@ -161,7 +161,7 @@ def install_openapi(
         info.setdefault(
             "license",
             {
-                "name": "Proprietary -- service",
+                "name": "Apache-2.0",
                 "url": "https://github.com/firefly-operationOS/flyquery/blob/main/LICENSE",
             },
         )

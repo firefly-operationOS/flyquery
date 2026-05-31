@@ -313,8 +313,8 @@ mypy flyquery_sdk     # type-check
 
 Apache-2.0. See [LICENSE](LICENSE).
 
-The upstream **flyquery service** is proprietary and licensed
-separately; the SDK is the Apache-licensed wire-protocol client.
+The upstream **flyquery service** is also released under the Apache
+License 2.0; the SDK is the Apache-licensed wire-protocol client.
 
 ## Links
 
