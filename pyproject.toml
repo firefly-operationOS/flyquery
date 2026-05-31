@@ -1,7 +1,7 @@
 [project]
 name = "flyquery"
 # CalVer YY.MM.PP per memory `firefly_uses_calver`.
-version = "26.5.12"
+version = "26.5.13"
 description = "Operational Structured-Data Intelligence (upload-driven) -- multi-tenant ingestion + Text-to-SQL service over user-uploaded structured files. Part of Firefly OperationOS."
 readme = "README.md"
 requires-python = ">=3.13,<3.14"
@@ -15,10 +15,7 @@ dependencies = [
     "pyfly[fastapi,observability,security,data-relational,postgresql,eda,redis,client,scheduling,cli]>=26.5.4",
     # GenAI metaframework -- FireflyAgent over pydantic-ai + the OpenAI
     # embeddings provider. flyquery builds its own pgvector hybrid retriever
-    # and does not import the framework's retrieval module, so the
-    # ``corpus-search`` extra -- which only bundled sqlite-vec / sqlglot /
-    # markitdown for the now-removed ``rag`` module -- is gone. sqlglot is
-    # declared directly below (flyquery's Text-to-SQL pipeline needs it).
+    # and declares sqlglot directly below for its Text-to-SQL pipeline.
     "fireflyframework-agentic[rest,security,redis,openai-embeddings]>=26.5.11",
 
     # HTTP + tenacity (outbound).
@@ -42,15 +39,13 @@ dependencies = [
     # Object store
     "aiofiles>=24",
 
-    # DuckDB -- query engine; used in Plan 3 but pinned here so the
-    # extras boundary stays stable.
+    # DuckDB -- query engine; pinned here so the extras boundary stays stable.
     "duckdb>=1.1",
     "pyarrow>=17.0",
 
     # sqlglot -- SQL AST parser / validator / transpiler for the
     # Text-to-SQL pipeline (query classification, example mining,
-    # dialect handling). Previously pulled transitively via the agentic
-    # ``corpus-search`` extra; declared directly now that the extra is gone.
+    # dialect handling). Declared as a direct dependency.
     "sqlglot>=26.0.0",
 
     # Logging.
@@ -80,7 +75,7 @@ dev = [
     "httpx>=0.28",
 ]
 
-# ObjectStore adapter extras (spec §9.1)
+# ObjectStore adapter extras
 s3 = [
     "aiobotocore>=2.15",
     "botocore>=1.35",
@@ -93,18 +88,18 @@ azure = [
     "aiohttp>=3.10",
 ]
 
-# PII (Plan 2)
+# PII detection / anonymization
 presidio = [
     "presidio-analyzer>=2.2",
     "presidio-anonymizer>=2.2",
 ]
 
-# Cross-encoder reranker (Plan 3)
+# Cross-encoder reranker
 ml-reranker = [
     "sentence-transformers>=3.3",
 ]
 
-# File-format readers (Plan 2)
+# File-format readers
 file-readers = [
     "python-calamine>=0.3",
     "openpyxl>=3.1",

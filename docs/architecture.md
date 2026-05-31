@@ -569,7 +569,7 @@ class DialectAdapter(Protocol):
 
 | Port | Adapters | Notes |
 |------|----------|-------|
-| `VectorStore` | `pgvector` | pgvector HNSW only — flyquery is pgvector-only by design; the corpus-factory pattern is intentionally not used |
+| `VectorStore` | `pgvector` | pgvector HNSW only — flyquery is pgvector-only by design |
 | `PiiScanner` | `regex`, `presidio`, `disabled` | Shared verbatim from canon |
 | `RateLimiter` | `memory`, `redis` | Per-token sliding 60 s window |
 | `IdempotencyStore` | `memory`, `redis` | Lock-step with canon/radar |

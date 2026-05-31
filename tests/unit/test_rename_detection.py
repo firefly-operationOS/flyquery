@@ -41,10 +41,9 @@ class TestDetectRenamesLogic:
     """Test the _detect_renames helper with no agent (settings=None).
 
     ``_detect_renames`` returns a 3-tuple ``(confirmed, rationales, candidates)``
-    as of 26.5.12 so the LLM rename rationale can be persisted alongside the
-    auto-confirmed match. With ``settings=None`` the LLM agent is skipped, so
-    ambiguous removed-columns fall through to the unscored fallback candidates
-    list.
+    so the LLM rename rationale can be persisted alongside the auto-confirmed
+    match. With ``settings=None`` the LLM agent is skipped, so ambiguous
+    removed-columns fall through to the unscored fallback candidates list.
     """
 
     @pytest.mark.asyncio

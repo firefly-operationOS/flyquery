@@ -1,16 +1,13 @@
 # Copyright 2026 Firefly Software Solutions Inc
 """CI gate -- fail the build if any controller calls ``sa.text(...)``.
 
-The repo refactor (audit issues 4.2 + 4.3, completed 26.5.9) moved
-every raw SQL site out of ``src/flyquery/web/controllers/`` into
-dedicated ``@repository`` beans. This test pins that invariant so a
+Raw SQL lives in dedicated ``@repository`` beans, never in
+``src/flyquery/web/controllers/``. This test pins that invariant so a
 future PR cannot silently bring raw SQL back into the HTTP layer.
 
 If you legitimately need to write SQL from a controller, the answer
 is almost always "extract it into a repository under
-``src/flyquery/core/services/{domain}/{domain}_repository.py``". See
-``docs/superpowers/specs/refactor-repository-layer.md`` for the
-recipe.
+``src/flyquery/core/services/{domain}/{domain}_repository.py``".
 
 Controllers are still allowed to import ``async_sessionmaker`` /
 ``AsyncSession`` because they sometimes need to pass them through

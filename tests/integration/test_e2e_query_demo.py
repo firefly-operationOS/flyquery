@@ -1,5 +1,5 @@
 # Copyright 2026 Firefly Software Solutions Inc
-"""End-to-end query pipeline demo (Plan 3 / Task 28).
+"""End-to-end query pipeline demo.
 
 Two variants:
   1. Mocked-agents (default) — patches the four agent factories to return
@@ -17,7 +17,7 @@ from pathlib import Path
 
 import pytest
 
-# Parser-fixtures directory (subset used by Plan 2 parser tests).
+# Parser-fixtures directory (subset used by the parser tests).
 FIX = Path(__file__).parent / "parsers" / "fixtures"
 
 

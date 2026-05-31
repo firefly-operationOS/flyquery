@@ -13,10 +13,9 @@ so the three services share one mental model for prompt tuning.
 * **CI diffs prompts independently of code.** Reviewing a single
   YAML change is much faster than rereading a Python module to find
   the multi-paragraph triple-quoted string.
-* **Long instructions stop polluting code files.** Python's
-  `ruff E501` warnings on 50-line `_INSTRUCTIONS` strings used to
-  push us to abbreviate prompts. The YAML files have no line-length
-  ceiling.
+* **Long instructions stay out of code files.** YAML files have no
+  line-length ceiling, so multi-paragraph prompts don't run into
+  `ruff E501` warnings or get abbreviated to satisfy them.
 
 ## File layout
 

@@ -66,9 +66,9 @@ class IngestWorker:
         callback_outbox_repository: CallbackOutboxRepository,
     ) -> None:
         self._publisher = event_publisher
-        # The high-level wrapper used to publish SchemaUpdated from
-        # within the per-table loop. DI-injected so it shares the same
-        # real EventPublisher as the rest of the service.
+        # Publishes SchemaUpdated for the per-table loop. DI-injected
+        # so it shares the same real EventPublisher as the rest of the
+        # service.
         self._ingest_publisher = ingest_publisher
         self._callback_outbox_repository = callback_outbox_repository
         self._settings = settings

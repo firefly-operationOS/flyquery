@@ -23,7 +23,7 @@ def postgres_container() -> Iterator[PostgresContainer]:
         # Container exposes the default `test` user as SUPERUSER which
         # would silently BYPASSRLS (memory: postgres_test_role_bypasses_rls).
         # We provision flyquery_admin (BYPASSRLS) + flyquery_app (no bypass)
-        # via the RLS migration in Task 21 / fixture below.
+        # via the RLS migration / fixture below.
         yield pg
 
 
@@ -40,7 +40,7 @@ def minio_container() -> Iterator[MinioContainer]:
 
 
 # ---------------------------------------------------------------------------
-# fake-gcs-server (Task 31 / GCS conformance)
+# fake-gcs-server (GCS conformance)
 # ---------------------------------------------------------------------------
 
 
@@ -77,7 +77,7 @@ def fake_gcs_container() -> Iterator[Any]:
 
 
 # ---------------------------------------------------------------------------
-# Azurite (Task 32 / Azure Blob conformance)
+# Azurite (Azure Blob conformance)
 # ---------------------------------------------------------------------------
 
 

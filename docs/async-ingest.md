@@ -48,9 +48,8 @@ for the `mark_already_received` call on the controller side.
 
 ## 2. IngestWorker lifecycle
 
-`IngestWorker` is a long-running process. As of 26.5.10 it ships under
-its own CLI subcommand (`flyquery worker ingest`); the previous
-`flyquery worker` form is gone. See
+`IngestWorker` is a long-running process. It ships under its own CLI
+subcommand (`flyquery worker ingest`). See
 [`src/flyquery/cli.py:74`](../src/flyquery/cli.py) for the click group
 and [workers.md](workers.md) for the deployment topologies.
 
@@ -103,13 +102,11 @@ Every transition is a single `UPDATE flyquery_ingest_jobs SET status=…`
 inside a database transaction. The transition is permanent; there is no
 rollback of already-completed stages.
 
-### Stuck-job recovery (RetentionWorker, added 26.5.10)
+### Stuck-job recovery (RetentionWorker)
 
-The original v0 design planned periodic heartbeat writes from the
-worker plus a heartbeat-timeout reaper. 26.5.10 took a different
-approach: the new `RetentionWorker` polls `flyquery_ingest_jobs`
-periodically and atomically resets jobs whose `started_at` is older
-than `processing_lease_s` (default 1800s) back to `PENDING`, then
+The `RetentionWorker` polls `flyquery_ingest_jobs` periodically and
+atomically resets jobs whose `started_at` is older than
+`processing_lease_s` (default 1800s) back to `PENDING`, then
 republishes them onto the bus. The reaper is implemented at
 [`retention_worker.py:162`](../src/flyquery/core/services/retention/retention_worker.py)
 (`_reap_stuck_running`); see [workers.md](workers.md) for the full
@@ -299,7 +296,7 @@ Object-store writes (Parquet materialisation in stage 2) happen before the
 corresponding `flyquery_schema_snapshots` row is inserted (stage 3). If the
 worker crashes between these two steps, the orphaned Parquet blob remains
 on the object store until the dataset is purged. There is **no** orphan-
-blob sweep in the RetentionWorker as of 26.5.10 -- the sweep only resets
+blob sweep in the RetentionWorker -- the sweep only resets
 the **SQL** state (the `RetentionWorker._reap_stuck_running` step flips
 the job back to PENDING so the bus redelivers, and the next successful
 run writes a fresh snapshot pointing at a NEW Parquet key). The leaked

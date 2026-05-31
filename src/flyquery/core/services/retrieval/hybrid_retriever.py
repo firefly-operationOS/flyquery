@@ -5,39 +5,23 @@ Fuses rankings from multiple retrieval strategies into a single ranked
 list of ``Hit`` objects. When no embedder is available, degrades
 gracefully to BM25-only retrieval.
 
-Why this is a custom implementation rather than the framework's HybridRetriever
-================================================================================
-``fireflyframework_agentic.rag.retrieval.hybrid.HybridRetriever`` is
-document-chunk oriented: it operates over a flat ``corpus`` of text
-chunks + a ``vector_store``, returning ``ChunkHit`` objects keyed by
-``chunk_id``. Its retrieval contract is ``(text_query, top_k)`` →
-``[ChunkHit]``.
+Retrieval model
+===============
+The corpus is a **schema catalog**, not a document store. The searchable
+units are ``schema_objects`` (table + column rows), and each hit carries
+``(table_id, snapshot_id, column_name, data_type, description, samples)``.
 
-flyquery's retrieval problem is structurally different:
-
-* The corpus is a **schema catalog**, not a document store. The
-  searchable units are ``schema_objects`` (table + column rows), not
-  free-text chunks. Each hit must carry ``(table_id, snapshot_id,
-  column_name, data_type, description, samples)``.
-* In addition to schema objects, flyquery retrieves four distinct hit
-  types in a single pass: schema_objects, approved examples, published
-  metrics, and glossary terms — each with its own top-k budget. The
-  framework retriever has no concept of multi-hit-type bundling.
+* In a single pass the retriever returns four distinct hit types --
+  schema_objects, approved examples, published metrics, and glossary
+  terms -- each with its own top-k budget.
 * Relations (approved cross-table join candidates) are loaded as a
-  separate set, not ranked at all.
-* The scoping model is ``(workspace_id, dataset_id)`` keyed, with no
-  tenant-side proxy shim needed (pgvector RLS policies handle tenant
-  isolation at the Postgres level).
+  separate set and are not ranked.
+* The scoping model is ``(workspace_id, dataset_id)`` keyed; pgvector RLS
+  policies handle tenant isolation at the Postgres level.
 
-The framework's corpus factory pattern (sqlite-vec / pgvector / chroma /
-qdrant / pinecone) is likewise not needed here: flyquery is pgvector-only
-by design. Schema catalogs are small enough that a single pgvector
-deployment is adequate; the flexibility cost of a corpus abstraction is
-not justified.
-
-The RRF math (``_rrf`` below) is intentionally kept byte-identical to
-the framework's ``reciprocal_rank_fusion`` function so the two implementations
-stay consistent and can be cross-checked without additional testing.
+flyquery is pgvector-only by design. Schema catalogs are small enough
+that a single pgvector deployment is adequate, so no pluggable
+vector-store abstraction is needed.
 """
 
 from __future__ import annotations

@@ -54,7 +54,7 @@ class FileReader(Protocol):
     """Per-format reader. Adapters: csv, excel, json, parquet, avro, orc, arrow.
 
     Each reader handles uncompressed input by default; the compression layer is
-    decorator-wrapped via core.services.ingestion.compression (Task 7).
+    decorator-wrapped via core.services.ingestion.compression.
     """
 
     @property

@@ -38,7 +38,7 @@ class FlyquerySettings(BaseSettings):
     object_store_kms_default: str = ""
     object_store_presign_ttl_s: int = 86400
 
-    # DuckDB execution (Plan 3; harmless to define now)
+    # DuckDB execution
     duckdb_httpfs: bool = True
     duckdb_httpfs_metadata_cache_mb: int = 512
     duckdb_memory_limit: str = "4GB"
@@ -47,11 +47,11 @@ class FlyquerySettings(BaseSettings):
     result_preview_max_bytes: int = 131072
     result_ttl_hours: int = 24
 
-    # Upload caps (Plan 2)
+    # Upload caps
     max_file_mb: int = 2048
     max_workspace_gb: int = 200
 
-    # Ingestion knobs (Plans 2-3)
+    # Ingestion knobs
     ingest_topic: str = "flyquery.ingest"
     ingest_worker_concurrency: int = 4
     ingest_handler_timeout_s: int = 600
@@ -69,7 +69,7 @@ class FlyquerySettings(BaseSettings):
     type_infer_sample_rows: int = 8192
     default_locale: str = "en-US"
 
-    # Pipeline knobs (Plan 3)
+    # Pipeline knobs
     grounding_model: str = "anthropic:claude-sonnet-4-6"
     generation_model: str = "anthropic:claude-sonnet-4-6"
     critic_model: str = "anthropic:claude-sonnet-4-6"
@@ -199,11 +199,11 @@ class FlyquerySettings(BaseSettings):
     otel_endpoint: str = ""
 
     # ------------------------------------------------------------------
-    # Retention worker (26.5.10+)
+    # Retention worker
     # ------------------------------------------------------------------
     #
     # ``RetentionWorker`` is the second long-running process the
-    # service now needs (the first is ``IngestWorker``). It runs a
+    # service runs (the first is ``IngestWorker``). It runs a
     # periodic loop that:
     #
     # 1. **Reaps stuck RUNNING ingest jobs** -- a crashed worker

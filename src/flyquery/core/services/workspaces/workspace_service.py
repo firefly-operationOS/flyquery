@@ -105,4 +105,4 @@ class WorkspaceService:
         prefix = f"flyquery/{tenant_id}/{workspace_id}/"
         async for meta in await object_store.list(prefix):
             await object_store.delete(meta.key)
-        # 3. Terminal audit event written elsewhere (Plan 2: audit service)
+        # 3. Terminal audit event written elsewhere (audit service)

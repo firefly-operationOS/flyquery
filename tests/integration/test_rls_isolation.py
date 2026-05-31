@@ -95,7 +95,7 @@ def test_rls_blocks_cross_workspace_insert(app_engine: sa.engine.Engine) -> None
 
 
 # ---------------------------------------------------------------------------
-# Task 25 — RLS isolation end-to-end through workspace + dataset controllers
+# RLS isolation end-to-end through workspace + dataset controllers
 # ---------------------------------------------------------------------------
 
 

@@ -1,5 +1,5 @@
 # Copyright 2026 Firefly Software Solutions Inc
-"""End-to-end Northwind demo (Task 33 / Plan 2 Phase H).
+"""End-to-end Northwind demo.
 
 Exercises the full upload pipeline:
   orders.csv + customers.csv + products.xlsx (single sheet) +

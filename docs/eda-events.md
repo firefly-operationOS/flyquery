@@ -88,7 +88,7 @@ to it for observability purposes:
 
 ### Second publisher: RetentionWorker republish
 
-As of 26.5.10, the [`RetentionWorker`](../src/flyquery/core/services/retention/retention_worker.py)
+The [`RetentionWorker`](../src/flyquery/core/services/retention/retention_worker.py)
 also publishes `IngestRequested` events as part of its periodic sweep
 (see [workers.md](workers.md)). Two paths:
 

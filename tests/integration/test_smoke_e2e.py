@@ -1,5 +1,5 @@
 # Copyright 2026 Firefly Software Solutions Inc
-"""End-to-end smoke covering the Plan 1 surface:
+"""End-to-end smoke covering the core service surface:
 health → version → mint token → create workspace → create dataset
 → archive → re-create with same slug rejected.
 """

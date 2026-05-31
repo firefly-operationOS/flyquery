@@ -1,27 +1,17 @@
 # Copyright 2026 Firefly Software Solutions Inc
 """Generic pagination envelope used by every list endpoint.
 
-The flyquery REST surface used to ship three different list shapes:
+:class:`Paginated` is the single list shape across the REST surface, so
+both generated SDKs (Python + Java) model one envelope and callers avoid
+``isinstance`` branching. The shape is
+``{items, total, limit, offset, has_more}``: consumers paginate and
+distinguish "this is the last page" from "I got 0 items by coincidence".
 
-1. ``{items, total, limit, offset, has_more}`` -- datasets, workspaces,
-   tables (search), ingest-jobs.
-2. ``{items}`` only -- conversations, glossary, examples, semantic
-   metrics, semantic dimensions, snapshots, schema objects, schema
-   changes, relations, agent-tokens, version history.
-3. Bare ``list`` returns -- a few edge cases (agent-tokens list).
-
-The first form lets consumers paginate and tell "this is the last
-page" from "I got 0 items by coincidence"; the second + third don't.
-Both generated SDKs (Python + Java) modelled them with three or four
-different envelope shapes, which forced callers into a lot of
-``isinstance`` checks.
-
-:class:`Paginated` is the single shape now. Every list endpoint
-returns it. Fields beyond ``items`` are optional so endpoints whose
-underlying service doesn't know the total (e.g. cheap listings that
-intentionally cap at 200 rows without a COUNT(*)) can leave ``total``
-unset and consumers fall back to ``has_more`` for "is there more to
-fetch?". Endpoints with cheap counts populate every field.
+Fields beyond ``items`` are optional so endpoints whose underlying
+service doesn't know the total (e.g. cheap listings that intentionally
+cap at 200 rows without a ``COUNT(*)``) can leave ``total`` unset and
+consumers fall back to ``has_more`` for "is there more to fetch?".
+Endpoints with cheap counts populate every field.
 """
 
 from __future__ import annotations

@@ -1,9 +1,9 @@
 # Copyright 2026 Firefly Software Solutions Inc
 """Integration test: auto-learning hook inserts a PROPOSED example on first-shot OK.
 
-This test exercises Task 23 by short-circuiting the LLM agents with canned
-responses and verifying that a ``flyquery_examples`` row (source=AGENT_LEARNED,
-quality=PROPOSED) is inserted after a successful first-shot run.
+This test short-circuits the LLM agents with canned responses and verifies
+that a ``flyquery_examples`` row (source=AGENT_LEARNED, quality=PROPOSED) is
+inserted after a successful first-shot run.
 """
 
 from __future__ import annotations

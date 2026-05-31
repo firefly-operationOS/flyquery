@@ -23,10 +23,12 @@ def test_openapi_snapshot_matches_running_app():
 
 @pytest.mark.integration
 def test_openapi_snapshot_includes_header_parameters():
-    """Regression test: the on-disk spec used to ship without flyquery's
-    header parameters because ``scripts/openapi_snapshot.py`` re-installed
-    pyfly's bare generator and discarded the ``_wrapped_openapi`` shim.
-    Generated SDKs then could not enforce the four-header contract.
+    """Guards that the on-disk spec carries flyquery's header parameters.
+
+    ``scripts/openapi_snapshot.py`` must preserve the ``_wrapped_openapi``
+    shim installed by ``flyquery.main`` (rather than pyfly's bare
+    generator), so the spec keeps every header parameter and generated
+    SDKs can enforce the four-header contract.
     """
     snapshot_path = Path(__file__).parent.parent.parent / "openapi.json"
     actual = json.loads(snapshot_path.read_text())

@@ -1,6 +1,6 @@
 # QUICKSTART
 
-This walks the first call against a local flyquery v0.1 (Plan 1).
+This walks the first call against a local flyquery instance.
 
 ## 1. Boot the stack
 

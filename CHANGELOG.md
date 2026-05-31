@@ -7,14 +7,13 @@ Firefly Framework convention (memory: `firefly_uses_calver`).
 
 ## [26.5.13] - 2026-05-31
 
-### Changed — agentic 26.05.30 (RAG/MCP-free) + pyright-clean + logger isolation
+### Changed — agentic 26.05.30 pin + pyright-clean + logger isolation
 
 - `fireflyframework-agentic` is consumed from its published git tag `v26.05.30`
-  (RAG + MCP subsystems removed; unified `content.binary` normalization).
-  flyquery builds its own pgvector hybrid retriever and no longer references
-  the framework's removed `rag` module.
-- Dropped the unused agentic `corpus-search` extra; `sqlglot` is now a direct
-  dependency (was transitive via `corpus-search`); `openai-embeddings` retained.
+  (unified `content.binary` normalization). flyquery builds its own pgvector
+  hybrid retriever.
+- `sqlglot` is declared as a direct dependency backing the Text-to-SQL
+  pipeline; `openai-embeddings` retained.
 - Pinned `mistralai<2.0.0` (pydantic-ai 1.99 transitive pre-release conflict).
 - Resolved every `pyright` warning with real fixes (SQLAlchemy `CursorResult`
   cast for DML rowcount, `FileReader.formats` read-only property, Azure embedder
@@ -866,7 +865,7 @@ Released by ancongui.
 ## [26.5.2] - 2026-05-23
 
 ### Added
-- Plan 4 (Packaging) shipped
+- Packaging shipped
 - `openapi.json` committed snapshot + drift gate (`task openapi-snapshot`)
 - Python SDK auto-generated (`sdks/python/`, package `flyquery-sdk`, asyncio library)
 - Java SDK auto-generated (`sdks/java/`, `io.firefly:flyquery-sdk:26.5.2`, okhttp-gson)
@@ -876,7 +875,7 @@ Released by ancongui.
 ## [26.5.1] - 2026-05-23
 
 ### Added
-- Plan 3 (Query Pipeline) shipped
+- Query pipeline shipped
 - Examples + Glossary CRUD with auto-promotion (AGENT_LEARNED → PROPOSED)
 - Semantic layer: MetricFlow-shape YAML + compiler + history versioning
 - Hybrid retriever (BM25 + pgvector + RRF) + cross-encoder reranker over schema KB
@@ -892,7 +891,7 @@ Released by ancongui.
 ## [26.5.0] - 2026-05-23
 
 ### Added
-- Plan 1 (Foundation) shipped: bootable service, lock-step modules,
+- Foundation shipped: bootable service, lock-step modules,
   full RLS-enabled Postgres schema (~20 tables), workspace + dataset
   CRUD, agent-token mint/verify, ObjectStore port + LocalFs + S3
   adapters, CI workflows.

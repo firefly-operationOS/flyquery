@@ -6,9 +6,8 @@ The schema object table tracks a ``description_source`` and
 Whenever a human explicitly sets ``description`` or ``pii_tag`` through
 ``PUT /schema-objects/{id}`` we must flip the corresponding ``_source``
 to ``HUMAN`` so a later LLM pass doesn't silently overwrite the
-operator's curation. That rule used to live inline in the controller;
-the service is now the single owner so the ingestion stages can call
-the same path if they need to.
+operator's curation. The service is the single owner of this rule, so
+the ingestion stages can call the same path when they need to.
 """
 
 from __future__ import annotations

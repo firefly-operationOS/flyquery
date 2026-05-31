@@ -4,13 +4,11 @@ Revision ID: 0011_ingest_jobs_created_at
 Revises: 0010_allow_unknown_ast
 Create Date: 2026-05-24
 
-The ``RetentionWorker`` orphan-PENDING reaper (added in 26.5.10)
-needs a wall-clock cutoff to decide which PENDING jobs to republish.
-The original ``flyquery_ingest_jobs`` schema only had ``started_at``
-and ``finished_at``; we now backfill a ``created_at`` and have the
-service-layer insert populate it on every new job (the DB default
-``now()`` covers fresh inserts, but existing rows from before this
-revision get backfilled to ``now()`` too).
+The ``RetentionWorker`` orphan-PENDING reaper needs a wall-clock cutoff
+to decide which PENDING jobs to republish. ``flyquery_ingest_jobs``
+carries a ``created_at`` populated by the service-layer insert on every
+new job; the DB default ``now()`` covers fresh inserts and any rows
+without a value are set to ``now()``.
 
 A b-tree index on ``(status, created_at)`` keeps the reaper's
 ``WHERE status='PENDING' AND created_at < cutoff`` query fast even

@@ -144,8 +144,8 @@ See `postgres_test_role_bypasses_rls` memory for the full recipe.
 
 ## 4. Agent token model
 
-Agent tokens enable non-human callers (pipelines, other services, MCP tools)
-to interact with flyquery without JWT.
+Agent tokens enable non-human callers (pipelines, other services, automation
+tooling) to interact with flyquery without JWT.
 
 **Format**: `agt_<8hex>_<32hex>`
 - The `agt_<8hex>` prefix is the public lookup key (stored in clear).

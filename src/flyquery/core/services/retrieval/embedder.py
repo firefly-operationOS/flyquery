@@ -1,12 +1,10 @@
 # Copyright 2026 Firefly Software Solutions Inc
 """Generic embedder backed by fireflyframework-agentic's provider registry.
 
-The original module only supported OpenAI. That meant tests against a
-local Ollama, an air-gapped deployment with Bedrock, or a regulated
-customer running Azure OpenAI all hit a hard wall.
-
 This module delegates the actual embedding call to one of the eight
-provider adapters shipped by ``fireflyframework_agentic.embeddings``:
+provider adapters shipped by ``fireflyframework_agentic.embeddings``,
+so a local Ollama, an air-gapped Bedrock deployment, or a regulated
+customer running Azure OpenAI are all supported through one surface:
 
 * ``ollama``  -- local, default for tests + dev
 * ``openai``  -- text-embedding-3-{small,large}

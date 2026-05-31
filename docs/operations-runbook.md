@@ -513,17 +513,15 @@ psql flyquery -c "
 | **RetentionWorker down for hours** | No data loss; no API impact. Stuck-RUNNING reaper doesn't fire, ledger tables grow, PURGING datasets stick around. Restart and one sweep catches up the entire backlog. |
 | **RetentionWorker keeps crashing on one concern** | The sweep continues — concern failures are isolated. Check logs for `retention_sweep_step_failed concern=<name>`. The bad concern logs a stack trace; other concerns still run. |
 
-### Production bug fixed in 26.5.10
+### Graceful shutdown drain
 
-The `IngestWorker._drain_inflight` shutdown path had a latent bug — the
-post-cancel cleanup used `with asyncio.timeout(5)` but `asyncio.timeout`
-is an ASYNC context manager (`async with`); `with` raises `TypeError`.
-Symptoms before fix: SIGTERM-during-cancel produced a `TypeError` log,
-not a graceful exit. Replaced with `asyncio.wait_for(...)` in
-[`workers.py:163`](../src/flyquery/core/services/ingestion/workers.py).
-No test exercised the path until the 26.5.10 concurrency test suite
-landed (see [concurrency.md](concurrency.md) for the regression test
-reference).
+On SIGTERM the `IngestWorker._drain_inflight` shutdown path cancels
+in-flight work and uses `asyncio.wait_for(...)` for the post-cancel
+cleanup in
+[`workers.py:163`](../src/flyquery/core/services/ingestion/workers.py),
+so a SIGTERM during cancellation exits gracefully. The concurrency
+test suite covers this path (see [concurrency.md](concurrency.md) for
+the regression test reference).
 
 Cross-reference: [workers.md](workers.md) for fleet ergonomics,
 [concurrency.md](concurrency.md) for the threading model.

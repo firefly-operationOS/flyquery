@@ -1,5 +1,5 @@
 # Copyright 2026 Firefly Software Solutions Inc
-"""Integration test: annotation transplant across re-uploads (Task 30).
+"""Integration test: annotation transplant across re-uploads.
 
 Verifies that HUMAN-set fields (description, description_source='HUMAN') on a
 column survive a re-upload that adds an unrelated column.

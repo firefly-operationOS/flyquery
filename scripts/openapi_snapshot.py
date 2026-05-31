@@ -15,16 +15,15 @@ straight to a file (not stdout) so the ``install_openapi`` log line
 (``openapi schema generated (paths=N, schemas=M, tags=K)``) doesn't
 pollute the JSON.
 
-Historical note: this script used to re-invoke ``install_openapi`` at
-the top of ``main()``, which silently re-bound ``app.openapi`` to
-pyfly's bare generator -- discarding the ``_wrapped_openapi`` shim
-installed by ``flyquery.main``. The on-disk spec then lost every
+This script must NOT re-invoke ``install_openapi``: that re-binds
+``app.openapi`` to pyfly's bare generator and discards the
+``_wrapped_openapi`` shim installed by ``flyquery.main``, dropping every
 ``X-Tenant-Id`` / ``X-Workspace-Id`` / ``X-Agent-Token`` /
-``Idempotency-Key`` parameter and every ``securityScheme``, so the
-generated SDKs couldn't enforce the four-header contract. We now rely
-exclusively on the wrapping that ``flyquery.main`` installs at import,
-and defensively re-run ``enrich_openapi_with_headers`` on the dumped
-spec so the snapshot is correct even if ``main.py`` is later refactored.
+``Idempotency-Key`` parameter and every ``securityScheme`` from the spec
+(generated SDKs then can't enforce the four-header contract). It relies
+on the wrapping ``flyquery.main`` installs at import, and defensively
+re-runs ``enrich_openapi_with_headers`` on the dumped spec so the
+snapshot stays correct regardless of how ``main.py`` evolves.
 """
 
 from __future__ import annotations

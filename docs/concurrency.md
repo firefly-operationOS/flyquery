@@ -168,24 +168,17 @@ Exit
 ```
 
 Jobs that did not complete are left in `RUNNING`. The
-**RetentionWorker** (added in 26.5.10) resets them to `PENDING` and
-republishes them onto the bus after `processing_lease_s` (default
-1800s); see
+**RetentionWorker** resets them to `PENDING` and republishes them onto
+the bus after `processing_lease_s` (default 1800s); see
 [`retention_worker.py:162`](../src/flyquery/core/services/retention/retention_worker.py).
-This is the recovery primitive that replaces the planned-but-not-shipped
-heartbeat scheme.
+This is the recovery primitive for crashed or terminated workers.
 
-### Drain bug (fixed in 26.5.10)
+### Drain timeout window
 
-The previous `_drain_inflight` implementation used
-`with asyncio.timeout(5)` for the post-cancel cleanup window — but
-`asyncio.timeout()` is an ASYNC context manager (`async with` only),
-so the synchronous `with` raised `TypeError` at runtime. The bug was
-latent because no test exercised the drain-with-cancel path. Replaced
-with `asyncio.wait_for(...)` and a warning log if the hard timeout
-elapses
+`_drain_inflight` uses `asyncio.wait_for(...)` for the post-cancel
+cleanup window and logs a warning if the hard timeout elapses
 ([`workers.py:163`](../src/flyquery/core/services/ingestion/workers.py)).
-The regression test that catches it is in
+The regression test that covers the drain-with-cancel path is in
 [`tests/unit/test_ingest_worker_concurrency.py`](../tests/unit/test_ingest_worker_concurrency.py).
 
 ---

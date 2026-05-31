@@ -947,11 +947,10 @@ rollup below is the aggregation on top of this raw stream — see
 
 ---
 
-> **Live as of 26.5.10.** The endpoints below were placeholders in
-> earlier releases; the read-side query history + billing rollup +
-> stats endpoints are now shipped on top of the pre-existing
-> `flyquery_queries`, `flyquery_cost_events`, and workspace inventory
-> tables. See [`src/flyquery/web/controllers/queries_controller.py`](../src/flyquery/web/controllers/queries_controller.py),
+> The read-side query history, billing rollup, and stats endpoints
+> below are served on top of the `flyquery_queries`,
+> `flyquery_cost_events`, and workspace inventory tables. See
+> [`src/flyquery/web/controllers/queries_controller.py`](../src/flyquery/web/controllers/queries_controller.py),
 > [`billing_controller.py`](../src/flyquery/web/controllers/billing_controller.py),
 > [`stats_controller.py`](../src/flyquery/web/controllers/stats_controller.py).
 
