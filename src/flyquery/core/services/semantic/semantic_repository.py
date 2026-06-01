@@ -194,15 +194,12 @@ class SemanticRepository:
             new_version = cur_row["current_version"] + 1
 
             if not fields:
-                got = await self.get_metric(
-                    metric_id, tenant_id=tenant_id, workspace_id=workspace_id
-                )
+                got = await self.get_metric(metric_id, tenant_id=tenant_id, workspace_id=workspace_id)
                 assert got is not None
                 return got
 
             set_cols = ", ".join(
-                f"{k} = CAST(:{k} AS jsonb)" if k == "metadata_json" else f"{k} = :{k}"
-                for k in fields
+                f"{k} = CAST(:{k} AS jsonb)" if k == "metadata_json" else f"{k} = :{k}" for k in fields
             )
             result = await s.execute(
                 sa.text(

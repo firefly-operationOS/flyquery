@@ -143,27 +143,19 @@ class AgentSemanticDimensionsController:
         return SemanticDimensionRead.model_validate(row)
 
     @post_mapping("/{dimension_id}:publish")
-    async def publish(
-        self, http_request: Request, dimension_id: PathVar[uuid.UUID]
-    ) -> SemanticDimensionRead:
+    async def publish(self, http_request: Request, dimension_id: PathVar[uuid.UUID]) -> SemanticDimensionRead:
         """Publish a dimension (agent-tier)."""
         await self._verify(http_request, _SCOPE_AUTHOR)
         ctx = tenant_context_from_request(http_request)
-        row = await self._service.publish(
-            ctx.tenant_id, uuid.UUID(str(ctx.workspace_id)), dimension_id
-        )
+        row = await self._service.publish(ctx.tenant_id, uuid.UUID(str(ctx.workspace_id)), dimension_id)
         return SemanticDimensionRead.model_validate(row)
 
     @post_mapping("/{dimension_id}:retire")
-    async def retire(
-        self, http_request: Request, dimension_id: PathVar[uuid.UUID]
-    ) -> SemanticDimensionRead:
+    async def retire(self, http_request: Request, dimension_id: PathVar[uuid.UUID]) -> SemanticDimensionRead:
         """Retire a dimension (agent-tier)."""
         await self._verify(http_request, _SCOPE_AUTHOR)
         ctx = tenant_context_from_request(http_request)
-        row = await self._service.retire(
-            ctx.tenant_id, uuid.UUID(str(ctx.workspace_id)), dimension_id
-        )
+        row = await self._service.retire(ctx.tenant_id, uuid.UUID(str(ctx.workspace_id)), dimension_id)
         return SemanticDimensionRead.model_validate(row)
 
     @get_mapping("/{dimension_id}/history")
@@ -173,8 +165,6 @@ class AgentSemanticDimensionsController:
         """Return version history for a dimension (agent-tier)."""
         await self._verify(http_request, _SCOPE_READ)
         ctx = tenant_context_from_request(http_request)
-        rows = await self._service.list_history(
-            ctx.tenant_id, uuid.UUID(str(ctx.workspace_id)), dimension_id
-        )
+        rows = await self._service.list_history(ctx.tenant_id, uuid.UUID(str(ctx.workspace_id)), dimension_id)
         items = [SemanticVersionRead.model_validate(r) for r in rows]
         return Paginated.of(items, total=len(items))

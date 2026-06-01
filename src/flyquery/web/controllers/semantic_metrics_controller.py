@@ -92,9 +92,7 @@ class SemanticMetricsController:
         return Paginated.of(sliced, total=len(items), limit=limit, offset=offset)
 
     @get_mapping("/{metric_id}")
-    async def get_metric(
-        self, http_request: Request, metric_id: PathVar[uuid.UUID]
-    ) -> SemanticMetricRead:
+    async def get_metric(self, http_request: Request, metric_id: PathVar[uuid.UUID]) -> SemanticMetricRead:
         """Fetch a single semantic metric by id."""
         ctx = tenant_context_from_request(http_request)
         row = await self._service.get(ctx.tenant_id, uuid.UUID(ctx.workspace_id), metric_id)
@@ -111,24 +109,18 @@ class SemanticMetricsController:
     ) -> SemanticMetricRead:
         """Sparse-update a metric; re-validates + recompiles if published."""
         ctx = tenant_context_from_request(http_request)
-        row = await self._service.update(
-            ctx.tenant_id, uuid.UUID(ctx.workspace_id), metric_id, body
-        )
+        row = await self._service.update(ctx.tenant_id, uuid.UUID(ctx.workspace_id), metric_id, body)
         return SemanticMetricRead.model_validate(row)
 
     @post_mapping("/{metric_id}:publish")
-    async def publish(
-        self, http_request: Request, metric_id: PathVar[uuid.UUID]
-    ) -> SemanticMetricRead:
+    async def publish(self, http_request: Request, metric_id: PathVar[uuid.UUID]) -> SemanticMetricRead:
         """Validate, compile, and publish a metric (status → PUBLISHED)."""
         ctx = tenant_context_from_request(http_request)
         row = await self._service.publish(ctx.tenant_id, uuid.UUID(ctx.workspace_id), metric_id)
         return SemanticMetricRead.model_validate(row)
 
     @post_mapping("/{metric_id}:retire")
-    async def retire(
-        self, http_request: Request, metric_id: PathVar[uuid.UUID]
-    ) -> SemanticMetricRead:
+    async def retire(self, http_request: Request, metric_id: PathVar[uuid.UUID]) -> SemanticMetricRead:
         """Retire a metric (status → RETIRED)."""
         ctx = tenant_context_from_request(http_request)
         row = await self._service.retire(ctx.tenant_id, uuid.UUID(ctx.workspace_id), metric_id)
@@ -145,8 +137,6 @@ class SemanticMetricsController:
         whole point. ``total = len(items)`` and ``has_more = False``.
         """
         ctx = tenant_context_from_request(http_request)
-        rows = await self._service.list_history(
-            ctx.tenant_id, uuid.UUID(ctx.workspace_id), metric_id
-        )
+        rows = await self._service.list_history(ctx.tenant_id, uuid.UUID(ctx.workspace_id), metric_id)
         items = [SemanticVersionRead.model_validate(r) for r in rows]
         return Paginated.of(items, total=len(items))

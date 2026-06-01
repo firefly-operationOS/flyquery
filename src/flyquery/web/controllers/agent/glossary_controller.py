@@ -85,9 +85,7 @@ class AgentGlossaryController:
         )
 
     @post_mapping("", status_code=201)
-    async def create(
-        self, http_request: Request, body: Valid[Body[GlossaryTermCreate]]
-    ) -> GlossaryTermRead:
+    async def create(self, http_request: Request, body: Valid[Body[GlossaryTermCreate]]) -> GlossaryTermRead:
         """Create a glossary term (agent-tier)."""
         await self._verify(http_request, _SCOPE_AUTHOR)
         ctx = tenant_context_from_request(http_request)
@@ -111,9 +109,7 @@ class AgentGlossaryController:
         return Paginated.of(items, limit=limit, offset=offset)
 
     @get_mapping("/{term_id}")
-    async def get_term(
-        self, http_request: Request, term_id: PathVar[uuid.UUID]
-    ) -> GlossaryTermRead:
+    async def get_term(self, http_request: Request, term_id: PathVar[uuid.UUID]) -> GlossaryTermRead:
         """Fetch a single glossary term (agent-tier)."""
         await self._verify(http_request, _SCOPE_READ)
         row = await self._service.get(term_id)

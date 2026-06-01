@@ -115,9 +115,7 @@ async def test_publish_sets_compiled_sql(started_app: None) -> None:  # noqa: AR
     assert sqlglot.parse_one(bound, read="duckdb") is not None
 
     # Published metric is resolvable by name for the query fast-path.
-    by_name = await repo.get_by_name(
-        "revenue_by_region", ds_id, tenant_id=tenant, workspace_id=ws_id
-    )
+    by_name = await repo.get_by_name("revenue_by_region", ds_id, tenant_id=tenant, workspace_id=ws_id)
     assert by_name is not None and by_name["compiled_sql_template"] == sql
 
     # History records the compiled SQL on the published version (no longer NULL).

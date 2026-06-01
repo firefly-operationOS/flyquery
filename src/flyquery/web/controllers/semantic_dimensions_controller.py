@@ -113,24 +113,18 @@ class SemanticDimensionsController:
     ) -> SemanticDimensionRead:
         """Sparse-update a dimension; re-validates + recompiles if published."""
         ctx = tenant_context_from_request(http_request)
-        row = await self._service.update(
-            ctx.tenant_id, uuid.UUID(ctx.workspace_id), dimension_id, body
-        )
+        row = await self._service.update(ctx.tenant_id, uuid.UUID(ctx.workspace_id), dimension_id, body)
         return SemanticDimensionRead.model_validate(row)
 
     @post_mapping("/{dimension_id}:publish")
-    async def publish(
-        self, http_request: Request, dimension_id: PathVar[uuid.UUID]
-    ) -> SemanticDimensionRead:
+    async def publish(self, http_request: Request, dimension_id: PathVar[uuid.UUID]) -> SemanticDimensionRead:
         """Validate, compile, and publish a dimension (status → PUBLISHED)."""
         ctx = tenant_context_from_request(http_request)
         row = await self._service.publish(ctx.tenant_id, uuid.UUID(ctx.workspace_id), dimension_id)
         return SemanticDimensionRead.model_validate(row)
 
     @post_mapping("/{dimension_id}:retire")
-    async def retire(
-        self, http_request: Request, dimension_id: PathVar[uuid.UUID]
-    ) -> SemanticDimensionRead:
+    async def retire(self, http_request: Request, dimension_id: PathVar[uuid.UUID]) -> SemanticDimensionRead:
         """Retire a dimension (status → RETIRED)."""
         ctx = tenant_context_from_request(http_request)
         row = await self._service.retire(ctx.tenant_id, uuid.UUID(ctx.workspace_id), dimension_id)
@@ -142,8 +136,6 @@ class SemanticDimensionsController:
     ) -> Paginated[SemanticVersionRead]:
         """Return version history for a dimension, oldest first."""
         ctx = tenant_context_from_request(http_request)
-        rows = await self._service.list_history(
-            ctx.tenant_id, uuid.UUID(ctx.workspace_id), dimension_id
-        )
+        rows = await self._service.list_history(ctx.tenant_id, uuid.UUID(ctx.workspace_id), dimension_id)
         items = [SemanticVersionRead.model_validate(r) for r in rows]
         return Paginated.of(items, total=len(items))

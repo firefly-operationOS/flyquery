@@ -441,9 +441,7 @@ async def test_semantic_layer_executes_compiled_sql_without_generation():
     )
     gen = _CountingAgent(_make_candidates("SELECT 999 AS should_not_run"))
     query_repo = _FakeQueryRepo()
-    svc = _make_service(
-        grounded=grounded, semantic_repo=repo, generation_agent=gen, query_repo=query_repo
-    )
+    svc = _make_service(grounded=grounded, semantic_repo=repo, generation_agent=gen, query_repo=query_repo)
 
     result = await svc.answer(
         tenant_id="ten-a",

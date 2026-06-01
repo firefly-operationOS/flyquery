@@ -36,9 +36,7 @@ _TYPE_URI = "https://firefly.dev/problems/semantic_compile_error"
 async def _on_semantic_compile(request: Request, exc: Exception) -> JSONResponse:
     """Render a :class:`SemanticCompileError` as the canonical 400 envelope."""
     assert isinstance(exc, SemanticCompileError)
-    errors = (
-        [{"code": exc.code, "path": exc.field, "message": exc.detail}] if exc.field else []
-    )
+    errors = [{"code": exc.code, "path": exc.field, "message": exc.detail}] if exc.field else []
     problem = ProblemDetail(
         type=_TYPE_URI,
         code="semantic_compile_error",

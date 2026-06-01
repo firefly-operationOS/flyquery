@@ -25,9 +25,7 @@ from flyquery.core.services.semantic.yaml_schema import validate_metric_yaml
 
 
 def test_clean_simple_passes() -> None:
-    assert_safe_template(
-        "SELECT region, SUM(amount) AS m FROM orders WHERE s = 'x' GROUP BY region"
-    )
+    assert_safe_template("SELECT region, SUM(amount) AS m FROM orders WHERE s = 'x' GROUP BY region")
 
 
 def test_allowed_funcs_constant_has_core_aggregates() -> None:
@@ -60,9 +58,7 @@ def test_ddl_rejected() -> None:
 
 def test_subquery_rejected() -> None:
     with pytest.raises(SemanticCompileError):
-        assert_safe_template(
-            "SELECT SUM(x) AS m FROM t WHERE id IN (SELECT id FROM secret_pii)"
-        )
+        assert_safe_template("SELECT SUM(x) AS m FROM t WHERE id IN (SELECT id FROM secret_pii)")
 
 
 def test_disallowed_function_rejected() -> None:
@@ -73,6 +69,4 @@ def test_disallowed_function_rejected() -> None:
 def test_injection_filter_rejected_via_template() -> None:
     # A filter carrying a statement separator must not survive the firewall.
     with pytest.raises(SemanticCompileError):
-        assert_safe_template(
-            "SELECT SUM(amount) AS m FROM orders WHERE 1=1; DROP TABLE orders"
-        )
+        assert_safe_template("SELECT SUM(amount) AS m FROM orders WHERE 1=1; DROP TABLE orders")

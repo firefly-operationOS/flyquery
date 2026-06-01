@@ -57,9 +57,7 @@ class SemanticMetric(Base):
     metric_type: Mapped[str] = mapped_column(String, nullable=False, server_default=text("'SIMPLE'"))
     status: Mapped[str] = mapped_column(String, nullable=False, server_default=text("'DRAFT'"))
     current_version: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("1"))
-    metadata_json: Mapped[dict] = mapped_column(
-        JSONB, nullable=False, server_default=text("'{}'::jsonb")
-    )
+    metadata_json: Mapped[dict] = mapped_column(JSONB, nullable=False, server_default=text("'{}'::jsonb"))
     created_at: Mapped[datetime] = mapped_column(
         TIMESTAMP(timezone=True), nullable=False, server_default=text("now()")
     )
@@ -97,14 +95,10 @@ class SemanticDimension(Base):
     definition_yaml: Mapped[str] = mapped_column(String, nullable=False)
     compiled_sql_template: Mapped[str | None] = mapped_column(String, nullable=True)
     metric_type: Mapped[str] = mapped_column(String, nullable=False, server_default=text("'SIMPLE'"))
-    dimension_type: Mapped[str] = mapped_column(
-        String, nullable=False, server_default=text("'categorical'")
-    )
+    dimension_type: Mapped[str] = mapped_column(String, nullable=False, server_default=text("'categorical'"))
     status: Mapped[str] = mapped_column(String, nullable=False, server_default=text("'DRAFT'"))
     current_version: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("1"))
-    metadata_json: Mapped[dict] = mapped_column(
-        JSONB, nullable=False, server_default=text("'{}'::jsonb")
-    )
+    metadata_json: Mapped[dict] = mapped_column(JSONB, nullable=False, server_default=text("'{}'::jsonb"))
     created_at: Mapped[datetime] = mapped_column(
         TIMESTAMP(timezone=True), nullable=False, server_default=text("now()")
     )

@@ -37,9 +37,7 @@ def test_glossary_create_accepts_documented_keys() -> None:
 
 
 def test_glossary_create_still_accepts_internal_keys() -> None:
-    dto = GlossaryTermCreate.model_validate(
-        {"term": "x", "definition": "d", "related_metrics_json": ["m"]}
-    )
+    dto = GlossaryTermCreate.model_validate({"term": "x", "definition": "d", "related_metrics_json": ["m"]})
     assert dto.related_metrics_json == ["m"]
 
 

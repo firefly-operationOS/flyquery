@@ -84,17 +84,13 @@ class SemanticDimensionsService:
         status: str | None = None,
     ) -> list[dict[str, Any]]:
         """Return dimensions for a workspace (optionally filtered by dataset/status)."""
-        return await self._repo.list_dimensions(
-            tenant_id, workspace_id, dataset_id=dataset_id, status=status
-        )
+        return await self._repo.list_dimensions(tenant_id, workspace_id, dataset_id=dataset_id, status=status)
 
     async def get(
         self, tenant_id: str, workspace_id: uuid.UUID, dimension_id: uuid.UUID
     ) -> dict[str, Any] | None:
         """Fetch a single dimension by id; returns None when not found."""
-        return await self._repo.get_dimension(
-            dimension_id, tenant_id=tenant_id, workspace_id=workspace_id
-        )
+        return await self._repo.get_dimension(dimension_id, tenant_id=tenant_id, workspace_id=workspace_id)
 
     async def update(
         self,
@@ -144,14 +140,10 @@ class SemanticDimensionsService:
         self, tenant_id: str, workspace_id: uuid.UUID, dimension_id: uuid.UUID
     ) -> dict[str, Any]:
         """Retire a dimension (status → RETIRED)."""
-        return await self._repo.retire_dimension(
-            dimension_id, tenant_id=tenant_id, workspace_id=workspace_id
-        )
+        return await self._repo.retire_dimension(dimension_id, tenant_id=tenant_id, workspace_id=workspace_id)
 
     async def list_history(
         self, tenant_id: str, workspace_id: uuid.UUID, dimension_id: uuid.UUID
     ) -> list[dict[str, Any]]:
         """Return version history for a dimension, oldest first."""
-        return await self._repo.list_history(
-            dimension_id, tenant_id=tenant_id, workspace_id=workspace_id
-        )
+        return await self._repo.list_history(dimension_id, tenant_id=tenant_id, workspace_id=workspace_id)

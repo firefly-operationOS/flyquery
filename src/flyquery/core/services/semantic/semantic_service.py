@@ -116,9 +116,7 @@ class SemanticService:
         status: str | None = None,
     ) -> list[dict[str, Any]]:
         """Return metrics for a workspace (optionally filtered by dataset/status)."""
-        return await self._repo.list_metrics(
-            tenant_id, workspace_id, dataset_id=dataset_id, status=status
-        )
+        return await self._repo.list_metrics(tenant_id, workspace_id, dataset_id=dataset_id, status=status)
 
     async def get(
         self, tenant_id: str, workspace_id: uuid.UUID, metric_id: uuid.UUID
@@ -136,9 +134,7 @@ class SemanticService:
         actor: str = "user",
     ) -> dict[str, Any]:
         """Sparse-update a metric; recompiles + re-publishes if it was PUBLISHED."""
-        existing = await self._repo.get_metric(
-            metric_id, tenant_id=tenant_id, workspace_id=workspace_id
-        )
+        existing = await self._repo.get_metric(metric_id, tenant_id=tenant_id, workspace_id=workspace_id)
         if existing is None:
             raise KeyError(f"metric {metric_id} not found")
 
@@ -159,13 +155,9 @@ class SemanticService:
             metric_id, tenant_id=tenant_id, workspace_id=workspace_id, **fields
         )
 
-    async def publish(
-        self, tenant_id: str, workspace_id: uuid.UUID, metric_id: uuid.UUID
-    ) -> dict[str, Any]:
+    async def publish(self, tenant_id: str, workspace_id: uuid.UUID, metric_id: uuid.UUID) -> dict[str, Any]:
         """Validate, compile, firewall, and publish a metric."""
-        metric = await self._repo.get_metric(
-            metric_id, tenant_id=tenant_id, workspace_id=workspace_id
-        )
+        metric = await self._repo.get_metric(metric_id, tenant_id=tenant_id, workspace_id=workspace_id)
         if metric is None:
             raise KeyError(f"metric {metric_id} not found")
         definition = validate_metric_yaml(metric["definition_yaml"])
@@ -179,18 +171,12 @@ class SemanticService:
             metric_id, compiled_sql, tenant_id=tenant_id, workspace_id=workspace_id
         )
 
-    async def retire(
-        self, tenant_id: str, workspace_id: uuid.UUID, metric_id: uuid.UUID
-    ) -> dict[str, Any]:
+    async def retire(self, tenant_id: str, workspace_id: uuid.UUID, metric_id: uuid.UUID) -> dict[str, Any]:
         """Retire a metric (status → RETIRED)."""
-        return await self._repo.retire_metric(
-            metric_id, tenant_id=tenant_id, workspace_id=workspace_id
-        )
+        return await self._repo.retire_metric(metric_id, tenant_id=tenant_id, workspace_id=workspace_id)
 
     async def list_history(
         self, tenant_id: str, workspace_id: uuid.UUID, metric_id: uuid.UUID
     ) -> list[dict[str, Any]]:
         """Return version history for a metric, oldest first."""
-        return await self._repo.list_history(
-            metric_id, tenant_id=tenant_id, workspace_id=workspace_id
-        )
+        return await self._repo.list_history(metric_id, tenant_id=tenant_id, workspace_id=workspace_id)

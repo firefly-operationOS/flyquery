@@ -116,8 +116,7 @@ def test_missing_metric_root_rejected() -> None:
 
 def test_invalid_agg_rejected() -> None:
     bad = (
-        "metric:\n  name: x\n  type: simple\n  type_params:\n"
-        "    measure: {name: x, agg: median, expr: t.c}\n"
+        "metric:\n  name: x\n  type: simple\n  type_params:\n    measure: {name: x, agg: median, expr: t.c}\n"
     )
     with pytest.raises(MetricYamlError):
         validate_metric_yaml(bad)
@@ -138,9 +137,7 @@ def test_malformed_yaml_rejected() -> None:
 
 
 def test_categorical_dimension_parses() -> None:
-    d = validate_dimension_yaml(
-        "dimension:\n  name: order_region\n  type: categorical\n  expr: region\n"
-    )
+    d = validate_dimension_yaml("dimension:\n  name: order_region\n  type: categorical\n  expr: region\n")
     assert d.name == "order_region"
     assert d.type == "categorical"
     assert d.expr == "region"
@@ -152,9 +149,7 @@ def test_time_dimension_requires_grain() -> None:
     )
     assert ok.grain == "day"
     with pytest.raises(MetricYamlError):
-        validate_dimension_yaml(
-            "dimension:\n  name: order_day\n  type: time\n  expr: order_date\n"
-        )
+        validate_dimension_yaml("dimension:\n  name: order_day\n  type: time\n  expr: order_date\n")
 
 
 def test_missing_dimension_root_rejected() -> None:

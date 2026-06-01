@@ -84,7 +84,7 @@ def test_cumulative() -> None:
 def test_derived() -> None:
     sql = _compile(
         "metric:\n  name: gm\n  type: derived\n  type_params:\n"
-        "    expr: \"(rev - cogs) / rev\"\n    metrics: [{name: rev}, {name: cogs}]\n"
+        '    expr: "(rev - cogs) / rev"\n    metrics: [{name: rev}, {name: cogs}]\n'
     )
     assert "((rev - cogs) / rev) AS gm" in sql
 

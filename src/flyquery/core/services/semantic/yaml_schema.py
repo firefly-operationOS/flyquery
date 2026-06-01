@@ -106,9 +106,7 @@ class MetricDefinition(BaseModel):
         if self.type == "cumulative" and (
             tp.measure is None or tp.window is None or not tp.grain or not tp.time_column
         ):
-            raise ValueError(
-                "cumulative metric requires type_params.measure, window, grain, time_column"
-            )
+            raise ValueError("cumulative metric requires type_params.measure, window, grain, time_column")
         return self
 
 

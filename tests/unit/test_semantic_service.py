@@ -140,9 +140,7 @@ async def test_update_published_recompiles() -> None:
     created = await svc.create(TENANT, WS, _create_body())
     await svc.publish(TENANT, WS, created["id"])
     new_yaml = SIMPLE.replace("agg: sum", "agg: count")
-    updated = await svc.update(
-        TENANT, WS, created["id"], SemanticMetricUpdate(definition_yaml=new_yaml)
-    )
+    updated = await svc.update(TENANT, WS, created["id"], SemanticMetricUpdate(definition_yaml=new_yaml))
     assert updated["status"] == "PUBLISHED"
     assert "COUNT(orders.amount) AS total_revenue" in updated["compiled_sql_template"]
     assert updated["current_version"] == 2
