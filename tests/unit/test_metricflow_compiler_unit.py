@@ -12,103 +12,113 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Unit tests for MetricFlowCompiler."""
+"""Unit tests for SemanticCompiler (compile + bind)."""
 
 from __future__ import annotations
 
-from flyquery.core.services.semantic.metricflow_compiler import MetricFlowCompiler
+from flyquery.core.services.semantic.compiler import MetricFlowCompiler, SemanticCompiler
+from flyquery.core.services.semantic.yaml_schema import validate_metric_yaml
 
 
-def test_simple_count() -> None:
-    sql = MetricFlowCompiler.compile({"name": "order_count", "agg": "count", "expr": "orders.id"})
-    assert sql == "SELECT COUNT(orders.id) AS order_count FROM orders"
+def _compile(yaml_str: str, **kwargs: object) -> str:
+    return SemanticCompiler.compile(validate_metric_yaml(yaml_str), **kwargs)
 
 
-def test_simple_sum() -> None:
-    sql = MetricFlowCompiler.compile({"name": "total_revenue", "agg": "sum", "expr": "orders.total"})
-    assert sql == "SELECT SUM(orders.total) AS total_revenue FROM orders"
+def test_back_compat_alias() -> None:
+    assert MetricFlowCompiler is SemanticCompiler
 
 
-def test_with_group_by() -> None:
-    sql = MetricFlowCompiler.compile(
-        {
-            "name": "revenue_by_region",
-            "agg": "sum",
-            "expr": "orders.total",
-            "group_by": ["customers.region"],
-        }
+def test_simple_sum_with_slots() -> None:
+    sql = _compile(
+        "metric:\n  name: total_revenue\n  type: simple\n  type_params:\n"
+        "    measure: {name: amt, agg: sum, expr: orders.amount}\n"
+        "    filter: \"orders.status = 'OK'\"\n  group_by: [orders.region]\n"
     )
-    assert "customers.region" in sql
-    assert "GROUP BY customers.region" in sql
-    assert "SUM(orders.total) AS revenue_by_region" in sql
-
-
-def test_with_join() -> None:
-    sql = MetricFlowCompiler.compile(
-        {
-            "name": "revenue_by_region",
-            "agg": "sum",
-            "expr": "orders.total",
-            "joins": [{"from": "orders.customer_id", "to": "customers.customer_id"}],
-            "group_by": ["customers.region"],
-        }
-    )
-    assert "JOIN customers ON orders.customer_id = customers.customer_id" in sql
+    assert "SUM(orders.amount) AS total_revenue" in sql
     assert "FROM orders" in sql
+    assert "WHERE orders.status = 'OK'" in sql
+    assert "{extra_filter_clause}" in sql
+    assert "{group_by_append}" in sql
+    assert "GROUP BY orders.region" in sql
 
 
-def test_with_filter() -> None:
-    sql = MetricFlowCompiler.compile(
-        {
-            "name": "active_orders",
-            "agg": "count",
-            "expr": "orders.id",
-            "filters": ["orders.status = 'ACTIVE'"],
-        }
+def test_simple_no_group_by_still_has_slot() -> None:
+    sql = _compile(
+        "metric:\n  name: c\n  type: simple\n  type_params:\n"
+        "    measure: {name: id, agg: count, expr: orders.id}\n"
     )
-    assert "WHERE orders.status = 'ACTIVE'" in sql
+    assert "COUNT(orders.id) AS c" in sql
+    assert "{group_by_append}" in sql
+    assert "GROUP BY" not in sql
 
 
-def test_combined_join_filter_group() -> None:
-    sql = MetricFlowCompiler.compile(
-        {
-            "name": "revenue_by_region",
-            "agg": "sum",
-            "expr": "orders.total",
-            "joins": [{"from": "orders.customer_id", "to": "customers.customer_id"}],
-            "filters": ["orders.year = 2026"],
-            "group_by": ["customers.region"],
-        }
+def test_count_distinct() -> None:
+    sql = _compile(
+        "metric:\n  name: c\n  type: simple\n  type_params:\n"
+        "    measure: {name: id, agg: count_distinct, expr: orders.id}\n"
     )
-    assert "JOIN customers" in sql
-    assert "WHERE orders.year = 2026" in sql
-    assert "GROUP BY customers.region" in sql
+    assert "COUNT(DISTINCT orders.id) AS c" in sql
 
 
-def test_multiple_group_by_cols() -> None:
-    sql = MetricFlowCompiler.compile(
-        {
-            "name": "revenue",
-            "agg": "sum",
-            "expr": "orders.total",
-            "group_by": ["customers.region", "customers.country"],
-        }
+def test_ratio() -> None:
+    sql = _compile(
+        "metric:\n  name: win_rate\n  type: ratio\n  type_params:\n"
+        "    numerator: {name: w, agg: count, expr: deals.id}\n"
+        "    denominator: {name: t, agg: count, expr: deals.id}\n"
     )
-    assert "GROUP BY customers.region, customers.country" in sql
+    assert "NULLIF(" in sql
+    assert "AS win_rate" in sql
+    assert "FROM deals" in sql
 
 
-def test_sql_is_parseable_by_sqlglot() -> None:
-    """Compiled SQL must be parseable by sqlglot."""
-    import sqlglot
-
-    sql = MetricFlowCompiler.compile(
-        {
-            "name": "revenue_by_region",
-            "agg": "sum",
-            "expr": "orders.total",
-            "joins": [{"from": "orders.customer_id", "to": "customers.customer_id"}],
-            "group_by": ["customers.region"],
-        }
+def test_cumulative() -> None:
+    sql = _compile(
+        "metric:\n  name: mtd\n  type: cumulative\n  type_params:\n"
+        "    measure: {name: a, agg: sum, expr: orders.amt}\n"
+        "    window: 30\n    grain: day\n    time_column: orders.dt\n"
     )
-    parsed = sqlglot.parse_one(sql, read="duckdb")
-    assert parsed is not None
+    assert "DATE_TRUNC('day', orders.dt)" in sql
+    assert "ORDER BY bucket" in sql
+
+
+def test_derived() -> None:
+    sql = _compile(
+        "metric:\n  name: gm\n  type: derived\n  type_params:\n"
+        "    expr: \"(rev - cogs) / rev\"\n    metrics: [{name: rev}, {name: cogs}]\n"
+    )
+    assert "((rev - cogs) / rev) AS gm" in sql
+
+
+def test_resolve_table_for_bare_column() -> None:
+    sql = _compile(
+        "metric:\n  name: oc\n  type: simple\n  type_params:\n"
+        "    measure: {name: id, agg: count, expr: order_id}\n",
+        resolve_table=lambda col, ds=None: "orders",
+    )
+    assert "FROM orders" in sql
+    assert "FROM order_id" not in sql
+
+
+def test_resolve_dimension_in_group_by() -> None:
+    sql = _compile(
+        "metric:\n  name: r\n  type: simple\n  type_params:\n"
+        "    measure: {name: amt, agg: sum, expr: orders.amt}\n  group_by: [order_day]\n",
+        resolve_dimension=lambda name, ds=None: "DATE_TRUNC('day', orders.dt)",
+    )
+    assert "DATE_TRUNC('day', orders.dt)" in sql
+
+
+def test_bind_substitutes_slots() -> None:
+    tmpl = "SELECT x AS m FROM t WHERE 1=1 {extra_filter_clause} GROUP BY x {group_by_append}"
+    out = SemanticCompiler.bind(tmpl, extra_filter="dt >= '2026-01-01'", group_by_append=["region"])
+    assert "AND dt >= '2026-01-01'" in out
+    assert ", region" in out
+    assert "{extra_filter_clause}" not in out
+    assert "{group_by_append}" not in out
+
+
+def test_bind_empty_slots() -> None:
+    tmpl = "SELECT x AS m FROM t WHERE 1=1 {extra_filter_clause} GROUP BY x {group_by_append}"
+    out = SemanticCompiler.bind(tmpl)
+    assert "{" not in out
+    assert out == "SELECT x AS m FROM t WHERE 1=1 GROUP BY x"
