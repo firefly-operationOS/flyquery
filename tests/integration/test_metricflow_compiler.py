@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Integration tests for MetricFlowCompiler + SemanticService (publish path)."""
+"""Integration tests for SemanticCompiler + SemanticService (publish path)."""
 
 from __future__ import annotations
 
@@ -23,17 +23,18 @@ import sqlalchemy as sa
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
 SIMPLE_METRIC_YAML = """
-name: revenue_by_region
-label: Revenue by Region
-description: Total order revenue by region
-metric_type: SIMPLE
-agg: sum
-expr: orders.total
-joins:
-  - from: orders.customer_id
-    to: customers.customer_id
-group_by:
-  - customers.region
+metric:
+  name: revenue_by_region
+  label: Revenue by Region
+  description: Total order revenue by region
+  type: simple
+  type_params:
+    measure: {name: total, agg: sum, expr: orders.total}
+    filter: "orders.status = 'COMPLETED'"
+  group_by:
+    - orders.region
+  meta:
+    owner: finance
 """
 
 
@@ -45,6 +46,9 @@ async def test_publish_sets_compiled_sql(started_app: None) -> None:  # noqa: AR
 
     import sqlglot
 
+    from flyquery.core.services.semantic.semantic_dimensions_repository import (
+        SemanticDimensionsRepository,
+    )
     from flyquery.core.services.semantic.semantic_repository import SemanticRepository
     from flyquery.core.services.semantic.semantic_service import SemanticService
     from flyquery.interfaces.semantic import SemanticMetricCreate
@@ -82,7 +86,8 @@ async def test_publish_sets_compiled_sql(started_app: None) -> None:  # noqa: AR
     # bypass RLS in tests (mirrors how the HTTP layer sets tenant GUCs before inserts).
     admin_factory2 = async_sessionmaker(create_async_engine(admin_url), expire_on_commit=False)
     repo = SemanticRepository(admin_factory2)
-    svc = SemanticService(repo)
+    dim_repo = SemanticDimensionsRepository(admin_factory2)
+    svc = SemanticService(repo, dim_repo)
 
     # Create metric
     metric = await svc.create(
@@ -96,20 +101,26 @@ async def test_publish_sets_compiled_sql(started_app: None) -> None:  # noqa: AR
     )
     assert metric["status"] == "DRAFT"
     assert metric["compiled_sql_template"] is None
+    assert metric["metric_type"] == "SIMPLE"
+    assert metric["metadata_json"] == {"owner": "finance"}
 
     # Publish
-    published = await svc.publish(metric["id"])
+    published = await svc.publish(tenant, ws_id, metric["id"])
     assert published["status"] == "PUBLISHED"
-    assert published["compiled_sql_template"] is not None
     sql = published["compiled_sql_template"]
-    assert len(sql) > 0
+    assert sql and "SUM(orders.total) AS revenue_by_region" in sql
 
-    # Must be parseable by sqlglot
-    parsed = sqlglot.parse_one(sql, read="duckdb")
-    assert parsed is not None
+    # Must be parseable by sqlglot (slots stripped first)
+    bound = sql.replace("{extra_filter_clause}", "").replace("{group_by_append}", "")
+    assert sqlglot.parse_one(bound, read="duckdb") is not None
 
-    # History should have at least 1 version
-    history = await svc.list_history(metric["id"])
+    # Published metric is resolvable by name for the query fast-path.
+    by_name = await repo.get_by_name("revenue_by_region", ds_id, tenant_id=tenant, workspace_id=ws_id)
+    assert by_name is not None and by_name["compiled_sql_template"] == sql
+
+    # History records the compiled SQL on the published version (no longer NULL).
+    history = await svc.list_history(tenant, ws_id, metric["id"])
     assert len(history) >= 1
+    assert history[-1]["compiled_sql_template"] == sql
 
     await engine.dispose()

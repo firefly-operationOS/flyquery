@@ -7,10 +7,10 @@ Method | HTTP request | Description
 [**create**](SemanticDimensionsApi.md#create) | **POST** /api/v1/semantic/dimensions | Create a new semantic dimension in DRAFT status.
 [**get_dimension**](SemanticDimensionsApi.md#get_dimension) | **GET** /api/v1/semantic/dimensions/{dimension_id} | Fetch a single semantic dimension by id.
 [**history**](SemanticDimensionsApi.md#history) | **GET** /api/v1/semantic/dimensions/{dimension_id}/history | Return version history for a dimension, oldest first.
-[**list_dimensions**](SemanticDimensionsApi.md#list_dimensions) | **GET** /api/v1/semantic/dimensions | List all semantic dimensions for the caller&#39;s workspace.
+[**list_dimensions**](SemanticDimensionsApi.md#list_dimensions) | **GET** /api/v1/semantic/dimensions | List semantic dimensions for the caller&#39;s workspace (optional status filter).
 [**publish**](SemanticDimensionsApi.md#publish) | **POST** /api/v1/semantic/dimensions/{dimension_id}:publish | Validate, compile, and publish a dimension (status → PUBLISHED).
 [**retire**](SemanticDimensionsApi.md#retire) | **POST** /api/v1/semantic/dimensions/{dimension_id}:retire | Retire a dimension (status → RETIRED).
-[**update**](SemanticDimensionsApi.md#update) | **PUT** /api/v1/semantic/dimensions/{dimension_id} | Sparse-update a dimension; re-validates YAML if definition changes.
+[**update**](SemanticDimensionsApi.md#update) | **PUT** /api/v1/semantic/dimensions/{dimension_id} | Sparse-update a dimension; re-validates + recompiles if published.
 
 
 # **create**
@@ -288,9 +288,9 @@ Name | Type | Description  | Notes
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **list_dimensions**
-> PaginatedSemanticDimensionRead list_dimensions(x_tenant_id, x_workspace_id, dataset_id=dataset_id, limit=limit, offset=offset, x_correlation_id=x_correlation_id)
+> PaginatedSemanticDimensionRead list_dimensions(x_tenant_id, x_workspace_id, dataset_id=dataset_id, status=status, limit=limit, offset=offset, x_correlation_id=x_correlation_id)
 
-List all semantic dimensions for the caller's workspace.
+List semantic dimensions for the caller's workspace (optional status filter).
 
 ### Example
 
@@ -333,13 +333,14 @@ async with flyquery_sdk.ApiClient(configuration) as api_client:
     x_tenant_id = 'acme-corp' # str | Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present.
     x_workspace_id = '00000000-0000-0000-0000-000000000001' # str | Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation.
     dataset_id = 'dataset_id_example' # str |  (optional)
+    status = 'status_example' # str |  (optional)
     limit = 100 # int |  (optional) (default to 100)
     offset = 0 # int |  (optional) (default to 0)
     x_correlation_id = UUID('550e8400-e29b-41d4-a716-446655440000') # UUID | Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header. (optional)
 
     try:
-        # List all semantic dimensions for the caller's workspace.
-        api_response = await api_instance.list_dimensions(x_tenant_id, x_workspace_id, dataset_id=dataset_id, limit=limit, offset=offset, x_correlation_id=x_correlation_id)
+        # List semantic dimensions for the caller's workspace (optional status filter).
+        api_response = await api_instance.list_dimensions(x_tenant_id, x_workspace_id, dataset_id=dataset_id, status=status, limit=limit, offset=offset, x_correlation_id=x_correlation_id)
         print("The response of SemanticDimensionsApi->list_dimensions:\n")
         pprint(api_response)
     except Exception as e:
@@ -356,6 +357,7 @@ Name | Type | Description  | Notes
  **x_tenant_id** | **str**| Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present. | 
  **x_workspace_id** | **str**| Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation. | 
  **dataset_id** | **str**|  | [optional] 
+ **status** | **str**|  | [optional] 
  **limit** | **int**|  | [optional] [default to 100]
  **offset** | **int**|  | [optional] [default to 0]
  **x_correlation_id** | **UUID**| Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header. | [optional] 
@@ -568,7 +570,7 @@ Name | Type | Description  | Notes
 # **update**
 > SemanticDimensionRead update(dimension_id, x_tenant_id, x_workspace_id, semantic_dimension_update, x_correlation_id=x_correlation_id, idempotency_key=idempotency_key)
 
-Sparse-update a dimension; re-validates YAML if definition changes.
+Sparse-update a dimension; re-validates + recompiles if published.
 
 ### Example
 
@@ -617,7 +619,7 @@ async with flyquery_sdk.ApiClient(configuration) as api_client:
     idempotency_key = 'ingest-2026-05-23-abc123' # str | Optional client-supplied idempotency key for mutating operations. The first request with a key persists its result; subsequent requests with the same key + same tenant return the cached response. Keys expire after 24h. (optional)
 
     try:
-        # Sparse-update a dimension; re-validates YAML if definition changes.
+        # Sparse-update a dimension; re-validates + recompiles if published.
         api_response = await api_instance.update(dimension_id, x_tenant_id, x_workspace_id, semantic_dimension_update, x_correlation_id=x_correlation_id, idempotency_key=idempotency_key)
         print("The response of SemanticDimensionsApi->update:\n")
         pprint(api_response)

@@ -13,7 +13,7 @@ info:
     name: Apache-2.0
     url: https://github.com/firefly-operationOS/flyquery/blob/main/LICENSE
   title: flyquery
-  version: 26.5.4
+  version: 26.6.0
 servers:
 - description: This service
   url: /
@@ -21,9 +21,12 @@ tags:
 - name: AgentConversations
 - name: AgentDatasets
 - name: AgentExamples
+- name: AgentGlossary
 - name: AgentIngestJobs
 - name: AgentQuery
 - name: AgentRelations
+- name: AgentSemanticDimensions
+- name: AgentSemanticMetrics
 - name: AgentSqlExecute
 - name: AgentTables
 - name: AgentTokens
@@ -559,6 +562,166 @@ paths:
       x-content-type: application/json
       x-accepts:
       - application/json
+  /api/v1/agent/glossary:
+    get:
+      operationId: list_terms
+      parameters:
+      - explode: true
+        in: query
+        name: limit
+        required: false
+        schema:
+          default: 100
+          type: integer
+        style: form
+      - explode: true
+        in: query
+        name: offset
+        required: false
+        schema:
+          default: 0
+          type: integer
+        style: form
+      - $ref: "#/components/parameters/AgentTokenHeader"
+      - $ref: "#/components/parameters/CorrelationIdHeader"
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Paginated[GlossaryTermRead]"
+          description: Successful response
+      security:
+      - AgentToken: []
+      summary: List glossary terms for the caller's workspace (agent-tier).
+      tags:
+      - AgentGlossary
+      x-accepts:
+      - application/json
+    post:
+      operationId: create
+      parameters:
+      - $ref: "#/components/parameters/AgentTokenHeader"
+      - $ref: "#/components/parameters/CorrelationIdHeader"
+      - $ref: "#/components/parameters/IdempotencyKeyHeader"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GlossaryTermCreate"
+        required: true
+      responses:
+        "201":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GlossaryTermRead"
+          description: Successful response
+        "422":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HTTPValidationError"
+          description: Validation Error
+      security:
+      - AgentToken: []
+      summary: Create a glossary term (agent-tier).
+      tags:
+      - AgentGlossary
+      x-content-type: application/json
+      x-accepts:
+      - application/json
+  /api/v1/agent/glossary/{term_id}:
+    delete:
+      operationId: delete
+      parameters:
+      - explode: false
+        in: path
+        name: term_id
+        required: true
+        schema:
+          type: string
+        style: simple
+      - $ref: "#/components/parameters/AgentTokenHeader"
+      - $ref: "#/components/parameters/CorrelationIdHeader"
+      - $ref: "#/components/parameters/IdempotencyKeyHeader"
+      responses:
+        "204":
+          description: No Content
+      security:
+      - AgentToken: []
+      summary: Hard-delete a glossary term (agent-tier).
+      tags:
+      - AgentGlossary
+      x-accepts:
+      - application/json
+    get:
+      operationId: get_term
+      parameters:
+      - explode: false
+        in: path
+        name: term_id
+        required: true
+        schema:
+          nullable: true
+          type: string
+        style: simple
+      - $ref: "#/components/parameters/AgentTokenHeader"
+      - $ref: "#/components/parameters/CorrelationIdHeader"
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GlossaryTermRead"
+          description: Successful response
+      security:
+      - AgentToken: []
+      summary: Fetch a single glossary term (agent-tier).
+      tags:
+      - AgentGlossary
+      x-accepts:
+      - application/json
+    put:
+      operationId: update
+      parameters:
+      - explode: false
+        in: path
+        name: term_id
+        required: true
+        schema:
+          type: string
+        style: simple
+      - $ref: "#/components/parameters/AgentTokenHeader"
+      - $ref: "#/components/parameters/CorrelationIdHeader"
+      - $ref: "#/components/parameters/IdempotencyKeyHeader"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GlossaryTermUpdate"
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GlossaryTermRead"
+          description: Successful response
+        "422":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HTTPValidationError"
+          description: Validation Error
+      security:
+      - AgentToken: []
+      summary: Sparse-update a glossary term (agent-tier).
+      tags:
+      - AgentGlossary
+      x-content-type: application/json
+      x-accepts:
+      - application/json
   /api/v1/agent/ingest-jobs:
     get:
       operationId: list_jobs
@@ -931,6 +1094,474 @@ paths:
       - AgentToken: []
       tags:
       - AgentTables
+      x-accepts:
+      - application/json
+  /api/v1/agent/semantic/dimensions:
+    get:
+      operationId: list_dimensions
+      parameters:
+      - explode: true
+        in: query
+        name: dataset_id
+        required: false
+        schema:
+          type: string
+        style: form
+      - explode: true
+        in: query
+        name: status
+        required: false
+        schema:
+          type: string
+        style: form
+      - explode: true
+        in: query
+        name: limit
+        required: false
+        schema:
+          default: 100
+          type: integer
+        style: form
+      - explode: true
+        in: query
+        name: offset
+        required: false
+        schema:
+          default: 0
+          type: integer
+        style: form
+      - $ref: "#/components/parameters/AgentTokenHeader"
+      - $ref: "#/components/parameters/CorrelationIdHeader"
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Paginated[SemanticDimensionRead]"
+          description: Successful response
+      security:
+      - AgentToken: []
+      summary: List dimensions for the caller's workspace (agent-tier).
+      tags:
+      - AgentSemanticDimensions
+      x-accepts:
+      - application/json
+    post:
+      operationId: create
+      parameters:
+      - $ref: "#/components/parameters/AgentTokenHeader"
+      - $ref: "#/components/parameters/CorrelationIdHeader"
+      - $ref: "#/components/parameters/IdempotencyKeyHeader"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SemanticDimensionCreate"
+        required: true
+      responses:
+        "201":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SemanticDimensionRead"
+          description: Successful response
+        "422":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HTTPValidationError"
+          description: Validation Error
+      security:
+      - AgentToken: []
+      summary: Create a dimension in DRAFT (agent-tier).
+      tags:
+      - AgentSemanticDimensions
+      x-content-type: application/json
+      x-accepts:
+      - application/json
+  /api/v1/agent/semantic/dimensions/{dimension_id}:
+    get:
+      operationId: get_dimension
+      parameters:
+      - explode: false
+        in: path
+        name: dimension_id
+        required: true
+        schema:
+          nullable: true
+          type: string
+        style: simple
+      - $ref: "#/components/parameters/AgentTokenHeader"
+      - $ref: "#/components/parameters/CorrelationIdHeader"
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SemanticDimensionRead"
+          description: Successful response
+      security:
+      - AgentToken: []
+      summary: Fetch a single dimension (agent-tier).
+      tags:
+      - AgentSemanticDimensions
+      x-accepts:
+      - application/json
+    put:
+      operationId: update
+      parameters:
+      - explode: false
+        in: path
+        name: dimension_id
+        required: true
+        schema:
+          type: string
+        style: simple
+      - $ref: "#/components/parameters/AgentTokenHeader"
+      - $ref: "#/components/parameters/CorrelationIdHeader"
+      - $ref: "#/components/parameters/IdempotencyKeyHeader"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SemanticDimensionUpdate"
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SemanticDimensionRead"
+          description: Successful response
+        "422":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HTTPValidationError"
+          description: Validation Error
+      security:
+      - AgentToken: []
+      summary: Sparse-update a dimension (agent-tier).
+      tags:
+      - AgentSemanticDimensions
+      x-content-type: application/json
+      x-accepts:
+      - application/json
+  /api/v1/agent/semantic/dimensions/{dimension_id}/history:
+    get:
+      operationId: history
+      parameters:
+      - explode: false
+        in: path
+        name: dimension_id
+        required: true
+        schema:
+          type: string
+        style: simple
+      - $ref: "#/components/parameters/AgentTokenHeader"
+      - $ref: "#/components/parameters/CorrelationIdHeader"
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Paginated[SemanticVersionRead]"
+          description: Successful response
+      security:
+      - AgentToken: []
+      summary: Return version history for a dimension (agent-tier).
+      tags:
+      - AgentSemanticDimensions
+      x-accepts:
+      - application/json
+  /api/v1/agent/semantic/dimensions/{dimension_id}:publish:
+    post:
+      operationId: publish
+      parameters:
+      - explode: false
+        in: path
+        name: dimension_id
+        required: true
+        schema:
+          type: string
+        style: simple
+      - $ref: "#/components/parameters/AgentTokenHeader"
+      - $ref: "#/components/parameters/CorrelationIdHeader"
+      - $ref: "#/components/parameters/IdempotencyKeyHeader"
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SemanticDimensionRead"
+          description: Successful response
+      security:
+      - AgentToken: []
+      summary: Publish a dimension (agent-tier).
+      tags:
+      - AgentSemanticDimensions
+      x-accepts:
+      - application/json
+  /api/v1/agent/semantic/dimensions/{dimension_id}:retire:
+    post:
+      operationId: retire
+      parameters:
+      - explode: false
+        in: path
+        name: dimension_id
+        required: true
+        schema:
+          type: string
+        style: simple
+      - $ref: "#/components/parameters/AgentTokenHeader"
+      - $ref: "#/components/parameters/CorrelationIdHeader"
+      - $ref: "#/components/parameters/IdempotencyKeyHeader"
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SemanticDimensionRead"
+          description: Successful response
+      security:
+      - AgentToken: []
+      summary: Retire a dimension (agent-tier).
+      tags:
+      - AgentSemanticDimensions
+      x-accepts:
+      - application/json
+  /api/v1/agent/semantic/metrics:
+    get:
+      operationId: list_metrics
+      parameters:
+      - explode: true
+        in: query
+        name: dataset_id
+        required: false
+        schema:
+          type: string
+        style: form
+      - explode: true
+        in: query
+        name: status
+        required: false
+        schema:
+          type: string
+        style: form
+      - explode: true
+        in: query
+        name: limit
+        required: false
+        schema:
+          default: 100
+          type: integer
+        style: form
+      - explode: true
+        in: query
+        name: offset
+        required: false
+        schema:
+          default: 0
+          type: integer
+        style: form
+      - $ref: "#/components/parameters/AgentTokenHeader"
+      - $ref: "#/components/parameters/CorrelationIdHeader"
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Paginated[SemanticMetricRead]"
+          description: Successful response
+      security:
+      - AgentToken: []
+      summary: List metrics for the caller's workspace (agent-tier).
+      tags:
+      - AgentSemanticMetrics
+      x-accepts:
+      - application/json
+    post:
+      operationId: create
+      parameters:
+      - $ref: "#/components/parameters/AgentTokenHeader"
+      - $ref: "#/components/parameters/CorrelationIdHeader"
+      - $ref: "#/components/parameters/IdempotencyKeyHeader"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SemanticMetricCreate"
+        required: true
+      responses:
+        "201":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SemanticMetricRead"
+          description: Successful response
+        "422":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HTTPValidationError"
+          description: Validation Error
+      security:
+      - AgentToken: []
+      summary: Create a metric in DRAFT (agent-tier).
+      tags:
+      - AgentSemanticMetrics
+      x-content-type: application/json
+      x-accepts:
+      - application/json
+  /api/v1/agent/semantic/metrics/{metric_id}:
+    get:
+      operationId: get_metric
+      parameters:
+      - explode: false
+        in: path
+        name: metric_id
+        required: true
+        schema:
+          nullable: true
+          type: string
+        style: simple
+      - $ref: "#/components/parameters/AgentTokenHeader"
+      - $ref: "#/components/parameters/CorrelationIdHeader"
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SemanticMetricRead"
+          description: Successful response
+      security:
+      - AgentToken: []
+      summary: Fetch a single metric (agent-tier).
+      tags:
+      - AgentSemanticMetrics
+      x-accepts:
+      - application/json
+    put:
+      operationId: update
+      parameters:
+      - explode: false
+        in: path
+        name: metric_id
+        required: true
+        schema:
+          type: string
+        style: simple
+      - $ref: "#/components/parameters/AgentTokenHeader"
+      - $ref: "#/components/parameters/CorrelationIdHeader"
+      - $ref: "#/components/parameters/IdempotencyKeyHeader"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SemanticMetricUpdate"
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SemanticMetricRead"
+          description: Successful response
+        "422":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HTTPValidationError"
+          description: Validation Error
+      security:
+      - AgentToken: []
+      summary: Sparse-update a metric (agent-tier).
+      tags:
+      - AgentSemanticMetrics
+      x-content-type: application/json
+      x-accepts:
+      - application/json
+  /api/v1/agent/semantic/metrics/{metric_id}/history:
+    get:
+      operationId: history
+      parameters:
+      - explode: false
+        in: path
+        name: metric_id
+        required: true
+        schema:
+          type: string
+        style: simple
+      - $ref: "#/components/parameters/AgentTokenHeader"
+      - $ref: "#/components/parameters/CorrelationIdHeader"
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Paginated[SemanticVersionRead]"
+          description: Successful response
+      security:
+      - AgentToken: []
+      summary: Return version history for a metric (agent-tier).
+      tags:
+      - AgentSemanticMetrics
+      x-accepts:
+      - application/json
+  /api/v1/agent/semantic/metrics/{metric_id}:publish:
+    post:
+      operationId: publish
+      parameters:
+      - explode: false
+        in: path
+        name: metric_id
+        required: true
+        schema:
+          type: string
+        style: simple
+      - $ref: "#/components/parameters/AgentTokenHeader"
+      - $ref: "#/components/parameters/CorrelationIdHeader"
+      - $ref: "#/components/parameters/IdempotencyKeyHeader"
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SemanticMetricRead"
+          description: Successful response
+      security:
+      - AgentToken: []
+      summary: Publish a metric (agent-tier).
+      tags:
+      - AgentSemanticMetrics
+      x-accepts:
+      - application/json
+  /api/v1/agent/semantic/metrics/{metric_id}:retire:
+    post:
+      operationId: retire
+      parameters:
+      - explode: false
+        in: path
+        name: metric_id
+        required: true
+        schema:
+          type: string
+        style: simple
+      - $ref: "#/components/parameters/AgentTokenHeader"
+      - $ref: "#/components/parameters/CorrelationIdHeader"
+      - $ref: "#/components/parameters/IdempotencyKeyHeader"
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SemanticMetricRead"
+          description: Successful response
+      security:
+      - AgentToken: []
+      summary: Retire a metric (agent-tier).
+      tags:
+      - AgentSemanticMetrics
       x-accepts:
       - application/json
   /api/v1/agent/sql:execute:
@@ -2425,7 +3056,6 @@ paths:
         name: term_id
         required: true
         schema:
-          nullable: true
           type: string
         style: simple
       - $ref: "#/components/parameters/TenantIdHeader"
@@ -3292,6 +3922,13 @@ paths:
         style: form
       - explode: true
         in: query
+        name: status
+        required: false
+        schema:
+          type: string
+        style: form
+      - explode: true
+        in: query
         name: limit
         required: false
         schema:
@@ -3319,7 +3956,8 @@ paths:
       security:
       - TenantContext: []
         WorkspaceContext: []
-      summary: List all semantic dimensions for the caller's workspace.
+      summary: List semantic dimensions for the caller's workspace (optional status
+        filter).
       tags:
       - SemanticDimensions
       x-accepts:
@@ -3368,7 +4006,6 @@ paths:
         name: dimension_id
         required: true
         schema:
-          nullable: true
           type: string
         style: simple
       - $ref: "#/components/parameters/TenantIdHeader"
@@ -3425,7 +4062,7 @@ paths:
       security:
       - TenantContext: []
         WorkspaceContext: []
-      summary: Sparse-update a dimension; re-validates YAML if definition changes.
+      summary: Sparse-update a dimension; re-validates + recompiles if published.
       tags:
       - SemanticDimensions
       x-content-type: application/json
@@ -3533,6 +4170,13 @@ paths:
         style: form
       - explode: true
         in: query
+        name: status
+        required: false
+        schema:
+          type: string
+        style: form
+      - explode: true
+        in: query
         name: limit
         required: false
         schema:
@@ -3560,7 +4204,7 @@ paths:
       security:
       - TenantContext: []
         WorkspaceContext: []
-      summary: List all semantic metrics for the caller's workspace.
+      summary: List semantic metrics for the caller's workspace (optional status filter).
       tags:
       - SemanticMetrics
       x-accepts:
@@ -3609,7 +4253,6 @@ paths:
         name: metric_id
         required: true
         schema:
-          nullable: true
           type: string
         style: simple
       - $ref: "#/components/parameters/TenantIdHeader"
@@ -3666,7 +4309,7 @@ paths:
       security:
       - TenantContext: []
         WorkspaceContext: []
-      summary: Sparse-update a metric; re-validates YAML if definition changes.
+      summary: Sparse-update a metric; re-validates + recompiles if published.
       tags:
       - SemanticMetrics
       x-content-type: application/json
@@ -6042,44 +6685,44 @@ components:
     GlossaryTermCreate:
       description: Payload for creating a new glossary term.
       example:
-        related_metrics_json:
-        - related_metrics_json
-        - related_metrics_json
-        synonyms_json:
-        - synonyms_json
-        - synonyms_json
+        related_columns:
+        - related_columns
+        - related_columns
+        related_metrics:
+        - related_metrics
+        - related_metrics
+        synonyms:
+        - synonyms
+        - synonyms
         definition: definition
-        related_columns_json:
-        - related_columns_json
-        - related_columns_json
         term: term
-        tags_json:
-        - tags_json
-        - tags_json
+        tags:
+        - tags
+        - tags
       properties:
         definition:
           minLength: 1
           title: Definition
           type: string
-        related_columns_json:
+        related_columns:
           items:
             type: string
-          title: Related Columns Json
+          title: Related Columns
           type: array
-        related_metrics_json:
+        related_metrics:
           items:
             type: string
-          title: Related Metrics Json
+          title: Related Metrics
           type: array
-        synonyms_json:
+        synonyms:
           items:
             type: string
-          title: Synonyms Json
+          title: Synonyms
           type: array
-        tags_json:
+        tags:
           items:
             type: string
-          title: Tags Json
+          title: Tags
           type: array
         term:
           maxLength: 512
@@ -6174,39 +6817,39 @@ components:
     GlossaryTermUpdate:
       description: Sparse-update payload for an existing glossary term.
       example:
-        related_metrics_json:
-        - related_metrics_json
-        - related_metrics_json
-        synonyms_json:
-        - synonyms_json
-        - synonyms_json
+        related_columns:
+        - related_columns
+        - related_columns
+        related_metrics:
+        - related_metrics
+        - related_metrics
+        synonyms:
+        - synonyms
+        - synonyms
         definition: definition
-        related_columns_json:
-        - related_columns_json
-        - related_columns_json
-        tags_json:
-        - tags_json
-        - tags_json
+        tags:
+        - tags
+        - tags
       properties:
         definition:
           nullable: true
           type: string
-        related_columns_json:
+        related_columns:
           items:
             type: string
           nullable: true
           type: array
-        related_metrics_json:
+        related_metrics:
           items:
             type: string
           nullable: true
           type: array
-        synonyms_json:
+        synonyms:
           items:
             type: string
           nullable: true
           type: array
-        tags_json:
+        tags:
           items:
             type: string
           nullable: true
@@ -7174,11 +7817,13 @@ components:
           label: label
           compiled_sql_template: compiled_sql_template
           workspace_id: 046b6c7f-0b8a-43b9-b35d-6489e6daee91
+          dimension_type: categorical
           updated_at: 2000-01-23T04:56:07.000+00:00
           definition_yaml: definition_yaml
-          metric_type: SIMPLE
           name: name
           id: 046b6c7f-0b8a-43b9-b35d-6489e6daee91
+          metadata_json:
+            key: ""
           status: DRAFT
         - tenant_id: tenant_id
           dataset_id: 046b6c7f-0b8a-43b9-b35d-6489e6daee91
@@ -7188,11 +7833,13 @@ components:
           label: label
           compiled_sql_template: compiled_sql_template
           workspace_id: 046b6c7f-0b8a-43b9-b35d-6489e6daee91
+          dimension_type: categorical
           updated_at: 2000-01-23T04:56:07.000+00:00
           definition_yaml: definition_yaml
-          metric_type: SIMPLE
           name: name
           id: 046b6c7f-0b8a-43b9-b35d-6489e6daee91
+          metadata_json:
+            key: ""
           status: DRAFT
       properties:
         has_more:
@@ -7233,6 +7880,8 @@ components:
           metric_type: SIMPLE
           name: name
           id: 046b6c7f-0b8a-43b9-b35d-6489e6daee91
+          metadata_json:
+            key: ""
           status: DRAFT
         - tenant_id: tenant_id
           dataset_id: 046b6c7f-0b8a-43b9-b35d-6489e6daee91
@@ -7247,6 +7896,8 @@ components:
           metric_type: SIMPLE
           name: name
           id: 046b6c7f-0b8a-43b9-b35d-6489e6daee91
+          metadata_json:
+            key: ""
           status: DRAFT
       properties:
         has_more:
@@ -8182,11 +8833,14 @@ components:
           type: array
       title: SchemaObjectUpdate
     SemanticDimensionCreate:
-      description: Payload for creating a new semantic dimension.
+      description: |-
+        Payload for creating a new semantic dimension.
+
+        The dimension's ``type`` (categorical|time) is taken from the
+        ``definition_yaml`` body, not a separate request field.
       example:
         definition_yaml: definition_yaml
         dataset_id: 046b6c7f-0b8a-43b9-b35d-6489e6daee91
-        metric_type: SIMPLE
         name: name
         description: description
         label: label
@@ -8204,15 +8858,6 @@ components:
           type: string
         label:
           nullable: true
-          type: string
-        metric_type:
-          default: SIMPLE
-          enum:
-          - SIMPLE
-          - RATIO
-          - DERIVED
-          - CUMULATIVE
-          title: Metric Type
           type: string
         name:
           maxLength: 256
@@ -8235,11 +8880,13 @@ components:
         label: label
         compiled_sql_template: compiled_sql_template
         workspace_id: 046b6c7f-0b8a-43b9-b35d-6489e6daee91
+        dimension_type: categorical
         updated_at: 2000-01-23T04:56:07.000+00:00
         definition_yaml: definition_yaml
-        metric_type: SIMPLE
         name: name
         id: 046b6c7f-0b8a-43b9-b35d-6489e6daee91
+        metadata_json:
+          key: ""
         status: DRAFT
       properties:
         compiled_sql_template:
@@ -8262,6 +8909,12 @@ components:
         description:
           nullable: true
           type: string
+        dimension_type:
+          enum:
+          - categorical
+          - time
+          title: Dimension Type
+          type: string
         id:
           format: uuid
           title: Id
@@ -8269,14 +8922,10 @@ components:
         label:
           nullable: true
           type: string
-        metric_type:
-          enum:
-          - SIMPLE
-          - RATIO
-          - DERIVED
-          - CUMULATIVE
-          title: Metric Type
-          type: string
+        metadata_json:
+          additionalProperties: true
+          title: Metadata Json
+          type: object
         name:
           title: Name
           type: string
@@ -8305,9 +8954,9 @@ components:
       - dataset_id
       - definition_yaml
       - description
+      - dimension_type
       - id
       - label
-      - metric_type
       - name
       - status
       - tenant_id
@@ -8318,7 +8967,6 @@ components:
       description: Sparse-update payload for an existing semantic dimension.
       example:
         definition_yaml: definition_yaml
-        metric_type: SIMPLE
         description: description
         label: label
       properties:
@@ -8329,14 +8977,6 @@ components:
           nullable: true
           type: string
         label:
-          nullable: true
-          type: string
-        metric_type:
-          enum:
-          - SIMPLE
-          - RATIO
-          - DERIVED
-          - CUMULATIVE
           nullable: true
           type: string
       title: SemanticDimensionUpdate
@@ -8399,6 +9039,8 @@ components:
         metric_type: SIMPLE
         name: name
         id: 046b6c7f-0b8a-43b9-b35d-6489e6daee91
+        metadata_json:
+          key: ""
         status: DRAFT
       properties:
         compiled_sql_template:
@@ -8428,6 +9070,10 @@ components:
         label:
           nullable: true
           type: string
+        metadata_json:
+          additionalProperties: true
+          title: Metadata Json
+          type: object
         metric_type:
           enum:
           - SIMPLE
@@ -8500,7 +9146,12 @@ components:
           type: string
       title: SemanticMetricUpdate
     SemanticVersionRead:
-      description: Read representation of a flyquery_semantic_versions row.
+      description: |-
+        Read representation of a flyquery_semantic_versions row.
+
+        Field names follow the documented payload (``version_number``,
+        ``metric_id``); the underlying columns are ``version`` / ``parent_id``
+        and are mapped via validation aliases.
       example:
         tenant_id: tenant_id
         workspace_id: 046b6c7f-0b8a-43b9-b35d-6489e6daee91

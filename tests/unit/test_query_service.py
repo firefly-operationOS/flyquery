@@ -29,7 +29,12 @@ import pytest
 from flyquery.core.agents.critic_agent import RefinedSql
 from flyquery.core.agents.explainer_agent import ResultExplanation
 from flyquery.core.agents.generation_agent import GeneratedCandidate, GeneratedCandidates
-from flyquery.core.agents.grounding_agent import GroundedColumn, GroundedContext, GroundedTable
+from flyquery.core.agents.grounding_agent import (
+    GroundedColumn,
+    GroundedContext,
+    GroundedMetric,
+    GroundedTable,
+)
 from flyquery.core.services.execution.ast_classifier import AstClassifier
 from flyquery.core.services.execution.duckdb_executor import ExecutionError, ExecutionResult
 from flyquery.core.services.execution.scope_guard import ScopeGuard
@@ -168,6 +173,39 @@ def _make_candidates(sql: str = "SELECT 1") -> GeneratedCandidates:
     return GeneratedCandidates(candidates=[GeneratedCandidate(sql=sql, reasoning="test", confidence=0.9)])
 
 
+class _CountingAgent:
+    """Agent stub that counts how many times ``run`` was awaited."""
+
+    def __init__(self, output):
+        self._output = output
+        self.calls = 0
+
+    async def run(self, _input):
+        self.calls += 1
+        return self._output
+
+
+class _FakeSemanticRepo:
+    """Returns a single PUBLISHED metric keyed by name."""
+
+    def __init__(self, *, name: str, template: str, version: int = 3):
+        self._name = name
+        self._template = template
+        self._version = version
+        self.lookups: list[tuple] = []
+
+    async def get_by_name(self, name, dataset_id, *, tenant_id, workspace_id):
+        self.lookups.append((name, dataset_id, tenant_id, workspace_id))
+        if name != self._name:
+            return None
+        return {
+            "name": name,
+            "status": "PUBLISHED",
+            "compiled_sql_template": self._template,
+            "current_version": self._version,
+        }
+
+
 def _make_service(
     *,
     grounded: GroundedContext | None = None,
@@ -176,6 +214,8 @@ def _make_service(
     query_repo=None,
     result_uploader=None,
     auto_learner=None,
+    semantic_repo=None,
+    generation_agent=None,
 ):
     if grounded is None:
         grounded = _make_grounded()
@@ -191,6 +231,8 @@ def _make_service(
         result_uploader = _FakeResultUploader()
     if auto_learner is None:
         auto_learner = _FakeAutoLearner()
+    if generation_agent is None:
+        generation_agent = _FakeAgent(candidates)
 
     explanation = ResultExplanation(summary="The answer is 1.", chart_hint="none")
 
@@ -198,7 +240,7 @@ def _make_service(
         retriever=_FakeRetriever(),
         reranker=_FakeReranker(),
         grounding_agent=_FakeAgent(grounded),
-        generation_agent=_FakeAgent(candidates),
+        generation_agent=generation_agent,
         critic_agent=_FakeAgent(RefinedSql(sql="SELECT 2", reasoning="fixed", confidence=0.8)),
         explainer_agent=_FakeAgent(explanation),
         ast_classifier=AstClassifier(),
@@ -209,6 +251,7 @@ def _make_service(
         settings=_FakeSettings(),
         result_uploader=result_uploader,
         auto_learner=auto_learner,
+        semantic_repo=semantic_repo,
     )
 
 
@@ -382,6 +425,68 @@ async def test_answer_no_clarification_when_high_confidence():
     )
 
     assert result.clarification is None
+
+
+@pytest.mark.asyncio
+async def test_semantic_layer_executes_compiled_sql_without_generation():
+    """SEMANTIC_LAYER path runs the bound compiled SQL and skips the GenerationAgent."""
+    template = "SELECT 42 AS total_revenue {extra_filter_clause} {group_by_append}"
+    repo = _FakeSemanticRepo(name="total_revenue", template=template, version=3)
+    grounded = GroundedContext(
+        path="SEMANTIC_LAYER",
+        tables=[],
+        columns=[],
+        metrics=[GroundedMetric(metric_name="total_revenue", relevance=1.0)],
+        confidence=0.95,
+    )
+    gen = _CountingAgent(_make_candidates("SELECT 999 AS should_not_run"))
+    query_repo = _FakeQueryRepo()
+    svc = _make_service(grounded=grounded, semantic_repo=repo, generation_agent=gen, query_repo=query_repo)
+
+    result = await svc.answer(
+        tenant_id="ten-a",
+        workspace_id=uuid.uuid4(),
+        dataset_id=uuid.uuid4(),
+        question="what is total revenue?",
+        scopes={"flyquery.query:read"},
+    )
+
+    # Bound compiled SQL is used verbatim (slots stripped), not regenerated.
+    assert result.sql == "SELECT 42 AS total_revenue"
+    # The GenerationAgent was never invoked.
+    assert gen.calls == 0
+    # The query record pins the metric name + version, and the semantic path.
+    q = query_repo.created_queries[0]
+    assert q["semantic_path_taken"] == "SEMANTIC_LAYER"
+    assert q["candidates_json"][0]["metric_name"] == "total_revenue"
+    assert q["candidates_json"][0]["metric_version"] == 3
+
+
+@pytest.mark.asyncio
+async def test_semantic_layer_falls_back_to_synthesis_when_metric_missing():
+    """When the metric has no published compiled SQL, fall through to generation."""
+    repo = _FakeSemanticRepo(name="other_metric", template="SELECT 1 {extra_filter_clause} {group_by_append}")
+    grounded = GroundedContext(
+        path="SEMANTIC_LAYER",
+        tables=[],
+        columns=[],
+        metrics=[GroundedMetric(metric_name="unknown_metric", relevance=1.0)],
+        confidence=0.95,
+    )
+    gen = _CountingAgent(_make_candidates("SELECT 7 AS val"))
+    svc = _make_service(grounded=grounded, semantic_repo=repo, generation_agent=gen)
+
+    result = await svc.answer(
+        tenant_id="ten-a",
+        workspace_id=uuid.uuid4(),
+        dataset_id=uuid.uuid4(),
+        question="unknown",
+        scopes={"flyquery.query:read"},
+    )
+
+    # No published metric matched → GenerationAgent ran and produced the SQL.
+    assert gen.calls == 1
+    assert result.sql == "SELECT 7 AS val"
 
 
 @pytest.mark.asyncio

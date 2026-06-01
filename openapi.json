@@ -2109,32 +2109,32 @@
             "title": "Definition",
             "type": "string"
           },
-          "related_columns_json": {
+          "related_columns": {
             "items": {
               "type": "string"
             },
-            "title": "Related Columns Json",
+            "title": "Related Columns",
             "type": "array"
           },
-          "related_metrics_json": {
+          "related_metrics": {
             "items": {
               "type": "string"
             },
-            "title": "Related Metrics Json",
+            "title": "Related Metrics",
             "type": "array"
           },
-          "synonyms_json": {
+          "synonyms": {
             "items": {
               "type": "string"
             },
-            "title": "Synonyms Json",
+            "title": "Synonyms",
             "type": "array"
           },
-          "tags_json": {
+          "tags": {
             "items": {
               "type": "string"
             },
-            "title": "Tags Json",
+            "title": "Tags",
             "type": "array"
           },
           "term": {
@@ -2246,7 +2246,7 @@
             "default": null,
             "title": "Definition"
           },
-          "related_columns_json": {
+          "related_columns": {
             "anyOf": [
               {
                 "items": {
@@ -2259,9 +2259,9 @@
               }
             ],
             "default": null,
-            "title": "Related Columns Json"
+            "title": "Related Columns"
           },
-          "related_metrics_json": {
+          "related_metrics": {
             "anyOf": [
               {
                 "items": {
@@ -2274,9 +2274,9 @@
               }
             ],
             "default": null,
-            "title": "Related Metrics Json"
+            "title": "Related Metrics"
           },
-          "synonyms_json": {
+          "synonyms": {
             "anyOf": [
               {
                 "items": {
@@ -2289,9 +2289,9 @@
               }
             ],
             "default": null,
-            "title": "Synonyms Json"
+            "title": "Synonyms"
           },
-          "tags_json": {
+          "tags": {
             "anyOf": [
               {
                 "items": {
@@ -2304,7 +2304,7 @@
               }
             ],
             "default": null,
-            "title": "Tags Json"
+            "title": "Tags"
           }
         },
         "title": "GlossaryTermUpdate",
@@ -4764,7 +4764,7 @@
         "type": "object"
       },
       "SemanticDimensionCreate": {
-        "description": "Payload for creating a new semantic dimension.",
+        "description": "Payload for creating a new semantic dimension.\n\nThe dimension's ``type`` (categorical|time) is taken from the\n``definition_yaml`` body, not a separate request field.",
         "properties": {
           "dataset_id": {
             "format": "uuid",
@@ -4799,17 +4799,6 @@
             ],
             "default": null,
             "title": "Label"
-          },
-          "metric_type": {
-            "default": "SIMPLE",
-            "enum": [
-              "SIMPLE",
-              "RATIO",
-              "DERIVED",
-              "CUMULATIVE"
-            ],
-            "title": "Metric Type",
-            "type": "string"
           },
           "name": {
             "maxLength": 256,
@@ -4869,6 +4858,14 @@
             ],
             "title": "Description"
           },
+          "dimension_type": {
+            "enum": [
+              "categorical",
+              "time"
+            ],
+            "title": "Dimension Type",
+            "type": "string"
+          },
           "id": {
             "format": "uuid",
             "title": "Id",
@@ -4885,15 +4882,10 @@
             ],
             "title": "Label"
           },
-          "metric_type": {
-            "enum": [
-              "SIMPLE",
-              "RATIO",
-              "DERIVED",
-              "CUMULATIVE"
-            ],
-            "title": "Metric Type",
-            "type": "string"
+          "metadata_json": {
+            "additionalProperties": true,
+            "title": "Metadata Json",
+            "type": "object"
           },
           "name": {
             "title": "Name",
@@ -4933,7 +4925,7 @@
           "description",
           "definition_yaml",
           "compiled_sql_template",
-          "metric_type",
+          "dimension_type",
           "status",
           "current_version",
           "created_at",
@@ -4980,24 +4972,6 @@
             ],
             "default": null,
             "title": "Label"
-          },
-          "metric_type": {
-            "anyOf": [
-              {
-                "enum": [
-                  "SIMPLE",
-                  "RATIO",
-                  "DERIVED",
-                  "CUMULATIVE"
-                ],
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Metric Type"
           }
         },
         "title": "SemanticDimensionUpdate",
@@ -5125,6 +5099,11 @@
             ],
             "title": "Label"
           },
+          "metadata_json": {
+            "additionalProperties": true,
+            "title": "Metadata Json",
+            "type": "object"
+          },
           "metric_type": {
             "enum": [
               "SIMPLE",
@@ -5244,7 +5223,7 @@
         "type": "object"
       },
       "SemanticVersionRead": {
-        "description": "Read representation of a flyquery_semantic_versions row.",
+        "description": "Read representation of a flyquery_semantic_versions row.\n\nField names follow the documented payload (``version_number``,\n``metric_id``); the underlying columns are ``version`` / ``parent_id``\nand are mapped via validation aliases.",
         "properties": {
           "compiled_sql_template": {
             "anyOf": [
@@ -6235,7 +6214,7 @@
       "url": "https://github.com/firefly-operationOS/flyquery/blob/main/LICENSE"
     },
     "title": "flyquery",
-    "version": "26.5.14"
+    "version": "26.6.0"
   },
   "openapi": "3.1.0",
   "paths": {
@@ -6951,6 +6930,254 @@
         ]
       }
     },
+    "/api/v1/agent/glossary": {
+      "get": {
+        "operationId": "list_terms",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 100,
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "type": "integer"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/AgentTokenHeader"
+          },
+          {
+            "$ref": "#/components/parameters/CorrelationIdHeader"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Paginated[GlossaryTermRead]"
+                }
+              }
+            },
+            "description": "Successful response"
+          }
+        },
+        "security": [
+          {
+            "AgentToken": []
+          }
+        ],
+        "summary": "List glossary terms for the caller's workspace (agent-tier).",
+        "tags": [
+          "AgentGlossary"
+        ]
+      },
+      "post": {
+        "operationId": "create",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/AgentTokenHeader"
+          },
+          {
+            "$ref": "#/components/parameters/CorrelationIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/IdempotencyKeyHeader"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GlossaryTermCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GlossaryTermRead"
+                }
+              }
+            },
+            "description": "Successful response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "AgentToken": []
+          }
+        ],
+        "summary": "Create a glossary term (agent-tier).",
+        "tags": [
+          "AgentGlossary"
+        ]
+      }
+    },
+    "/api/v1/agent/glossary/{term_id}": {
+      "delete": {
+        "operationId": "delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "term_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/AgentTokenHeader"
+          },
+          {
+            "$ref": "#/components/parameters/CorrelationIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/IdempotencyKeyHeader"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        },
+        "security": [
+          {
+            "AgentToken": []
+          }
+        ],
+        "summary": "Hard-delete a glossary term (agent-tier).",
+        "tags": [
+          "AgentGlossary"
+        ]
+      },
+      "get": {
+        "operationId": "get_term",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "term_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/AgentTokenHeader"
+          },
+          {
+            "$ref": "#/components/parameters/CorrelationIdHeader"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GlossaryTermRead"
+                }
+              }
+            },
+            "description": "Successful response"
+          }
+        },
+        "security": [
+          {
+            "AgentToken": []
+          }
+        ],
+        "summary": "Fetch a single glossary term (agent-tier).",
+        "tags": [
+          "AgentGlossary"
+        ]
+      },
+      "put": {
+        "operationId": "update",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "term_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/AgentTokenHeader"
+          },
+          {
+            "$ref": "#/components/parameters/CorrelationIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/IdempotencyKeyHeader"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GlossaryTermUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GlossaryTermRead"
+                }
+              }
+            },
+            "description": "Successful response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "AgentToken": []
+          }
+        ],
+        "summary": "Sparse-update a glossary term (agent-tier).",
+        "tags": [
+          "AgentGlossary"
+        ]
+      }
+    },
     "/api/v1/agent/ingest-jobs": {
       "get": {
         "operationId": "list_jobs",
@@ -7505,6 +7732,730 @@
         ],
         "tags": [
           "AgentTables"
+        ]
+      }
+    },
+    "/api/v1/agent/semantic/dimensions": {
+      "get": {
+        "operationId": "list_dimensions",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "dataset_id",
+            "required": false,
+            "schema": {
+              "default": null,
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "default": null,
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 100,
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "type": "integer"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/AgentTokenHeader"
+          },
+          {
+            "$ref": "#/components/parameters/CorrelationIdHeader"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Paginated[SemanticDimensionRead]"
+                }
+              }
+            },
+            "description": "Successful response"
+          }
+        },
+        "security": [
+          {
+            "AgentToken": []
+          }
+        ],
+        "summary": "List dimensions for the caller's workspace (agent-tier).",
+        "tags": [
+          "AgentSemanticDimensions"
+        ]
+      },
+      "post": {
+        "operationId": "create",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/AgentTokenHeader"
+          },
+          {
+            "$ref": "#/components/parameters/CorrelationIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/IdempotencyKeyHeader"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SemanticDimensionCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SemanticDimensionRead"
+                }
+              }
+            },
+            "description": "Successful response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "AgentToken": []
+          }
+        ],
+        "summary": "Create a dimension in DRAFT (agent-tier).",
+        "tags": [
+          "AgentSemanticDimensions"
+        ]
+      }
+    },
+    "/api/v1/agent/semantic/dimensions/{dimension_id}": {
+      "get": {
+        "operationId": "get_dimension",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "dimension_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/AgentTokenHeader"
+          },
+          {
+            "$ref": "#/components/parameters/CorrelationIdHeader"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SemanticDimensionRead"
+                }
+              }
+            },
+            "description": "Successful response"
+          }
+        },
+        "security": [
+          {
+            "AgentToken": []
+          }
+        ],
+        "summary": "Fetch a single dimension (agent-tier).",
+        "tags": [
+          "AgentSemanticDimensions"
+        ]
+      },
+      "put": {
+        "operationId": "update",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "dimension_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/AgentTokenHeader"
+          },
+          {
+            "$ref": "#/components/parameters/CorrelationIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/IdempotencyKeyHeader"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SemanticDimensionUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SemanticDimensionRead"
+                }
+              }
+            },
+            "description": "Successful response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "AgentToken": []
+          }
+        ],
+        "summary": "Sparse-update a dimension (agent-tier).",
+        "tags": [
+          "AgentSemanticDimensions"
+        ]
+      }
+    },
+    "/api/v1/agent/semantic/dimensions/{dimension_id}/history": {
+      "get": {
+        "operationId": "history",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "dimension_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/AgentTokenHeader"
+          },
+          {
+            "$ref": "#/components/parameters/CorrelationIdHeader"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Paginated[SemanticVersionRead]"
+                }
+              }
+            },
+            "description": "Successful response"
+          }
+        },
+        "security": [
+          {
+            "AgentToken": []
+          }
+        ],
+        "summary": "Return version history for a dimension (agent-tier).",
+        "tags": [
+          "AgentSemanticDimensions"
+        ]
+      }
+    },
+    "/api/v1/agent/semantic/dimensions/{dimension_id}:publish": {
+      "post": {
+        "operationId": "publish",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "dimension_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/AgentTokenHeader"
+          },
+          {
+            "$ref": "#/components/parameters/CorrelationIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/IdempotencyKeyHeader"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SemanticDimensionRead"
+                }
+              }
+            },
+            "description": "Successful response"
+          }
+        },
+        "security": [
+          {
+            "AgentToken": []
+          }
+        ],
+        "summary": "Publish a dimension (agent-tier).",
+        "tags": [
+          "AgentSemanticDimensions"
+        ]
+      }
+    },
+    "/api/v1/agent/semantic/dimensions/{dimension_id}:retire": {
+      "post": {
+        "operationId": "retire",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "dimension_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/AgentTokenHeader"
+          },
+          {
+            "$ref": "#/components/parameters/CorrelationIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/IdempotencyKeyHeader"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SemanticDimensionRead"
+                }
+              }
+            },
+            "description": "Successful response"
+          }
+        },
+        "security": [
+          {
+            "AgentToken": []
+          }
+        ],
+        "summary": "Retire a dimension (agent-tier).",
+        "tags": [
+          "AgentSemanticDimensions"
+        ]
+      }
+    },
+    "/api/v1/agent/semantic/metrics": {
+      "get": {
+        "operationId": "list_metrics",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "dataset_id",
+            "required": false,
+            "schema": {
+              "default": null,
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "default": null,
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 100,
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "type": "integer"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/AgentTokenHeader"
+          },
+          {
+            "$ref": "#/components/parameters/CorrelationIdHeader"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Paginated[SemanticMetricRead]"
+                }
+              }
+            },
+            "description": "Successful response"
+          }
+        },
+        "security": [
+          {
+            "AgentToken": []
+          }
+        ],
+        "summary": "List metrics for the caller's workspace (agent-tier).",
+        "tags": [
+          "AgentSemanticMetrics"
+        ]
+      },
+      "post": {
+        "operationId": "create",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/AgentTokenHeader"
+          },
+          {
+            "$ref": "#/components/parameters/CorrelationIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/IdempotencyKeyHeader"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SemanticMetricCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SemanticMetricRead"
+                }
+              }
+            },
+            "description": "Successful response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "AgentToken": []
+          }
+        ],
+        "summary": "Create a metric in DRAFT (agent-tier).",
+        "tags": [
+          "AgentSemanticMetrics"
+        ]
+      }
+    },
+    "/api/v1/agent/semantic/metrics/{metric_id}": {
+      "get": {
+        "operationId": "get_metric",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "metric_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/AgentTokenHeader"
+          },
+          {
+            "$ref": "#/components/parameters/CorrelationIdHeader"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SemanticMetricRead"
+                }
+              }
+            },
+            "description": "Successful response"
+          }
+        },
+        "security": [
+          {
+            "AgentToken": []
+          }
+        ],
+        "summary": "Fetch a single metric (agent-tier).",
+        "tags": [
+          "AgentSemanticMetrics"
+        ]
+      },
+      "put": {
+        "operationId": "update",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "metric_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/AgentTokenHeader"
+          },
+          {
+            "$ref": "#/components/parameters/CorrelationIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/IdempotencyKeyHeader"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SemanticMetricUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SemanticMetricRead"
+                }
+              }
+            },
+            "description": "Successful response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "AgentToken": []
+          }
+        ],
+        "summary": "Sparse-update a metric (agent-tier).",
+        "tags": [
+          "AgentSemanticMetrics"
+        ]
+      }
+    },
+    "/api/v1/agent/semantic/metrics/{metric_id}/history": {
+      "get": {
+        "operationId": "history",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "metric_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/AgentTokenHeader"
+          },
+          {
+            "$ref": "#/components/parameters/CorrelationIdHeader"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Paginated[SemanticVersionRead]"
+                }
+              }
+            },
+            "description": "Successful response"
+          }
+        },
+        "security": [
+          {
+            "AgentToken": []
+          }
+        ],
+        "summary": "Return version history for a metric (agent-tier).",
+        "tags": [
+          "AgentSemanticMetrics"
+        ]
+      }
+    },
+    "/api/v1/agent/semantic/metrics/{metric_id}:publish": {
+      "post": {
+        "operationId": "publish",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "metric_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/AgentTokenHeader"
+          },
+          {
+            "$ref": "#/components/parameters/CorrelationIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/IdempotencyKeyHeader"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SemanticMetricRead"
+                }
+              }
+            },
+            "description": "Successful response"
+          }
+        },
+        "security": [
+          {
+            "AgentToken": []
+          }
+        ],
+        "summary": "Publish a metric (agent-tier).",
+        "tags": [
+          "AgentSemanticMetrics"
+        ]
+      }
+    },
+    "/api/v1/agent/semantic/metrics/{metric_id}:retire": {
+      "post": {
+        "operationId": "retire",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "metric_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/AgentTokenHeader"
+          },
+          {
+            "$ref": "#/components/parameters/CorrelationIdHeader"
+          },
+          {
+            "$ref": "#/components/parameters/IdempotencyKeyHeader"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SemanticMetricRead"
+                }
+              }
+            },
+            "description": "Successful response"
+          }
+        },
+        "security": [
+          {
+            "AgentToken": []
+          }
+        ],
+        "summary": "Retire a metric (agent-tier).",
+        "tags": [
+          "AgentSemanticMetrics"
         ]
       }
     },
@@ -10816,6 +11767,15 @@
           },
           {
             "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "default": null,
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
             "name": "limit",
             "required": false,
             "schema": {
@@ -10860,7 +11820,7 @@
             "WorkspaceContext": []
           }
         ],
-        "summary": "List all semantic dimensions for the caller's workspace.",
+        "summary": "List semantic dimensions for the caller's workspace (optional status filter).",
         "tags": [
           "SemanticDimensions"
         ]
@@ -11032,7 +11992,7 @@
             "WorkspaceContext": []
           }
         ],
-        "summary": "Sparse-update a dimension; re-validates YAML if definition changes.",
+        "summary": "Sparse-update a dimension; re-validates + recompiles if published.",
         "tags": [
           "SemanticDimensions"
         ]
@@ -11197,6 +12157,15 @@
           },
           {
             "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "default": null,
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
             "name": "limit",
             "required": false,
             "schema": {
@@ -11241,7 +12210,7 @@
             "WorkspaceContext": []
           }
         ],
-        "summary": "List all semantic metrics for the caller's workspace.",
+        "summary": "List semantic metrics for the caller's workspace (optional status filter).",
         "tags": [
           "SemanticMetrics"
         ]
@@ -11413,7 +12382,7 @@
             "WorkspaceContext": []
           }
         ],
-        "summary": "Sparse-update a metric; re-validates YAML if definition changes.",
+        "summary": "Sparse-update a metric; re-validates + recompiles if published.",
         "tags": [
           "SemanticMetrics"
         ]
@@ -12524,6 +13493,9 @@
       "name": "AgentExamples"
     },
     {
+      "name": "AgentGlossary"
+    },
+    {
       "name": "AgentIngestJobs"
     },
     {
@@ -12531,6 +13503,12 @@
     },
     {
       "name": "AgentRelations"
+    },
+    {
+      "name": "AgentSemanticDimensions"
+    },
+    {
+      "name": "AgentSemanticMetrics"
     },
     {
       "name": "AgentSqlExecute"

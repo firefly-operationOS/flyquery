@@ -207,6 +207,17 @@ def _on_pyfly_validation(_request: _StarletteRequest, exc: Exception) -> _JSONRe
 
 
 app.add_exception_handler(_PyflyValidationException, _on_pyfly_validation)
+
+# flyquery-local: map the semantic layer's SemanticCompileError (raised by
+# SemanticService on invalid/unsafe metric or dimension definitions) to the
+# RFC 7807 400 ``semantic_compile_error`` envelope. Kept out of the
+# lock-stepped conventions package because the semantic layer is
+# flyquery-specific.
+from flyquery.web.semantic_error_handler import (  # noqa: E402
+    register_semantic_error_handler as _register_semantic_error_handler,
+)
+
+_register_semantic_error_handler(app)
 # Bind the request-scoped TenantContext from headers BEFORE any route
 # (or DB session) runs. Pyfly's @rest_controller resolver bypasses
 # FastAPI Depends, so require_tenant_context never fires for pyfly

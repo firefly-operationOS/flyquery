@@ -14,9 +14,10 @@ Full read representation of a flyquery_semantic_dimensions row.
 |**datasetId** | **UUID** |  |  |
 |**definitionYaml** | **String** |  |  |
 |**description** | **String** |  |  |
+|**dimensionType** | [**DimensionTypeEnum**](#DimensionTypeEnum) |  |  |
 |**id** | **UUID** |  |  |
 |**label** | **String** |  |  |
-|**metricType** | [**MetricTypeEnum**](#MetricTypeEnum) |  |  |
+|**metadataJson** | **Map&lt;String, Object&gt;** |  |  [optional] |
 |**name** | **String** |  |  |
 |**status** | [**StatusEnum**](#StatusEnum) |  |  |
 |**tenantId** | **String** |  |  |
@@ -25,14 +26,12 @@ Full read representation of a flyquery_semantic_dimensions row.
 
 
 
-## Enum: MetricTypeEnum
+## Enum: DimensionTypeEnum
 
 | Name | Value |
 |---- | -----|
-| SIMPLE | &quot;SIMPLE&quot; |
-| RATIO | &quot;RATIO&quot; |
-| DERIVED | &quot;DERIVED&quot; |
-| CUMULATIVE | &quot;CUMULATIVE&quot; |
+| CATEGORICAL | &quot;categorical&quot; |
+| TIME | &quot;time&quot; |
 
 
 

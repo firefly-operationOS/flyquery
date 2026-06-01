@@ -1,26 +1,15 @@
-# Copyright 2024-2026 Firefly Software Foundation
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-
 # flake8: noqa
 
 # import apis into api package
 from flyquery_sdk.api.agent_conversations_api import AgentConversationsApi
 from flyquery_sdk.api.agent_datasets_api import AgentDatasetsApi
 from flyquery_sdk.api.agent_examples_api import AgentExamplesApi
+from flyquery_sdk.api.agent_glossary_api import AgentGlossaryApi
 from flyquery_sdk.api.agent_ingest_jobs_api import AgentIngestJobsApi
 from flyquery_sdk.api.agent_query_api import AgentQueryApi
 from flyquery_sdk.api.agent_relations_api import AgentRelationsApi
+from flyquery_sdk.api.agent_semantic_dimensions_api import AgentSemanticDimensionsApi
+from flyquery_sdk.api.agent_semantic_metrics_api import AgentSemanticMetricsApi
 from flyquery_sdk.api.agent_sql_execute_api import AgentSqlExecuteApi
 from flyquery_sdk.api.agent_tables_api import AgentTablesApi
 from flyquery_sdk.api.agent_tokens_api import AgentTokensApi

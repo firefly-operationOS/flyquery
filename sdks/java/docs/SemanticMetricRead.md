@@ -16,6 +16,7 @@ Full read representation of a flyquery_semantic_metrics row.
 |**description** | **String** |  |  |
 |**id** | **UUID** |  |  |
 |**label** | **String** |  |  |
+|**metadataJson** | **Map&lt;String, Object&gt;** |  |  [optional] |
 |**metricType** | [**MetricTypeEnum**](#MetricTypeEnum) |  |  |
 |**name** | **String** |  |  |
 |**status** | [**StatusEnum**](#StatusEnum) |  |  |

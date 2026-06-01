@@ -2,7 +2,7 @@
 
 # SemanticDimensionCreate
 
-Payload for creating a new semantic dimension.
+Payload for creating a new semantic dimension.  The dimension's ``type`` (categorical|time) is taken from the ``definition_yaml`` body, not a separate request field.
 
 ## Properties
 
@@ -12,19 +12,7 @@ Payload for creating a new semantic dimension.
 |**definitionYaml** | **String** |  |  |
 |**description** | **String** |  |  [optional] |
 |**label** | **String** |  |  [optional] |
-|**metricType** | [**MetricTypeEnum**](#MetricTypeEnum) |  |  [optional] |
 |**name** | **String** |  |  |
-
-
-
-## Enum: MetricTypeEnum
-
-| Name | Value |
-|---- | -----|
-| SIMPLE | &quot;SIMPLE&quot; |
-| RATIO | &quot;RATIO&quot; |
-| DERIVED | &quot;DERIVED&quot; |
-| CUMULATIVE | &quot;CUMULATIVE&quot; |
 
 
 

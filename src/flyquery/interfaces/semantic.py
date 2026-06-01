@@ -60,19 +60,27 @@ class SemanticMetricRead(BaseModel):
     metric_type: Literal["SIMPLE", "RATIO", "DERIVED", "CUMULATIVE"]
     status: Literal["DRAFT", "PUBLISHED", "RETIRED"]
     current_version: int
+    metadata_json: dict = Field(default_factory=dict)
     created_at: datetime
     updated_at: datetime
 
 
 class SemanticVersionRead(BaseModel):
-    """Read representation of a flyquery_semantic_versions row."""
+    """Read representation of a flyquery_semantic_versions row.
+
+    Field names follow the documented payload (``version_number``,
+    ``metric_id``); the underlying columns are ``version`` / ``parent_id``
+    and are mapped via validation aliases.
+    """
+
+    model_config = ConfigDict(populate_by_name=True)
 
     id: uuid.UUID
     tenant_id: str
     workspace_id: uuid.UUID
     kind: str
-    parent_id: uuid.UUID
-    version: int
+    metric_id: uuid.UUID = Field(validation_alias="parent_id")
+    version_number: int = Field(validation_alias="version")
     definition_yaml: str
     compiled_sql_template: str | None
     created_by: str
@@ -85,7 +93,11 @@ class SemanticVersionRead(BaseModel):
 
 
 class SemanticDimensionCreate(BaseModel):
-    """Payload for creating a new semantic dimension."""
+    """Payload for creating a new semantic dimension.
+
+    The dimension's ``type`` (categorical|time) is taken from the
+    ``definition_yaml`` body, not a separate request field.
+    """
 
     model_config = ConfigDict(populate_by_name=True)
 
@@ -94,7 +106,6 @@ class SemanticDimensionCreate(BaseModel):
     label: str | None = None
     description: str | None = None
     definition_yaml: str = Field(min_length=1)
-    metric_type: Literal["SIMPLE", "RATIO", "DERIVED", "CUMULATIVE"] = "SIMPLE"
 
 
 class SemanticDimensionUpdate(BaseModel):
@@ -103,7 +114,6 @@ class SemanticDimensionUpdate(BaseModel):
     label: str | None = None
     description: str | None = None
     definition_yaml: str | None = None
-    metric_type: Literal["SIMPLE", "RATIO", "DERIVED", "CUMULATIVE"] | None = None
 
 
 class SemanticDimensionRead(BaseModel):
@@ -118,8 +128,9 @@ class SemanticDimensionRead(BaseModel):
     description: str | None
     definition_yaml: str
     compiled_sql_template: str | None
-    metric_type: Literal["SIMPLE", "RATIO", "DERIVED", "CUMULATIVE"]
+    dimension_type: Literal["categorical", "time"]
     status: Literal["DRAFT", "PUBLISHED", "RETIRED"]
     current_version: int
+    metadata_json: dict = Field(default_factory=dict)
     created_at: datetime
     updated_at: datetime

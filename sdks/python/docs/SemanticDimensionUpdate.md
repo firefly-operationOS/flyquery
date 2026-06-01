@@ -9,7 +9,6 @@ Name | Type | Description | Notes
 **definition_yaml** | **str** |  | [optional] 
 **description** | **str** |  | [optional] 
 **label** | **str** |  | [optional] 
-**metric_type** | **str** |  | [optional] 
 
 ## Example
 

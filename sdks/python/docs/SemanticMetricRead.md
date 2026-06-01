@@ -14,6 +14,7 @@ Name | Type | Description | Notes
 **description** | **str** |  | 
 **id** | **UUID** |  | 
 **label** | **str** |  | 
+**metadata_json** | **Dict[str, object]** |  | [optional] 
 **metric_type** | **str** |  | 
 **name** | **str** |  | 
 **status** | **str** |  | 

@@ -57,6 +57,7 @@ from flyquery.core.services.retrieval.embedder import Embedder
 from flyquery.core.services.retrieval.hybrid_retriever import HybridRetriever
 from flyquery.core.services.retrieval.reranker import build_reranker
 from flyquery.core.services.retrieval.search_index import SearchIndex
+from flyquery.core.services.semantic.semantic_repository import SemanticRepository
 from flyquery.core.services.storage.object_store import ObjectStore
 from flyquery.interfaces.query import (
     AnswerResponse,
@@ -111,6 +112,7 @@ class QueryController:
         session: async_sessionmaker[AsyncSession],
         object_store: ObjectStore,
         query_repository: QueryRepository,
+        semantic_repository: SemanticRepository,
         examples_service: ExamplesService,
         embedder: Embedder,
         idempotency_store: IdempotencyStore,
@@ -119,6 +121,7 @@ class QueryController:
         self._session_factory = session
         self._object_store = object_store
         self._query_repo = query_repository
+        self._semantic_repo = semantic_repository
         self._examples_service = examples_service
         self._embedder = embedder
         self._idempotency_store = idempotency_store
@@ -165,6 +168,7 @@ class QueryController:
             settings=self._settings,
             result_uploader=uploader,
             auto_learner=auto_learner,
+            semantic_repo=self._semantic_repo,
         )
 
     # ------------------------------------------------------------------

@@ -32,11 +32,13 @@ The semantic layer gives operators confidence that sensitive business
 definitions — revenue, churn, ARR — produce consistent SQL regardless of
 which phrasing a user employs.
 
-**v0 ships**: `SIMPLE` metric type (aggregate + expr + filter + group_by).
-`RATIO`, `DERIVED`, and `CUMULATIVE` types are accepted in YAML and stored,
-but execution is deferred to v1+. Attempting to query a non-SIMPLE published
-metric falls through to the `SYNTHESIS` path with the metric definition
-passed as few-shot context.
+All four metric types — `SIMPLE`, `RATIO`, `DERIVED`, and `CUMULATIVE` — are
+validated, compiled to DuckDB SQL templates, and executable via the
+`SEMANTIC_LAYER` path. Measure expressions are **qualified** (`table.column`);
+the compiler derives the source table from that prefix. `group_by` entries may
+name a published dimension, which the compiler resolves to that dimension's
+compiled expression. Cross-dataset metrics with explicit join paths remain
+planned but unshipped (single-dataset only).
 
 ---
 
@@ -66,13 +68,13 @@ metric:
   label: Total Revenue            # human-readable display name
   description: >
     Sum of order_amount across completed orders, in USD cents.
-  type: simple                    # simple | ratio | derived | cumulative (v0: simple only)
+  type: simple                    # simple | ratio | derived | cumulative
   type_params:
     measure:
-      name: order_amount          # column name in the source table
+      name: order_amount          # measure name
       agg: sum                    # sum | count | count_distinct | avg | min | max
-      expr: order_amount          # optional: expression override
-    filter: "order_status = 'COMPLETED'"   # optional: WHERE clause fragment
+      expr: orders.order_amount   # qualified table.column the agg runs over
+    filter: "orders.order_status = 'COMPLETED'"   # optional: WHERE fragment
   group_by:
     - region
     - product_category
@@ -110,16 +112,17 @@ metric:
     measure:
       name: order_id
       agg: count_distinct
-    filter: "order_status = 'COMPLETED'"
+      expr: orders.order_id
+    filter: "orders.order_status = 'COMPLETED'"
 ```
 
 Compiled SQL template:
 ```sql
-SELECT {group_by_cols}, COUNT(DISTINCT order_id) AS completed_order_count
-FROM {table_ref}
-WHERE order_status = 'COMPLETED'
-  {extra_filter}
-GROUP BY {group_by_cols}
+SELECT COUNT(DISTINCT orders.order_id) AS completed_order_count
+FROM orders
+WHERE orders.order_status = 'COMPLETED'
+  {extra_filter_clause}
+GROUP BY {group_by_append}
 ```
 
 ### RATIO (v1+)
@@ -235,9 +238,8 @@ YAML changes.
 
 ### Compilation rules (SIMPLE type)
 
-1. **Source table** — resolved to `{dataset}.{table_name}` where
-   `table_name` matches `measure.name`'s parent table in the dataset's
-   schema knowledge base.
+1. **Source table** — taken from the qualified `measure.expr`
+   (`table.column`); the prefix before the dot is the `FROM` table.
 2. **Aggregate expression** — `SUM(expr)`, `COUNT(DISTINCT expr)`, etc.
 3. **Filter** — appended to the WHERE clause verbatim.
 4. **Group-by columns** — validated to exist in the source table.
@@ -353,17 +355,21 @@ context in the GenerationAgent prompt.
 | `POST` | `/api/v1/semantic/metrics/{id}:retire` | PUBLISHED → RETIRED; removed from retrieval |
 | `GET` | `/api/v1/semantic/metrics/{id}/history` | Immutable version log |
 | `POST` | `/api/v1/semantic/dimensions` | Create dimension |
-| `GET` | `/api/v1/semantic/dimensions` | List dimensions |
+| `GET` | `/api/v1/semantic/dimensions` | List; optional `status`, `dataset_id` |
+| `GET` | `/api/v1/semantic/dimensions/{id}` | Full detail |
 | `PUT` | `/api/v1/semantic/dimensions/{id}` | Update |
 | `POST` | `/api/v1/semantic/dimensions/{id}:publish` | DRAFT → PUBLISHED |
+| `POST` | `/api/v1/semantic/dimensions/{id}:retire` | PUBLISHED → RETIRED |
 | `GET` | `/api/v1/semantic/dimensions/{id}/history` | Version log |
 | `POST` | `/api/v1/glossary` | Create glossary term |
 | `GET` | `/api/v1/glossary` | List terms (workspace-scoped) |
 | `PUT` | `/api/v1/glossary/{id}` | Update |
 | `DELETE` | `/api/v1/glossary/{id}` | Remove |
 
-Agent-tier mirrors exist under `/api/v1/agent/semantic/metrics` with scope
-`flyquery.semantic:author`.
+Agent-tier mirrors exist under `/api/v1/agent/semantic/metrics`,
+`/api/v1/agent/semantic/dimensions`, and `/api/v1/agent/glossary`. Writes
+require scope `flyquery.semantic:author`; reads require `flyquery.semantic:read`.
+They require an `X-Agent-Token` header and delegate to the same services.
 
 ---
 

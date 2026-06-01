@@ -5,6 +5,42 @@ follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and
 the project uses [CalVer](https://calver.org/) (YY.MM.PP) per the
 Firefly Framework convention (memory: `firefly_uses_calver`).
 
+## [26.6.0] - 2026-06-01
+
+### Fixed — Semantic layer brought up to its documented contract
+
+- **The `SEMANTIC_LAYER` fast-path now actually executes.** A published metric's
+  compiled SQL is fetched (`SemanticRepository.get_by_name`, tenant+workspace
+  scoped), bound via `SemanticCompiler.bind`, and run straight through the AST
+  firewall + executor with **no GenerationAgent** — the metric name + version are
+  pinned in the query record. Previously the branch silently fell through to the
+  LLM because `semantic_repo` was never wired and `get_by_name` did not exist.
+
+### Added
+
+- Nested MetricFlow YAML schema (`metric:` / `dimension:` roots) replacing the
+  flat schema; all four metric types (`SIMPLE`, `RATIO`, `DERIVED`, `CUMULATIVE`)
+  compile to DuckDB SQL templates with `{extra_filter_clause}` / `{group_by_append}`
+  runtime slots filled by `SemanticCompiler.bind`. `count_distinct` is supported.
+- Publish-time **sqlglot firewall**: single-SELECT, no DDL/commands/multi-statement,
+  no subqueries, anonymous-function allowlist, identifier regex — invalid/unsafe
+  definitions return RFC 7807 `400 semantic_compile_error`.
+- Real dimensions: own `categorical|time` validator + compiler (grain-aware
+  `DATE_TRUNC`); metric `group_by` resolves published dimension names.
+- Agent-tier mirrors: `/api/v1/agent/semantic/metrics`, `/api/v1/agent/semantic/dimensions`,
+  `/api/v1/agent/glossary` (scopes `flyquery.semantic:author` / `:read`).
+- `metadata_json` column on metrics + dimensions (migration `0014`); glossary
+  DTOs accept the documented `synonyms` / `related_metrics` keys; glossary
+  `related_metrics` surfaced to grounding for SEMANTIC_LAYER routing.
+
+### Changed
+
+- Version rows persist `compiled_sql_template` (no longer NULL); `publish` records
+  it on the current version; `update` of a published metric recompiles + re-firewalls.
+- Semantic repos/services are tenant+workspace scoped (defense-in-depth over RLS);
+  metrics/dimensions `list` gains a `status` filter; `SemanticVersionRead` exposes
+  doc-aligned `version_number` / `metric_id`.
+
 ## [26.5.14] - 2026-05-31
 
 ### Changed
@@ -909,7 +945,7 @@ Released by ancongui.
   CRUD, agent-token mint/verify, ObjectStore port + LocalFs + S3
   adapters, CI workflows.
 
-## [Unreleased]
+## [26.6.0] - 2026-06-01
 
 ### Added
 - Foundation scaffold: pyproject + pyfly.yaml + Dockerfile + Taskfile

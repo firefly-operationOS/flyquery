@@ -29,20 +29,22 @@ class GlossaryTermCreate(BaseModel):
 
     term: str = Field(min_length=1, max_length=512)
     definition: str = Field(min_length=1)
-    synonyms_json: list[str] = Field(default_factory=list)
-    tags_json: list[str] = Field(default_factory=list)
-    related_columns_json: list[str] = Field(default_factory=list)
-    related_metrics_json: list[str] = Field(default_factory=list)
+    synonyms_json: list[str] = Field(default_factory=list, alias="synonyms")
+    tags_json: list[str] = Field(default_factory=list, alias="tags")
+    related_columns_json: list[str] = Field(default_factory=list, alias="related_columns")
+    related_metrics_json: list[str] = Field(default_factory=list, alias="related_metrics")
 
 
 class GlossaryTermUpdate(BaseModel):
     """Sparse-update payload for an existing glossary term."""
 
+    model_config = ConfigDict(populate_by_name=True)
+
     definition: str | None = None
-    synonyms_json: list[str] | None = None
-    tags_json: list[str] | None = None
-    related_columns_json: list[str] | None = None
-    related_metrics_json: list[str] | None = None
+    synonyms_json: list[str] | None = Field(default=None, alias="synonyms")
+    tags_json: list[str] | None = Field(default=None, alias="tags")
+    related_columns_json: list[str] | None = Field(default=None, alias="related_columns")
+    related_metrics_json: list[str] | None = Field(default=None, alias="related_metrics")
 
 
 class GlossaryTermRead(BaseModel):
