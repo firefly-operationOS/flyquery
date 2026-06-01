@@ -53,11 +53,11 @@ from flyquery.core.services.execution.table_resolver import TableResolver
 from flyquery.core.services.query.query_repository import QueryRepository
 from flyquery.core.services.query.query_service import QueryService
 from flyquery.core.services.query.result_uploader import ResultUploader
-from flyquery.core.services.semantic.semantic_repository import SemanticRepository
 from flyquery.core.services.retrieval.embedder import Embedder
 from flyquery.core.services.retrieval.hybrid_retriever import HybridRetriever
 from flyquery.core.services.retrieval.reranker import build_reranker
 from flyquery.core.services.retrieval.search_index import SearchIndex
+from flyquery.core.services.semantic.semantic_repository import SemanticRepository
 from flyquery.core.services.storage.object_store import ObjectStore
 from flyquery.interfaces.query import (
     AnswerResponse,

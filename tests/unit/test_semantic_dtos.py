@@ -17,7 +17,7 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime, timezone
 
 from flyquery.interfaces.glossary import GlossaryTermCreate
 from flyquery.interfaces.semantic import SemanticVersionRead
@@ -54,7 +54,7 @@ def test_version_read_maps_columns_to_documented_names() -> None:
         "definition_yaml": "metric: {}",
         "compiled_sql_template": "SELECT 1",
         "created_by": "alice@acme.com",
-        "created_at": datetime.now(timezone.utc),
+        "created_at": datetime.now(UTC),
     }
     dto = SemanticVersionRead.model_validate(row)
     assert dto.version_number == 3
