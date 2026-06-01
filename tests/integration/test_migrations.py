@@ -67,6 +67,17 @@ def test_alembic_upgrade_head_creates_all_tables() -> None:
 
 
 @pytest.mark.integration
+def test_semantic_metadata_and_dimension_type_columns_present() -> None:
+    eng = create_engine(os.environ["FLYQUERY_DATABASE_URL_ADMIN"])
+    insp = inspect(eng)
+    metric_cols = {c["name"] for c in insp.get_columns("flyquery_semantic_metrics")}
+    dim_cols = {c["name"] for c in insp.get_columns("flyquery_semantic_dimensions")}
+    assert "metadata_json" in metric_cols
+    assert "metadata_json" in dim_cols
+    assert "dimension_type" in dim_cols
+
+
+@pytest.mark.integration
 def test_pgvector_and_indexes_present() -> None:
     eng = create_engine(os.environ["FLYQUERY_DATABASE_URL_ADMIN"])
     with eng.connect() as conn:
