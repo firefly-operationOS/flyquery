@@ -53,6 +53,7 @@ from flyquery.core.services.query.conversation_service import ConversationServic
 from flyquery.core.services.query.query_repository import QueryRepository
 from flyquery.core.services.query.query_service import QueryService
 from flyquery.core.services.query.result_uploader import ResultUploader
+from flyquery.core.services.semantic.semantic_repository import SemanticRepository
 from flyquery.core.services.retrieval.embedder import Embedder
 from flyquery.core.services.retrieval.hybrid_retriever import HybridRetriever
 from flyquery.core.services.retrieval.reranker import build_reranker
@@ -121,11 +122,13 @@ class AgentQueryController:
         embedder: Embedder,
         agent_token_service: AgentTokenService,
         idempotency_store: IdempotencyStore,
+        semantic_repository: SemanticRepository,
     ) -> None:
         self._settings = settings
         self._session_factory = session
         self._object_store = object_store
         self._query_repo = query_repository
+        self._semantic_repo = semantic_repository
         self._conversation_service = conversation_service
         self._examples_service = examples_service
         self._embedder = embedder
@@ -182,6 +185,7 @@ class AgentQueryController:
             result_uploader=uploader,
             auto_learner=auto_learner,
             conversation_service=self._conversation_service,
+            semantic_repo=self._semantic_repo,
         )
 
     # ------------------------------------------------------------------

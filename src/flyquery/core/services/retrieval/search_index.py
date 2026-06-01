@@ -355,7 +355,7 @@ class SearchIndex:
         rows = await self._session.execute(
             sa.text(
                 """
-                SELECT id, term, definition, synonyms_json
+                SELECT id, term, definition, synonyms_json, related_metrics_json
                 FROM flyquery_glossary_terms
                 WHERE workspace_id = :ws
                 ORDER BY term
@@ -370,7 +370,11 @@ class SearchIndex:
                 id=r.id,
                 text=f"term:{r.term}\n{r.definition}",
                 score=1.0,
-                metadata={"term": r.term, "definition": r.definition},
+                metadata={
+                    "term": r.term,
+                    "definition": r.definition,
+                    "related_metrics": list(r.related_metrics_json or []),
+                },
             )
             for r in rows.mappings()
         ]

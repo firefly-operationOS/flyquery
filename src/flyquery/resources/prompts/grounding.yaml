@@ -146,6 +146,8 @@ user: |
   # Task
   Produce the GroundedContext for this question. Pick the MINIMAL
   set of tables, columns, and joins. If a published metric covers
-  the question, set path=SEMANTIC_LAYER. Otherwise path=SYNTHESIS.
-  Set confidence ∈ [0,1] and only populate `missing_info` when
-  confidence is below 0.55.
+  the question, set path=SEMANTIC_LAYER and put that metric in
+  `metrics`. When a matching glossary term lists related metrics,
+  prefer routing to that metric via SEMANTIC_LAYER. Otherwise
+  path=SYNTHESIS. Set confidence ∈ [0,1] and only populate
+  `missing_info` when confidence is below 0.55.

@@ -35,6 +35,7 @@ Execution order
 
 from __future__ import annotations
 
+import logging
 import time
 import uuid
 from dataclasses import dataclass, field
@@ -43,6 +44,9 @@ from typing import Any, Literal
 from flyquery.core.services.execution.ast_classifier import AstClassifier
 from flyquery.core.services.execution.duckdb_executor import ExecutionError, ExecutionResult
 from flyquery.core.services.execution.scope_guard import ScopeGuard, ScopeGuardError
+from flyquery.core.services.semantic.compiler import SemanticCompiler
+
+logger = logging.getLogger(__name__)
 
 # ----------------------------------------------------------------------
 # Prompt rendering helpers
@@ -147,7 +151,13 @@ def _render_grounding_prompt(
         out.append(f"# Glossary terms ({len(glossary)})")
         for h in glossary[:10]:
             md = getattr(h, "metadata", None) or {}
-            out.append(f"- **{md.get('term')}**: {md.get('definition', '')}")
+            line = f"- **{md.get('term')}**: {md.get('definition', '')}"
+            related = md.get("related_metrics") or []
+            if related:
+                # A glossary term that maps to a published metric is a strong
+                # signal to take the SEMANTIC_LAYER path using that metric.
+                line += f" (related metrics: {', '.join(related)})"
+            out.append(line)
         out.append("")
 
     relations = bundle.get("relations", []) or []
@@ -526,12 +536,24 @@ class QueryService:
         candidates_json: list = []
 
         if grounded.path == "SEMANTIC_LAYER" and grounded.metrics:
-            # Try to get compiled SQL from the semantic repo
-            compiled = await self._compiled_metric_sql(grounded.metrics[0].metric_name, dataset_id)
+            # Fetch + bind the published metric's compiled SQL. When found, the
+            # bound SQL goes straight to the AST firewall + executor — the
+            # GenerationAgent is NOT invoked — and the metric version is pinned
+            # into the persisted query record for reproducibility.
+            metric_name = grounded.metrics[0].metric_name
+            compiled, metric_version = await self._compiled_metric_sql(
+                metric_name, dataset_id, tenant_id=tenant_id, workspace_id=workspace_id
+            )
             if compiled:
                 chosen_sql = compiled
                 candidates_json = [
-                    {"sql": compiled, "reasoning": "semantic-layer compiled", "confidence": 1.0}
+                    {
+                        "sql": compiled,
+                        "reasoning": "semantic-layer compiled",
+                        "confidence": 1.0,
+                        "metric_name": metric_name,
+                        "metric_version": metric_version,
+                    }
                 ]
             else:
                 # Fall through to synthesis if no compiled SQL found
@@ -861,17 +883,28 @@ class QueryService:
         self,
         metric_name: str,
         dataset_id: uuid.UUID,
-    ) -> str | None:
-        """Fetch the compiled SQL for a published metric, or None if unavailable."""
+        *,
+        tenant_id: str,
+        workspace_id: uuid.UUID,
+    ) -> tuple[str | None, int | None]:
+        """Fetch + bind the compiled SQL for a PUBLISHED metric.
+
+        Returns ``(bound_sql, current_version)`` so the version can be pinned
+        in the query record, or ``(None, None)`` when no usable metric is found.
+        """
         if self._semantic_repo is None:
-            return None
+            return None, None
         try:
-            row = await self._semantic_repo.get_by_name(metric_name, dataset_id)
-            if row and row.get("status") == "PUBLISHED":
-                return row.get("compiled_sql_template")
-        except Exception:  # noqa: BLE001
-            pass
-        return None
+            row = await self._semantic_repo.get_by_name(
+                metric_name, dataset_id, tenant_id=tenant_id, workspace_id=workspace_id
+            )
+        except (AttributeError, KeyError, TypeError) as exc:  # pragma: no cover - defensive
+            logger.warning("semantic metric lookup failed for %r: %s", metric_name, exc)
+            return None, None
+        if not row or not row.get("compiled_sql_template"):
+            return None, None
+        bound = SemanticCompiler.bind(row["compiled_sql_template"])
+        return bound, row.get("current_version")
 
     def _clarification(self, grounded) -> Any:
         """Build a ClarificationFrame if grounding confidence is low."""
