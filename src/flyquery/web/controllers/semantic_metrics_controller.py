@@ -79,21 +79,25 @@ class SemanticMetricsController:
         self,
         http_request: Request,
         dataset_id: QueryParam[uuid.UUID] = None,
+        status: QueryParam[str] = None,
         limit: QueryParam[int] = 100,
         offset: QueryParam[int] = 0,
     ) -> Paginated[SemanticMetricRead]:
-        """List all semantic metrics for the caller's workspace."""
+        """List semantic metrics for the caller's workspace (optional status filter)."""
         ctx = tenant_context_from_request(http_request)
         ws = uuid.UUID(ctx.workspace_id)
-        rows = await self._service.list(ctx.tenant_id, ws, dataset_id=dataset_id)
+        rows = await self._service.list(ctx.tenant_id, ws, dataset_id=dataset_id, status=status)
         items = [SemanticMetricRead.model_validate(r) for r in rows]
         sliced = items[offset : offset + limit]
         return Paginated.of(sliced, total=len(items), limit=limit, offset=offset)
 
     @get_mapping("/{metric_id}")
-    async def get_metric(self, metric_id: PathVar[uuid.UUID]) -> SemanticMetricRead:
+    async def get_metric(
+        self, http_request: Request, metric_id: PathVar[uuid.UUID]
+    ) -> SemanticMetricRead:
         """Fetch a single semantic metric by id."""
-        row = await self._service.get(metric_id)
+        ctx = tenant_context_from_request(http_request)
+        row = await self._service.get(ctx.tenant_id, uuid.UUID(ctx.workspace_id), metric_id)
         if row is None:
             raise ResourceNotFound(f"metric {metric_id!r} not found")
         return SemanticMetricRead.model_validate(row)
@@ -101,33 +105,48 @@ class SemanticMetricsController:
     @put_mapping("/{metric_id}")
     async def update(
         self,
+        http_request: Request,
         metric_id: PathVar[uuid.UUID],
         body: Valid[Body[SemanticMetricUpdate]],
     ) -> SemanticMetricRead:
-        """Sparse-update a metric; re-validates YAML if definition changes."""
-        row = await self._service.update(metric_id, body)
+        """Sparse-update a metric; re-validates + recompiles if published."""
+        ctx = tenant_context_from_request(http_request)
+        row = await self._service.update(
+            ctx.tenant_id, uuid.UUID(ctx.workspace_id), metric_id, body
+        )
         return SemanticMetricRead.model_validate(row)
 
     @post_mapping("/{metric_id}:publish")
-    async def publish(self, metric_id: PathVar[uuid.UUID]) -> SemanticMetricRead:
+    async def publish(
+        self, http_request: Request, metric_id: PathVar[uuid.UUID]
+    ) -> SemanticMetricRead:
         """Validate, compile, and publish a metric (status → PUBLISHED)."""
-        row = await self._service.publish(metric_id)
+        ctx = tenant_context_from_request(http_request)
+        row = await self._service.publish(ctx.tenant_id, uuid.UUID(ctx.workspace_id), metric_id)
         return SemanticMetricRead.model_validate(row)
 
     @post_mapping("/{metric_id}:retire")
-    async def retire(self, metric_id: PathVar[uuid.UUID]) -> SemanticMetricRead:
+    async def retire(
+        self, http_request: Request, metric_id: PathVar[uuid.UUID]
+    ) -> SemanticMetricRead:
         """Retire a metric (status → RETIRED)."""
-        row = await self._service.retire(metric_id)
+        ctx = tenant_context_from_request(http_request)
+        row = await self._service.retire(ctx.tenant_id, uuid.UUID(ctx.workspace_id), metric_id)
         return SemanticMetricRead.model_validate(row)
 
     @get_mapping("/{metric_id}/history")
-    async def history(self, metric_id: PathVar[uuid.UUID]) -> Paginated[SemanticVersionRead]:
+    async def history(
+        self, http_request: Request, metric_id: PathVar[uuid.UUID]
+    ) -> Paginated[SemanticVersionRead]:
         """Return version history for a metric, oldest first.
 
         History is intentionally returned in full -- versions are bounded
         per metric (typically &lt; 50) and chronology is the consumer's
         whole point. ``total = len(items)`` and ``has_more = False``.
         """
-        rows = await self._service.list_history(metric_id)
+        ctx = tenant_context_from_request(http_request)
+        rows = await self._service.list_history(
+            ctx.tenant_id, uuid.UUID(ctx.workspace_id), metric_id
+        )
         items = [SemanticVersionRead.model_validate(r) for r in rows]
         return Paginated.of(items, total=len(items))

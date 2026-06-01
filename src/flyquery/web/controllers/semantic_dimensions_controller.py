@@ -81,21 +81,25 @@ class SemanticDimensionsController:
         self,
         http_request: Request,
         dataset_id: QueryParam[uuid.UUID] = None,
+        status: QueryParam[str] = None,
         limit: QueryParam[int] = 100,
         offset: QueryParam[int] = 0,
     ) -> Paginated[SemanticDimensionRead]:
-        """List all semantic dimensions for the caller's workspace."""
+        """List semantic dimensions for the caller's workspace (optional status filter)."""
         ctx = tenant_context_from_request(http_request)
         ws = uuid.UUID(ctx.workspace_id)
-        rows = await self._service.list(ctx.tenant_id, ws, dataset_id=dataset_id)
+        rows = await self._service.list(ctx.tenant_id, ws, dataset_id=dataset_id, status=status)
         items = [SemanticDimensionRead.model_validate(r) for r in rows]
         sliced = items[offset : offset + limit]
         return Paginated.of(sliced, total=len(items), limit=limit, offset=offset)
 
     @get_mapping("/{dimension_id}")
-    async def get_dimension(self, dimension_id: PathVar[uuid.UUID]) -> SemanticDimensionRead:
+    async def get_dimension(
+        self, http_request: Request, dimension_id: PathVar[uuid.UUID]
+    ) -> SemanticDimensionRead:
         """Fetch a single semantic dimension by id."""
-        row = await self._service.get(dimension_id)
+        ctx = tenant_context_from_request(http_request)
+        row = await self._service.get(ctx.tenant_id, uuid.UUID(ctx.workspace_id), dimension_id)
         if row is None:
             raise ResourceNotFound(f"dimension {dimension_id!r} not found")
         return SemanticDimensionRead.model_validate(row)
@@ -103,28 +107,43 @@ class SemanticDimensionsController:
     @put_mapping("/{dimension_id}")
     async def update(
         self,
+        http_request: Request,
         dimension_id: PathVar[uuid.UUID],
         body: Valid[Body[SemanticDimensionUpdate]],
     ) -> SemanticDimensionRead:
-        """Sparse-update a dimension; re-validates YAML if definition changes."""
-        row = await self._service.update(dimension_id, body)
+        """Sparse-update a dimension; re-validates + recompiles if published."""
+        ctx = tenant_context_from_request(http_request)
+        row = await self._service.update(
+            ctx.tenant_id, uuid.UUID(ctx.workspace_id), dimension_id, body
+        )
         return SemanticDimensionRead.model_validate(row)
 
     @post_mapping("/{dimension_id}:publish")
-    async def publish(self, dimension_id: PathVar[uuid.UUID]) -> SemanticDimensionRead:
+    async def publish(
+        self, http_request: Request, dimension_id: PathVar[uuid.UUID]
+    ) -> SemanticDimensionRead:
         """Validate, compile, and publish a dimension (status → PUBLISHED)."""
-        row = await self._service.publish(dimension_id)
+        ctx = tenant_context_from_request(http_request)
+        row = await self._service.publish(ctx.tenant_id, uuid.UUID(ctx.workspace_id), dimension_id)
         return SemanticDimensionRead.model_validate(row)
 
     @post_mapping("/{dimension_id}:retire")
-    async def retire(self, dimension_id: PathVar[uuid.UUID]) -> SemanticDimensionRead:
+    async def retire(
+        self, http_request: Request, dimension_id: PathVar[uuid.UUID]
+    ) -> SemanticDimensionRead:
         """Retire a dimension (status → RETIRED)."""
-        row = await self._service.retire(dimension_id)
+        ctx = tenant_context_from_request(http_request)
+        row = await self._service.retire(ctx.tenant_id, uuid.UUID(ctx.workspace_id), dimension_id)
         return SemanticDimensionRead.model_validate(row)
 
     @get_mapping("/{dimension_id}/history")
-    async def history(self, dimension_id: PathVar[uuid.UUID]) -> Paginated[SemanticVersionRead]:
+    async def history(
+        self, http_request: Request, dimension_id: PathVar[uuid.UUID]
+    ) -> Paginated[SemanticVersionRead]:
         """Return version history for a dimension, oldest first."""
-        rows = await self._service.list_history(dimension_id)
+        ctx = tenant_context_from_request(http_request)
+        rows = await self._service.list_history(
+            ctx.tenant_id, uuid.UUID(ctx.workspace_id), dimension_id
+        )
         items = [SemanticVersionRead.model_validate(r) for r in rows]
         return Paginated.of(items, total=len(items))

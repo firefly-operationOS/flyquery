@@ -20,7 +20,7 @@ from fastapi import FastAPI
 from starlette.testclient import TestClient
 
 from flyquery.core.services.semantic.errors import MetricYamlError, SemanticCompileError
-from flyquery.web.conventions.handlers import register_exception_handlers
+from flyquery.web.semantic_error_handler import register_semantic_error_handler
 
 
 def _app() -> FastAPI:
@@ -34,7 +34,7 @@ def _app() -> FastAPI:
     def _boom_base() -> None:
         raise SemanticCompileError("function not allowed: READ_CSV_AUTO", field="filter")
 
-    register_exception_handlers(app)
+    register_semantic_error_handler(app)
     return app
 
 

@@ -42,7 +42,6 @@ from pyfly.kernel import (
     ResourceNotFoundException,
 )
 
-from flyquery.core.services.semantic.errors import SemanticCompileError
 from flyquery.web.conventions.context import current_tenant_context
 from flyquery.web.conventions.errors import ProblemDetail
 from flyquery.web.conventions.exceptions import (
@@ -50,7 +49,6 @@ from flyquery.web.conventions.exceptions import (
     FireflyHTTPException,
     InvalidRequest,
     ResourceNotFound,
-    SemanticCompile,
 )
 
 _MEDIA_TYPE = "application/problem+json"
@@ -128,22 +126,6 @@ async def _on_pyfly_invalid_request(request: Request, exc: Exception) -> JSONRes
     return _problem_response(_to_problem(wrapped, request))
 
 
-async def _on_semantic_compile(request: Request, exc: Exception) -> JSONResponse:
-    """Map the core ``SemanticCompileError`` to a 400 ``ProblemDetail``.
-
-    Semantic controllers dispatch directly to ``SemanticService`` (not the
-    CQRS command bus), so an invalid/unsafe metric or dimension definition
-    propagates as this raw ``ValueError`` subclass. Without this bridge it
-    would surface as a generic 500.
-    """
-    assert isinstance(exc, SemanticCompileError)
-    errors = (
-        [{"code": exc.code, "path": exc.field, "message": exc.detail}] if exc.field else []
-    )
-    wrapped = SemanticCompile(exc.detail, errors=errors)
-    return _problem_response(_to_problem(wrapped, request))
-
-
 async def _on_pyfly_command_processing(request: Request, exc: Exception) -> JSONResponse:
     """Unwrap ``CommandProcessingException`` and render its cause.
 
@@ -189,7 +171,6 @@ def register_exception_handlers(app: FastAPI) -> None:
       ``command_processing_error`` for unrecognised causes).
     """
     app.add_exception_handler(FireflyHTTPException, _on_firefly)
-    app.add_exception_handler(SemanticCompileError, _on_semantic_compile)
     app.add_exception_handler(RequestValidationError, _on_pydantic_validation)
     app.add_exception_handler(ResourceNotFoundException, _on_pyfly_resource_not_found)
     app.add_exception_handler(InvalidRequestException, _on_pyfly_invalid_request)

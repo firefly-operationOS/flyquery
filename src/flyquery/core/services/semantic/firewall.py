@@ -108,3 +108,8 @@ def assert_safe_template(template: str) -> None:
             name = (node.name or "").upper()
             if name not in ALLOWED_FUNCS:
                 raise SemanticCompileError(f"function not allowed: {name}", field="filter")
+
+
+def assert_safe_dimension_expr(expr: str) -> None:
+    """Validate a dimension's column expression by wrapping it in a SELECT."""
+    assert_safe_template(f"SELECT ({expr}) AS _dim {EXTRA_FILTER_SLOT} {GROUP_BY_SLOT}")

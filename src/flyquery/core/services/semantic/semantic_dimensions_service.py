@@ -12,33 +12,37 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""SemanticDimensionsService: CRUD + lifecycle for semantic-layer dimensions."""
+"""SemanticDimensionsService: CRUD + lifecycle for semantic-layer dimensions.
+
+A dimension compiles to a column expression (categorical → the expression
+verbatim; time → ``DATE_TRUNC(grain, expr)``). That expression is stored as
+``compiled_sql_template`` and substituted into metric ``group_by`` clauses
+when a metric references the dimension by name.
+"""
 
 from __future__ import annotations
 
 import uuid
-from typing import Any, Protocol
+from typing import Any
 
 from pyfly.container import service as service_bean
 
-from flyquery.core.services.semantic.metricflow_compiler import MetricFlowCompiler
+from flyquery.core.services.semantic.firewall import assert_safe_dimension_expr
 from flyquery.core.services.semantic.semantic_dimensions_repository import (
     SemanticDimensionsRepository,
 )
-from flyquery.core.services.semantic.yaml_schema import validate_metric_yaml
+from flyquery.core.services.semantic.yaml_schema import (
+    DimensionDefinition,
+    validate_dimension_yaml,
+)
 from flyquery.interfaces.semantic import SemanticDimensionCreate, SemanticDimensionUpdate
 
 
-class _Repo(Protocol):
-    async def create_dimension(self, **fields: Any) -> dict[str, Any]: ...
-    async def list_dimensions(
-        self, tenant_id: str, workspace_id: uuid.UUID, *, dataset_id: uuid.UUID | None
-    ) -> list[dict[str, Any]]: ...
-    async def get_dimension(self, dimension_id: uuid.UUID) -> dict[str, Any] | None: ...
-    async def update_dimension(self, dimension_id: uuid.UUID, **fields: Any) -> dict[str, Any]: ...
-    async def publish_dimension(self, dimension_id: uuid.UUID, compiled_sql: str) -> dict[str, Any]: ...
-    async def retire_dimension(self, dimension_id: uuid.UUID) -> dict[str, Any]: ...
-    async def list_history(self, dimension_id: uuid.UUID) -> list[dict[str, Any]]: ...
+def _compile_dimension(definition: DimensionDefinition) -> str:
+    """Compile a dimension to its column expression (grain-truncated for time)."""
+    if definition.type == "time":
+        return f"DATE_TRUNC('{definition.grain}', {definition.expr})"
+    return definition.expr
 
 
 @service_bean
@@ -46,8 +50,7 @@ class SemanticDimensionsService:
     """Business logic for the semantic layer (dimensions lifecycle)."""
 
     def __init__(self, semantic_dimensions_repository: SemanticDimensionsRepository) -> None:
-        # Parameter renamed from ``repo`` to match snake-cased bean name.
-        self._repo: _Repo = semantic_dimensions_repository
+        self._repo = semantic_dimensions_repository
 
     async def create(
         self,
@@ -57,25 +60,18 @@ class SemanticDimensionsService:
         *,
         actor: str = "user",
     ) -> dict[str, Any]:
-        """Create a new semantic dimension in DRAFT status.
-
-        :param tenant_id: tenant identifier
-        :param workspace_id: workspace UUID
-        :param body: validated create payload (includes definition_yaml)
-        :param actor: who created the dimension
-        :return: full dimension dict
-        :raises MetricYamlError: if the YAML fails schema validation
-        """
-        validate_metric_yaml(body.definition_yaml)
+        """Create a new semantic dimension in DRAFT status (validates the YAML)."""
+        definition = validate_dimension_yaml(body.definition_yaml)
         return await self._repo.create_dimension(
             tenant_id=tenant_id,
             workspace_id=workspace_id,
             dataset_id=body.dataset_id,
             name=body.name,
-            label=body.label,
-            description=body.description,
+            label=body.label or definition.label,
+            description=body.description or definition.description,
             definition_yaml=body.definition_yaml,
-            metric_type=body.metric_type,
+            dimension_type=definition.type,
+            metadata_json={},
             created_by=actor,
         )
 
@@ -85,62 +81,77 @@ class SemanticDimensionsService:
         workspace_id: uuid.UUID,
         *,
         dataset_id: uuid.UUID | None = None,
+        status: str | None = None,
     ) -> list[dict[str, Any]]:
-        """Return all dimensions for a workspace."""
-        return await self._repo.list_dimensions(tenant_id, workspace_id, dataset_id=dataset_id)
+        """Return dimensions for a workspace (optionally filtered by dataset/status)."""
+        return await self._repo.list_dimensions(
+            tenant_id, workspace_id, dataset_id=dataset_id, status=status
+        )
 
-    async def get(self, dimension_id: uuid.UUID) -> dict[str, Any] | None:
+    async def get(
+        self, tenant_id: str, workspace_id: uuid.UUID, dimension_id: uuid.UUID
+    ) -> dict[str, Any] | None:
         """Fetch a single dimension by id; returns None when not found."""
-        return await self._repo.get_dimension(dimension_id)
+        return await self._repo.get_dimension(
+            dimension_id, tenant_id=tenant_id, workspace_id=workspace_id
+        )
 
     async def update(
         self,
+        tenant_id: str,
+        workspace_id: uuid.UUID,
         dimension_id: uuid.UUID,
         body: SemanticDimensionUpdate,
         *,
         actor: str = "user",
     ) -> dict[str, Any]:
-        """Sparse-update a dimension; re-validates YAML if definition changes.
-
-        :param dimension_id: dimension primary key
-        :param body: sparse update payload
-        :param actor: who is making the change
-        :return: updated dimension dict
-        :raises MetricYamlError: if updated YAML fails validation
-        """
+        """Sparse-update a dimension; recompiles if PUBLISHED and the YAML changes."""
+        existing = await self._repo.get_dimension(
+            dimension_id, tenant_id=tenant_id, workspace_id=workspace_id
+        )
+        if existing is None:
+            raise KeyError(f"dimension {dimension_id} not found")
         fields = body.model_dump(exclude_unset=True, exclude_none=True)
         if "definition_yaml" in fields:
-            validate_metric_yaml(fields["definition_yaml"])
+            definition = validate_dimension_yaml(fields["definition_yaml"])
+            fields["dimension_type"] = definition.type
+            if existing["status"] == "PUBLISHED":
+                expr = _compile_dimension(definition)
+                assert_safe_dimension_expr(expr)
+                fields["compiled_sql_template"] = expr
         fields["created_by"] = actor
-        return await self._repo.update_dimension(dimension_id, **fields)
+        return await self._repo.update_dimension(
+            dimension_id, tenant_id=tenant_id, workspace_id=workspace_id, **fields
+        )
 
-    async def publish(self, dimension_id: uuid.UUID) -> dict[str, Any]:
-        """Validate, compile, and publish a dimension.
-
-        Compiles the current ``definition_yaml`` to a DuckDB SQL template
-        and persists it before flipping status to PUBLISHED.
-
-        :param dimension_id: dimension primary key
-        :return: published dimension dict with ``compiled_sql_template`` set
-        :raises MetricYamlError: if the YAML is invalid at publish time
-        """
-        dimension = await self._repo.get_dimension(dimension_id)
+    async def publish(
+        self, tenant_id: str, workspace_id: uuid.UUID, dimension_id: uuid.UUID
+    ) -> dict[str, Any]:
+        """Validate, compile, firewall, and publish a dimension."""
+        dimension = await self._repo.get_dimension(
+            dimension_id, tenant_id=tenant_id, workspace_id=workspace_id
+        )
         if dimension is None:
             raise KeyError(f"dimension {dimension_id} not found")
-        validate_metric_yaml(dimension["definition_yaml"])
-        import yaml as _yaml
+        definition = validate_dimension_yaml(dimension["definition_yaml"])
+        expr = _compile_dimension(definition)
+        assert_safe_dimension_expr(expr)
+        return await self._repo.publish_dimension(
+            dimension_id, expr, tenant_id=tenant_id, workspace_id=workspace_id
+        )
 
-        compiled_sql = MetricFlowCompiler.compile(_yaml.safe_load(dimension["definition_yaml"]))
-        return await self._repo.publish_dimension(dimension_id, compiled_sql)
+    async def retire(
+        self, tenant_id: str, workspace_id: uuid.UUID, dimension_id: uuid.UUID
+    ) -> dict[str, Any]:
+        """Retire a dimension (status → RETIRED)."""
+        return await self._repo.retire_dimension(
+            dimension_id, tenant_id=tenant_id, workspace_id=workspace_id
+        )
 
-    async def retire(self, dimension_id: uuid.UUID) -> dict[str, Any]:
-        """Retire a dimension (status → RETIRED).
-
-        :param dimension_id: dimension primary key
-        :return: retired dimension dict
-        """
-        return await self._repo.retire_dimension(dimension_id)
-
-    async def list_history(self, dimension_id: uuid.UUID) -> list[dict[str, Any]]:
+    async def list_history(
+        self, tenant_id: str, workspace_id: uuid.UUID, dimension_id: uuid.UUID
+    ) -> list[dict[str, Any]]:
         """Return version history for a dimension, oldest first."""
-        return await self._repo.list_history(dimension_id)
+        return await self._repo.list_history(
+            dimension_id, tenant_id=tenant_id, workspace_id=workspace_id
+        )
