@@ -1,17 +1,3 @@
-// Copyright 2024-2026 Firefly Software Foundation
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-
 package com.firefly.flyquery.api;
 
 import com.firefly.flyquery.ApiClient;
@@ -45,7 +31,7 @@ import org.springframework.web.reactive.function.client.WebClientResponseExcepti
 import reactor.core.publisher.Mono;
 import reactor.core.publisher.Flux;
 
-@jakarta.annotation.Generated(value = "org.openapitools.codegen.languages.JavaClientCodegen", date = "2026-05-24T17:01:34.733622+02:00[Europe/Madrid]", comments = "Generator version: 7.22.0")
+@jakarta.annotation.Generated(value = "org.openapitools.codegen.languages.JavaClientCodegen", date = "2026-06-01T11:28:27.907207+02:00[Europe/Madrid]", comments = "Generator version: 7.22.0")
 public class GlossaryApi {
     private ApiClient apiClient;
 
@@ -289,7 +275,7 @@ public class GlossaryApi {
      * @return GlossaryTermRead
      * @throws WebClientResponseException if an error occurs while attempting to invoke the API
      */
-    private ResponseSpec getTermRequestCreation(@jakarta.annotation.Nullable String termId, @jakarta.annotation.Nonnull String xTenantId, @jakarta.annotation.Nonnull String xWorkspaceId, @jakarta.annotation.Nullable UUID xCorrelationId) throws WebClientResponseException {
+    private ResponseSpec getTermRequestCreation(@jakarta.annotation.Nonnull String termId, @jakarta.annotation.Nonnull String xTenantId, @jakarta.annotation.Nonnull String xWorkspaceId, @jakarta.annotation.Nullable UUID xCorrelationId) throws WebClientResponseException {
         Object postBody = null;
         // verify the required parameter 'termId' is set
         if (termId == null) {
@@ -343,7 +329,7 @@ public class GlossaryApi {
      * @return GlossaryTermRead
      * @throws WebClientResponseException if an error occurs while attempting to invoke the API
      */
-    public Mono<GlossaryTermRead> getTerm(@jakarta.annotation.Nullable String termId, @jakarta.annotation.Nonnull String xTenantId, @jakarta.annotation.Nonnull String xWorkspaceId, @jakarta.annotation.Nullable UUID xCorrelationId) throws WebClientResponseException {
+    public Mono<GlossaryTermRead> getTerm(@jakarta.annotation.Nonnull String termId, @jakarta.annotation.Nonnull String xTenantId, @jakarta.annotation.Nonnull String xWorkspaceId, @jakarta.annotation.Nullable UUID xCorrelationId) throws WebClientResponseException {
         ParameterizedTypeReference<GlossaryTermRead> localVarReturnType = new ParameterizedTypeReference<GlossaryTermRead>() {};
         return getTermRequestCreation(termId, xTenantId, xWorkspaceId, xCorrelationId).bodyToMono(localVarReturnType);
     }
@@ -359,7 +345,7 @@ public class GlossaryApi {
      * @return ResponseEntity&lt;GlossaryTermRead&gt;
      * @throws WebClientResponseException if an error occurs while attempting to invoke the API
      */
-    public Mono<ResponseEntity<GlossaryTermRead>> getTermWithHttpInfo(@jakarta.annotation.Nullable String termId, @jakarta.annotation.Nonnull String xTenantId, @jakarta.annotation.Nonnull String xWorkspaceId, @jakarta.annotation.Nullable UUID xCorrelationId) throws WebClientResponseException {
+    public Mono<ResponseEntity<GlossaryTermRead>> getTermWithHttpInfo(@jakarta.annotation.Nonnull String termId, @jakarta.annotation.Nonnull String xTenantId, @jakarta.annotation.Nonnull String xWorkspaceId, @jakarta.annotation.Nullable UUID xCorrelationId) throws WebClientResponseException {
         ParameterizedTypeReference<GlossaryTermRead> localVarReturnType = new ParameterizedTypeReference<GlossaryTermRead>() {};
         return getTermRequestCreation(termId, xTenantId, xWorkspaceId, xCorrelationId).toEntity(localVarReturnType);
     }
@@ -375,7 +361,7 @@ public class GlossaryApi {
      * @return ResponseSpec
      * @throws WebClientResponseException if an error occurs while attempting to invoke the API
      */
-    public ResponseSpec getTermWithResponseSpec(@jakarta.annotation.Nullable String termId, @jakarta.annotation.Nonnull String xTenantId, @jakarta.annotation.Nonnull String xWorkspaceId, @jakarta.annotation.Nullable UUID xCorrelationId) throws WebClientResponseException {
+    public ResponseSpec getTermWithResponseSpec(@jakarta.annotation.Nonnull String termId, @jakarta.annotation.Nonnull String xTenantId, @jakarta.annotation.Nonnull String xWorkspaceId, @jakarta.annotation.Nullable UUID xCorrelationId) throws WebClientResponseException {
         return getTermRequestCreation(termId, xTenantId, xWorkspaceId, xCorrelationId);
     }
 

@@ -7,10 +7,10 @@ All URIs are relative to *http://localhost*
 | [**create**](SemanticDimensionsApi.md#create) | **POST** /api/v1/semantic/dimensions | Create a new semantic dimension in DRAFT status. |
 | [**getDimension**](SemanticDimensionsApi.md#getDimension) | **GET** /api/v1/semantic/dimensions/{dimension_id} | Fetch a single semantic dimension by id. |
 | [**history**](SemanticDimensionsApi.md#history) | **GET** /api/v1/semantic/dimensions/{dimension_id}/history | Return version history for a dimension, oldest first. |
-| [**listDimensions**](SemanticDimensionsApi.md#listDimensions) | **GET** /api/v1/semantic/dimensions | List all semantic dimensions for the caller&#39;s workspace. |
+| [**listDimensions**](SemanticDimensionsApi.md#listDimensions) | **GET** /api/v1/semantic/dimensions | List semantic dimensions for the caller&#39;s workspace (optional status filter). |
 | [**publish**](SemanticDimensionsApi.md#publish) | **POST** /api/v1/semantic/dimensions/{dimension_id}:publish | Validate, compile, and publish a dimension (status → PUBLISHED). |
 | [**retire**](SemanticDimensionsApi.md#retire) | **POST** /api/v1/semantic/dimensions/{dimension_id}:retire | Retire a dimension (status → RETIRED). |
-| [**update**](SemanticDimensionsApi.md#update) | **PUT** /api/v1/semantic/dimensions/{dimension_id} | Sparse-update a dimension; re-validates YAML if definition changes. |
+| [**update**](SemanticDimensionsApi.md#update) | **PUT** /api/v1/semantic/dimensions/{dimension_id} | Sparse-update a dimension; re-validates + recompiles if published. |
 
 
 
@@ -268,9 +268,9 @@ public class Example {
 
 ## listDimensions
 
-> PaginatedSemanticDimensionRead listDimensions(xTenantId, xWorkspaceId, datasetId, limit, offset, xCorrelationId)
+> PaginatedSemanticDimensionRead listDimensions(xTenantId, xWorkspaceId, datasetId, status, limit, offset, xCorrelationId)
 
-List all semantic dimensions for the caller&#39;s workspace.
+List semantic dimensions for the caller&#39;s workspace (optional status filter).
 
 ### Example
 
@@ -304,11 +304,12 @@ public class Example {
         String xTenantId = "acme-corp"; // String | Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present.
         String xWorkspaceId = "00000000-0000-0000-0000-000000000001"; // String | Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation.
         String datasetId = "datasetId_example"; // String | 
+        String status = "status_example"; // String | 
         Integer limit = 100; // Integer | 
         Integer offset = 0; // Integer | 
         UUID xCorrelationId = UUID.fromString("550e8400-e29b-41d4-a716-446655440000"); // UUID | Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.
         try {
-            PaginatedSemanticDimensionRead result = apiInstance.listDimensions(xTenantId, xWorkspaceId, datasetId, limit, offset, xCorrelationId);
+            PaginatedSemanticDimensionRead result = apiInstance.listDimensions(xTenantId, xWorkspaceId, datasetId, status, limit, offset, xCorrelationId);
             System.out.println(result);
         } catch (ApiException e) {
             System.err.println("Exception when calling SemanticDimensionsApi#listDimensions");
@@ -329,6 +330,7 @@ public class Example {
 | **xTenantId** | **String**| Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present. | |
 | **xWorkspaceId** | **String**| Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation. | |
 | **datasetId** | **String**|  | [optional] |
+| **status** | **String**|  | [optional] |
 | **limit** | **Integer**|  | [optional] [default to 100] |
 | **offset** | **Integer**|  | [optional] [default to 0] |
 | **xCorrelationId** | **UUID**| Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header. | [optional] |
@@ -527,7 +529,7 @@ public class Example {
 
 > SemanticDimensionRead update(dimensionId, xTenantId, xWorkspaceId, semanticDimensionUpdate, xCorrelationId, idempotencyKey)
 
-Sparse-update a dimension; re-validates YAML if definition changes.
+Sparse-update a dimension; re-validates + recompiles if published.
 
 ### Example
 

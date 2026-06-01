@@ -7,10 +7,10 @@ All URIs are relative to *http://localhost*
 | [**create**](SemanticMetricsApi.md#create) | **POST** /api/v1/semantic/metrics | Create a new semantic metric in DRAFT status. |
 | [**getMetric**](SemanticMetricsApi.md#getMetric) | **GET** /api/v1/semantic/metrics/{metric_id} | Fetch a single semantic metric by id. |
 | [**history**](SemanticMetricsApi.md#history) | **GET** /api/v1/semantic/metrics/{metric_id}/history | Return version history for a metric, oldest first. |
-| [**listMetrics**](SemanticMetricsApi.md#listMetrics) | **GET** /api/v1/semantic/metrics | List all semantic metrics for the caller&#39;s workspace. |
+| [**listMetrics**](SemanticMetricsApi.md#listMetrics) | **GET** /api/v1/semantic/metrics | List semantic metrics for the caller&#39;s workspace (optional status filter). |
 | [**publish**](SemanticMetricsApi.md#publish) | **POST** /api/v1/semantic/metrics/{metric_id}:publish | Validate, compile, and publish a metric (status → PUBLISHED). |
 | [**retire**](SemanticMetricsApi.md#retire) | **POST** /api/v1/semantic/metrics/{metric_id}:retire | Retire a metric (status → RETIRED). |
-| [**update**](SemanticMetricsApi.md#update) | **PUT** /api/v1/semantic/metrics/{metric_id} | Sparse-update a metric; re-validates YAML if definition changes. |
+| [**update**](SemanticMetricsApi.md#update) | **PUT** /api/v1/semantic/metrics/{metric_id} | Sparse-update a metric; re-validates + recompiles if published. |
 
 
 
@@ -270,9 +270,9 @@ public class Example {
 
 ## listMetrics
 
-> PaginatedSemanticMetricRead listMetrics(xTenantId, xWorkspaceId, datasetId, limit, offset, xCorrelationId)
+> PaginatedSemanticMetricRead listMetrics(xTenantId, xWorkspaceId, datasetId, status, limit, offset, xCorrelationId)
 
-List all semantic metrics for the caller&#39;s workspace.
+List semantic metrics for the caller&#39;s workspace (optional status filter).
 
 ### Example
 
@@ -306,11 +306,12 @@ public class Example {
         String xTenantId = "acme-corp"; // String | Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present.
         String xWorkspaceId = "00000000-0000-0000-0000-000000000001"; // String | Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation.
         String datasetId = "datasetId_example"; // String | 
+        String status = "status_example"; // String | 
         Integer limit = 100; // Integer | 
         Integer offset = 0; // Integer | 
         UUID xCorrelationId = UUID.fromString("550e8400-e29b-41d4-a716-446655440000"); // UUID | Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.
         try {
-            PaginatedSemanticMetricRead result = apiInstance.listMetrics(xTenantId, xWorkspaceId, datasetId, limit, offset, xCorrelationId);
+            PaginatedSemanticMetricRead result = apiInstance.listMetrics(xTenantId, xWorkspaceId, datasetId, status, limit, offset, xCorrelationId);
             System.out.println(result);
         } catch (ApiException e) {
             System.err.println("Exception when calling SemanticMetricsApi#listMetrics");
@@ -331,6 +332,7 @@ public class Example {
 | **xTenantId** | **String**| Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present. | |
 | **xWorkspaceId** | **String**| Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation. | |
 | **datasetId** | **String**|  | [optional] |
+| **status** | **String**|  | [optional] |
 | **limit** | **Integer**|  | [optional] [default to 100] |
 | **offset** | **Integer**|  | [optional] [default to 0] |
 | **xCorrelationId** | **UUID**| Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header. | [optional] |
@@ -529,7 +531,7 @@ public class Example {
 
 > SemanticMetricRead update(metricId, xTenantId, xWorkspaceId, semanticMetricUpdate, xCorrelationId, idempotencyKey)
 
-Sparse-update a metric; re-validates YAML if definition changes.
+Sparse-update a metric; re-validates + recompiles if published.
 
 ### Example
 

@@ -5,7 +5,7 @@ follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and
 the project uses [CalVer](https://calver.org/) (YY.MM.PP) per the
 Firefly Framework convention (memory: `firefly_uses_calver`).
 
-## [Unreleased]
+## [26.6.0] - 2026-06-01
 
 ### Fixed — Semantic layer brought up to its documented contract
 
@@ -945,7 +945,7 @@ Released by ancongui.
   CRUD, agent-token mint/verify, ObjectStore port + LocalFs + S3
   adapters, CI workflows.
 
-## [Unreleased]
+## [26.6.0] - 2026-06-01
 
 ### Added
 - Foundation scaffold: pyproject + pyfly.yaml + Dockerfile + Taskfile

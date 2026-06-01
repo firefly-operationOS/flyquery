@@ -1,17 +1,3 @@
-// Copyright 2024-2026 Firefly Software Foundation
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-
 package com.firefly.flyquery.api;
 
 import com.firefly.flyquery.ApiClient;
@@ -46,7 +32,7 @@ import org.springframework.web.reactive.function.client.WebClientResponseExcepti
 import reactor.core.publisher.Mono;
 import reactor.core.publisher.Flux;
 
-@jakarta.annotation.Generated(value = "org.openapitools.codegen.languages.JavaClientCodegen", date = "2026-05-24T17:01:34.733622+02:00[Europe/Madrid]", comments = "Generator version: 7.22.0")
+@jakarta.annotation.Generated(value = "org.openapitools.codegen.languages.JavaClientCodegen", date = "2026-06-01T11:28:27.907207+02:00[Europe/Madrid]", comments = "Generator version: 7.22.0")
 public class SemanticDimensionsApi {
     private ApiClient apiClient;
 
@@ -188,7 +174,7 @@ public class SemanticDimensionsApi {
      * @return SemanticDimensionRead
      * @throws WebClientResponseException if an error occurs while attempting to invoke the API
      */
-    private ResponseSpec getDimensionRequestCreation(@jakarta.annotation.Nullable String dimensionId, @jakarta.annotation.Nonnull String xTenantId, @jakarta.annotation.Nonnull String xWorkspaceId, @jakarta.annotation.Nullable UUID xCorrelationId) throws WebClientResponseException {
+    private ResponseSpec getDimensionRequestCreation(@jakarta.annotation.Nonnull String dimensionId, @jakarta.annotation.Nonnull String xTenantId, @jakarta.annotation.Nonnull String xWorkspaceId, @jakarta.annotation.Nullable UUID xCorrelationId) throws WebClientResponseException {
         Object postBody = null;
         // verify the required parameter 'dimensionId' is set
         if (dimensionId == null) {
@@ -242,7 +228,7 @@ public class SemanticDimensionsApi {
      * @return SemanticDimensionRead
      * @throws WebClientResponseException if an error occurs while attempting to invoke the API
      */
-    public Mono<SemanticDimensionRead> getDimension(@jakarta.annotation.Nullable String dimensionId, @jakarta.annotation.Nonnull String xTenantId, @jakarta.annotation.Nonnull String xWorkspaceId, @jakarta.annotation.Nullable UUID xCorrelationId) throws WebClientResponseException {
+    public Mono<SemanticDimensionRead> getDimension(@jakarta.annotation.Nonnull String dimensionId, @jakarta.annotation.Nonnull String xTenantId, @jakarta.annotation.Nonnull String xWorkspaceId, @jakarta.annotation.Nullable UUID xCorrelationId) throws WebClientResponseException {
         ParameterizedTypeReference<SemanticDimensionRead> localVarReturnType = new ParameterizedTypeReference<SemanticDimensionRead>() {};
         return getDimensionRequestCreation(dimensionId, xTenantId, xWorkspaceId, xCorrelationId).bodyToMono(localVarReturnType);
     }
@@ -258,7 +244,7 @@ public class SemanticDimensionsApi {
      * @return ResponseEntity&lt;SemanticDimensionRead&gt;
      * @throws WebClientResponseException if an error occurs while attempting to invoke the API
      */
-    public Mono<ResponseEntity<SemanticDimensionRead>> getDimensionWithHttpInfo(@jakarta.annotation.Nullable String dimensionId, @jakarta.annotation.Nonnull String xTenantId, @jakarta.annotation.Nonnull String xWorkspaceId, @jakarta.annotation.Nullable UUID xCorrelationId) throws WebClientResponseException {
+    public Mono<ResponseEntity<SemanticDimensionRead>> getDimensionWithHttpInfo(@jakarta.annotation.Nonnull String dimensionId, @jakarta.annotation.Nonnull String xTenantId, @jakarta.annotation.Nonnull String xWorkspaceId, @jakarta.annotation.Nullable UUID xCorrelationId) throws WebClientResponseException {
         ParameterizedTypeReference<SemanticDimensionRead> localVarReturnType = new ParameterizedTypeReference<SemanticDimensionRead>() {};
         return getDimensionRequestCreation(dimensionId, xTenantId, xWorkspaceId, xCorrelationId).toEntity(localVarReturnType);
     }
@@ -274,7 +260,7 @@ public class SemanticDimensionsApi {
      * @return ResponseSpec
      * @throws WebClientResponseException if an error occurs while attempting to invoke the API
      */
-    public ResponseSpec getDimensionWithResponseSpec(@jakarta.annotation.Nullable String dimensionId, @jakarta.annotation.Nonnull String xTenantId, @jakarta.annotation.Nonnull String xWorkspaceId, @jakarta.annotation.Nullable UUID xCorrelationId) throws WebClientResponseException {
+    public ResponseSpec getDimensionWithResponseSpec(@jakarta.annotation.Nonnull String dimensionId, @jakarta.annotation.Nonnull String xTenantId, @jakarta.annotation.Nonnull String xWorkspaceId, @jakarta.annotation.Nullable UUID xCorrelationId) throws WebClientResponseException {
         return getDimensionRequestCreation(dimensionId, xTenantId, xWorkspaceId, xCorrelationId);
     }
 
@@ -380,19 +366,20 @@ public class SemanticDimensionsApi {
     }
 
     /**
-     * List all semantic dimensions for the caller&#39;s workspace.
+     * List semantic dimensions for the caller&#39;s workspace (optional status filter).
      * 
      * <p><b>200</b> - Successful response
      * @param xTenantId Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present.
      * @param xWorkspaceId Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation.
      * @param datasetId The datasetId parameter
+     * @param status The status parameter
      * @param limit The limit parameter
      * @param offset The offset parameter
      * @param xCorrelationId Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.
      * @return PaginatedSemanticDimensionRead
      * @throws WebClientResponseException if an error occurs while attempting to invoke the API
      */
-    private ResponseSpec listDimensionsRequestCreation(@jakarta.annotation.Nonnull String xTenantId, @jakarta.annotation.Nonnull String xWorkspaceId, @jakarta.annotation.Nullable String datasetId, @jakarta.annotation.Nullable Integer limit, @jakarta.annotation.Nullable Integer offset, @jakarta.annotation.Nullable UUID xCorrelationId) throws WebClientResponseException {
+    private ResponseSpec listDimensionsRequestCreation(@jakarta.annotation.Nonnull String xTenantId, @jakarta.annotation.Nonnull String xWorkspaceId, @jakarta.annotation.Nullable String datasetId, @jakarta.annotation.Nullable String status, @jakarta.annotation.Nullable Integer limit, @jakarta.annotation.Nullable Integer offset, @jakarta.annotation.Nullable UUID xCorrelationId) throws WebClientResponseException {
         Object postBody = null;
         // verify the required parameter 'xTenantId' is set
         if (xTenantId == null) {
@@ -411,6 +398,7 @@ public class SemanticDimensionsApi {
         final MultiValueMap<String, Object> formParams = new LinkedMultiValueMap<String, Object>();
 
         queryParams.putAll(apiClient.parameterToMultiValueMap(null, "dataset_id", datasetId));
+        queryParams.putAll(apiClient.parameterToMultiValueMap(null, "status", status));
         queryParams.putAll(apiClient.parameterToMultiValueMap(null, "limit", limit));
         queryParams.putAll(apiClient.parameterToMultiValueMap(null, "offset", offset));
 
@@ -434,56 +422,59 @@ public class SemanticDimensionsApi {
     }
 
     /**
-     * List all semantic dimensions for the caller&#39;s workspace.
+     * List semantic dimensions for the caller&#39;s workspace (optional status filter).
      * 
      * <p><b>200</b> - Successful response
      * @param xTenantId Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present.
      * @param xWorkspaceId Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation.
      * @param datasetId The datasetId parameter
+     * @param status The status parameter
      * @param limit The limit parameter
      * @param offset The offset parameter
      * @param xCorrelationId Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.
      * @return PaginatedSemanticDimensionRead
      * @throws WebClientResponseException if an error occurs while attempting to invoke the API
      */
-    public Mono<PaginatedSemanticDimensionRead> listDimensions(@jakarta.annotation.Nonnull String xTenantId, @jakarta.annotation.Nonnull String xWorkspaceId, @jakarta.annotation.Nullable String datasetId, @jakarta.annotation.Nullable Integer limit, @jakarta.annotation.Nullable Integer offset, @jakarta.annotation.Nullable UUID xCorrelationId) throws WebClientResponseException {
+    public Mono<PaginatedSemanticDimensionRead> listDimensions(@jakarta.annotation.Nonnull String xTenantId, @jakarta.annotation.Nonnull String xWorkspaceId, @jakarta.annotation.Nullable String datasetId, @jakarta.annotation.Nullable String status, @jakarta.annotation.Nullable Integer limit, @jakarta.annotation.Nullable Integer offset, @jakarta.annotation.Nullable UUID xCorrelationId) throws WebClientResponseException {
         ParameterizedTypeReference<PaginatedSemanticDimensionRead> localVarReturnType = new ParameterizedTypeReference<PaginatedSemanticDimensionRead>() {};
-        return listDimensionsRequestCreation(xTenantId, xWorkspaceId, datasetId, limit, offset, xCorrelationId).bodyToMono(localVarReturnType);
+        return listDimensionsRequestCreation(xTenantId, xWorkspaceId, datasetId, status, limit, offset, xCorrelationId).bodyToMono(localVarReturnType);
     }
 
     /**
-     * List all semantic dimensions for the caller&#39;s workspace.
+     * List semantic dimensions for the caller&#39;s workspace (optional status filter).
      * 
      * <p><b>200</b> - Successful response
      * @param xTenantId Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present.
      * @param xWorkspaceId Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation.
      * @param datasetId The datasetId parameter
+     * @param status The status parameter
      * @param limit The limit parameter
      * @param offset The offset parameter
      * @param xCorrelationId Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.
      * @return ResponseEntity&lt;PaginatedSemanticDimensionRead&gt;
      * @throws WebClientResponseException if an error occurs while attempting to invoke the API
      */
-    public Mono<ResponseEntity<PaginatedSemanticDimensionRead>> listDimensionsWithHttpInfo(@jakarta.annotation.Nonnull String xTenantId, @jakarta.annotation.Nonnull String xWorkspaceId, @jakarta.annotation.Nullable String datasetId, @jakarta.annotation.Nullable Integer limit, @jakarta.annotation.Nullable Integer offset, @jakarta.annotation.Nullable UUID xCorrelationId) throws WebClientResponseException {
+    public Mono<ResponseEntity<PaginatedSemanticDimensionRead>> listDimensionsWithHttpInfo(@jakarta.annotation.Nonnull String xTenantId, @jakarta.annotation.Nonnull String xWorkspaceId, @jakarta.annotation.Nullable String datasetId, @jakarta.annotation.Nullable String status, @jakarta.annotation.Nullable Integer limit, @jakarta.annotation.Nullable Integer offset, @jakarta.annotation.Nullable UUID xCorrelationId) throws WebClientResponseException {
         ParameterizedTypeReference<PaginatedSemanticDimensionRead> localVarReturnType = new ParameterizedTypeReference<PaginatedSemanticDimensionRead>() {};
-        return listDimensionsRequestCreation(xTenantId, xWorkspaceId, datasetId, limit, offset, xCorrelationId).toEntity(localVarReturnType);
+        return listDimensionsRequestCreation(xTenantId, xWorkspaceId, datasetId, status, limit, offset, xCorrelationId).toEntity(localVarReturnType);
     }
 
     /**
-     * List all semantic dimensions for the caller&#39;s workspace.
+     * List semantic dimensions for the caller&#39;s workspace (optional status filter).
      * 
      * <p><b>200</b> - Successful response
      * @param xTenantId Tenant slug. Required on every non-agent endpoint -- bounds the row-level security policy and appears in every audit event. Must match the JWT tenant claim if Authorization is also present.
      * @param xWorkspaceId Workspace identifier. Accepts either the workspace UUID or its slug -- the slug form lets SDKs avoid carrying UUIDs around. Used to scope every query, ingest, and schema KB operation.
      * @param datasetId The datasetId parameter
+     * @param status The status parameter
      * @param limit The limit parameter
      * @param offset The offset parameter
      * @param xCorrelationId Optional client-supplied correlation id. The service uses this in every log line and downstream call. If absent the service mints a new UUID and echoes it in the response header.
      * @return ResponseSpec
      * @throws WebClientResponseException if an error occurs while attempting to invoke the API
      */
-    public ResponseSpec listDimensionsWithResponseSpec(@jakarta.annotation.Nonnull String xTenantId, @jakarta.annotation.Nonnull String xWorkspaceId, @jakarta.annotation.Nullable String datasetId, @jakarta.annotation.Nullable Integer limit, @jakarta.annotation.Nullable Integer offset, @jakarta.annotation.Nullable UUID xCorrelationId) throws WebClientResponseException {
-        return listDimensionsRequestCreation(xTenantId, xWorkspaceId, datasetId, limit, offset, xCorrelationId);
+    public ResponseSpec listDimensionsWithResponseSpec(@jakarta.annotation.Nonnull String xTenantId, @jakarta.annotation.Nonnull String xWorkspaceId, @jakarta.annotation.Nullable String datasetId, @jakarta.annotation.Nullable String status, @jakarta.annotation.Nullable Integer limit, @jakarta.annotation.Nullable Integer offset, @jakarta.annotation.Nullable UUID xCorrelationId) throws WebClientResponseException {
+        return listDimensionsRequestCreation(xTenantId, xWorkspaceId, datasetId, status, limit, offset, xCorrelationId);
     }
 
     /**
@@ -701,7 +692,7 @@ public class SemanticDimensionsApi {
     }
 
     /**
-     * Sparse-update a dimension; re-validates YAML if definition changes.
+     * Sparse-update a dimension; re-validates + recompiles if published.
      * 
      * <p><b>200</b> - Successful response
      * <p><b>422</b> - Validation Error
@@ -766,7 +757,7 @@ public class SemanticDimensionsApi {
     }
 
     /**
-     * Sparse-update a dimension; re-validates YAML if definition changes.
+     * Sparse-update a dimension; re-validates + recompiles if published.
      * 
      * <p><b>200</b> - Successful response
      * <p><b>422</b> - Validation Error
@@ -785,7 +776,7 @@ public class SemanticDimensionsApi {
     }
 
     /**
-     * Sparse-update a dimension; re-validates YAML if definition changes.
+     * Sparse-update a dimension; re-validates + recompiles if published.
      * 
      * <p><b>200</b> - Successful response
      * <p><b>422</b> - Validation Error
@@ -804,7 +795,7 @@ public class SemanticDimensionsApi {
     }
 
     /**
-     * Sparse-update a dimension; re-validates YAML if definition changes.
+     * Sparse-update a dimension; re-validates + recompiles if published.
      * 
      * <p><b>200</b> - Successful response
      * <p><b>422</b> - Validation Error

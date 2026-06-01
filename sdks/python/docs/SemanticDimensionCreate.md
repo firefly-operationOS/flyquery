@@ -1,6 +1,6 @@
 # SemanticDimensionCreate
 
-Payload for creating a new semantic dimension.
+Payload for creating a new semantic dimension.  The dimension's ``type`` (categorical|time) is taken from the ``definition_yaml`` body, not a separate request field.
 
 ## Properties
 
@@ -10,7 +10,6 @@ Name | Type | Description | Notes
 **definition_yaml** | **str** |  | 
 **description** | **str** |  | [optional] 
 **label** | **str** |  | [optional] 
-**metric_type** | **str** |  | [optional] [default to 'SIMPLE']
 **name** | **str** |  | 
 
 ## Example

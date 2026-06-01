@@ -5,9 +5,12 @@
 docs/AgentConversationsApi.md
 docs/AgentDatasetsApi.md
 docs/AgentExamplesApi.md
+docs/AgentGlossaryApi.md
 docs/AgentIngestJobsApi.md
 docs/AgentQueryApi.md
 docs/AgentRelationsApi.md
+docs/AgentSemanticDimensionsApi.md
+docs/AgentSemanticMetricsApi.md
 docs/AgentSqlExecuteApi.md
 docs/AgentTablesApi.md
 docs/AgentTokenCreated.md
@@ -137,9 +140,12 @@ flyquery_sdk/api/__init__.py
 flyquery_sdk/api/agent_conversations_api.py
 flyquery_sdk/api/agent_datasets_api.py
 flyquery_sdk/api/agent_examples_api.py
+flyquery_sdk/api/agent_glossary_api.py
 flyquery_sdk/api/agent_ingest_jobs_api.py
 flyquery_sdk/api/agent_query_api.py
 flyquery_sdk/api/agent_relations_api.py
+flyquery_sdk/api/agent_semantic_dimensions_api.py
+flyquery_sdk/api/agent_semantic_metrics_api.py
 flyquery_sdk/api/agent_sql_execute_api.py
 flyquery_sdk/api/agent_tables_api.py
 flyquery_sdk/api/agent_tokens_api.py
@@ -277,4 +283,7 @@ setup.cfg
 setup.py
 test-requirements.txt
 test/__init__.py
+test/test_agent_glossary_api.py
+test/test_agent_semantic_dimensions_api.py
+test/test_agent_semantic_metrics_api.py
 tox.ini

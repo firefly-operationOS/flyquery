@@ -7,10 +7,10 @@ Sparse-update payload for an existing glossary term.
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
 **definition** | **str** |  | [optional] 
-**related_columns_json** | **List[str]** |  | [optional] 
-**related_metrics_json** | **List[str]** |  | [optional] 
-**synonyms_json** | **List[str]** |  | [optional] 
-**tags_json** | **List[str]** |  | [optional] 
+**related_columns** | **List[str]** |  | [optional] 
+**related_metrics** | **List[str]** |  | [optional] 
+**synonyms** | **List[str]** |  | [optional] 
+**tags** | **List[str]** |  | [optional] 
 
 ## Example
 

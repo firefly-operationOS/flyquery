@@ -12,9 +12,10 @@ Name | Type | Description | Notes
 **dataset_id** | **UUID** |  | 
 **definition_yaml** | **str** |  | 
 **description** | **str** |  | 
+**dimension_type** | **str** |  | 
 **id** | **UUID** |  | 
 **label** | **str** |  | 
-**metric_type** | **str** |  | 
+**metadata_json** | **Dict[str, object]** |  | [optional] 
 **name** | **str** |  | 
 **status** | **str** |  | 
 **tenant_id** | **str** |  | 
