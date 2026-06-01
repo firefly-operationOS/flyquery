@@ -80,6 +80,12 @@ class InvalidRequest(FireflyHTTPException):
     title = "Invalid request"
 
 
+class SemanticCompile(FireflyHTTPException):
+    status = 400
+    code = "semantic_compile_error"
+    title = "Semantic compile error"
+
+
 # -- 402 -------------------------------------------------------------
 
 
