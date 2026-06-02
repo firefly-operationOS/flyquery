@@ -182,6 +182,17 @@ async def _propose_meaningful_column_names(
             "stage=parse rename_skipped reason=no_api_key fallback_prefix=%s",
             section_prefix,
         )
+        if fallback == current_names:
+            return mat_result
+        # Rewrite the physical Parquet so its column names match the
+        # section-prefixed fallback we record in the MaterialiseResult --
+        # otherwise the persisted schema_objects names diverge from the
+        # Parquet header and downstream DuckDB stages hit Binder Errors.
+        await _rename_parquet_columns(
+            parquet_path=parquet_path,
+            current_columns=current_names,
+            proposed_columns=fallback,
+        )
         return _rebuild_mat_result(mat_result, fallback)
 
     try:

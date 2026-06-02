@@ -21,9 +21,15 @@ silently returns a ``NoopReranker`` instead.
 
 from __future__ import annotations
 
+import logging
 from typing import Any, Protocol
 
 from flyquery.core.services.retrieval.search_index import Hit
+
+logger = logging.getLogger(__name__)
+
+# Guard so the "reranking disabled" warning is emitted at most once per process.
+_warned_noop_fallback = False
 
 
 class Reranker(Protocol):
@@ -88,10 +94,21 @@ def build_reranker(settings: Any) -> NoopReranker | CrossEncoderReranker:
     :param settings: ``FlyquerySettings`` instance
     :return: a ready-to-use reranker
     """
+    global _warned_noop_fallback
     model_name = getattr(settings, "reranker_model", "") or ""
     if not model_name:
         return NoopReranker()
     try:
         return CrossEncoderReranker(model_name)
-    except Exception:  # noqa: BLE001
+    except Exception as exc:  # noqa: BLE001
+        if not _warned_noop_fallback:
+            _warned_noop_fallback = True
+            logger.warning(
+                "reranker model=%s unavailable (%s) -- falling back to NoopReranker. "
+                "Relevance reranking is DISABLED; results are truncated by retrieval "
+                "order only (install sentence-transformers / make the cross-encoder "
+                "model loadable to enable it).",
+                model_name,
+                exc,
+            )
         return NoopReranker()

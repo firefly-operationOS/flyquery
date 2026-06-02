@@ -128,6 +128,33 @@ def _render_grounding_prompt(
             out.append(f"- `{qn}` :: {text}")
         out.append("")
 
+    # 2b. The "Column value catalogue" lists EVERY column with its real
+    #     values (distinct set for low-cardinality columns; numeric
+    #     range otherwise). This is the ground truth the agent must copy
+    #     filter/CASE literals from -- it prevents guessing wrong
+    #     literals (`Year IN (2023)` when the values are `FY23`), maps a
+    #     question entity to the column whose values contain it
+    #     (`DAPA` lives in a column's values, not a column name), and
+    #     reveals tall/EAV layouts (P&L line items are VALUES of a single
+    #     column) and scaled-duplicate measures (`FY` vs `FY (Real)`).
+    inv_columns = [h for h in inventory if (getattr(h, "metadata", {}) or {}).get("kind") == "COLUMN"]
+    cols_with_values = [h for h in inv_columns if (getattr(h, "metadata", {}) or {}).get("values")]
+    if cols_with_values:
+        out.append(f"# Column value catalogue ({len(cols_with_values)} columns)")
+        out.append(
+            "Real values per column. When the question names an entity (a brand, "
+            "year, market, category, P&L line, team…) that is NOT a column name, "
+            "find the column whose values contain it and filter THAT column. Copy "
+            "filter/CASE literals VERBATIM from these values (values may be encoded, "
+            "e.g. a year shown as `FY23`). If several columns share members, prefer "
+            "the one whose values match the question most precisely."
+        )
+        for h in cols_with_values:
+            md = getattr(h, "metadata", None) or {}
+            qn = md.get("qualified_name") or "?"
+            out.append(f"- `{qn}` :: {md.get('values')}")
+        out.append("")
+
     examples = bundle.get("examples", []) or []
     if examples:
         out.append(f"# Approved Q→SQL examples ({len(examples)})")
@@ -214,6 +241,13 @@ def _render_generation_prompt(
 
     inv = schema_inventory or []
     inv_tables = [h for h in inv if (getattr(h, "metadata", {}) or {}).get("kind") == "TABLE"]
+    # Map qualified_name -> value fingerprint so the generator copies
+    # filter/CASE literals verbatim from real values rather than guessing.
+    value_index: dict[str, str] = {}
+    for h in inv:
+        md = getattr(h, "metadata", None) or {}
+        if md.get("kind") == "COLUMN" and md.get("values"):
+            value_index[md.get("qualified_name")] = md.get("values")
     if inv_tables:
         out.append(f"# Complete dataset catalogue ({len(inv_tables)} tables)")
         out.append(
@@ -243,9 +277,11 @@ def _render_generation_prompt(
             out.append(f"- `{getattr(t, 'table_qualified_name', t)}`")
         out.append("")
     if g_columns:
-        out.append("## Columns in scope")
+        out.append("## Columns in scope (with real values — copy literals verbatim)")
         for c in g_columns:
-            out.append(f"- `{getattr(c, 'column_qualified_name', c)}`")
+            cqn = getattr(c, "column_qualified_name", c)
+            vals = value_index.get(cqn)
+            out.append(f"- `{cqn}`" + (f" :: {vals}" if vals else ""))
         out.append("")
     if g_joins:
         out.append("## Approved joins")
@@ -255,6 +291,20 @@ def _render_generation_prompt(
                 f"= `{getattr(j, 'to_table', '')}.{getattr(j, 'to_column', '')}` "
                 f"({getattr(j, 'relationship', 'inner')} join)"
             )
+        out.append("")
+
+    # Full column-value catalogue -- the grounding agent may under-select
+    # columns, so expose every column's real values here too. This is the
+    # source of truth for WHERE / CASE literals.
+    if value_index:
+        out.append(f"# Column value catalogue ({len(value_index)} columns)")
+        out.append(
+            "Real values per column. Copy filter/CASE literals VERBATIM from these. "
+            "If the question names an entity that is not a column name, filter the "
+            "column whose values contain it."
+        )
+        for qn, vals in value_index.items():
+            out.append(f"- `{qn}` :: {vals}")
         out.append("")
 
     out.append("# Task")
@@ -267,6 +317,36 @@ def _render_generation_prompt(
         "rather than `FROM orbis_companies.IVI_MALAGA_SL__Activos`.\n"
         "- Quote any column name that isn't a plain identifier (e.g. date-shaped "
         'names like `2024-12-31` must be `"2024-12-31"`).\n'
+        "- Copy every WHERE / CASE / IN literal VERBATIM from the column value "
+        "catalogue above -- never invent or reformat a value (a year is `FY23`, "
+        "not `2023`; a market may be `Brazil` or `44000BR Brazil` -- use exactly "
+        "what is listed).\n"
+        "- When the metric the user names is not a column but appears among a "
+        "column's listed values, filter that column (tall/EAV layout): e.g. P&L "
+        "line items like `Total Revenue` / `Manpower` are VALUES of a single "
+        "category column, selected with `CASE WHEN \"<col>\" = 'Total Revenue' …`.\n"
+        "- When two numeric columns are near-duplicates whose ranges differ by a "
+        "constant factor (~10^k), they are the same measure at different scales -- "
+        "prefer the larger-magnitude one for monetary sums.\n"
+        "- Do NOT add a WHERE filter on a dimension the question did not ask to "
+        "slice by -- aggregate across ALL of its values, and do NOT drop a row "
+        "just because a category value's name contains 'total'/'all' (those are "
+        "usually legitimate, often 'unallocated', buckets). Exclude a value only "
+        "if you can confirm it is literally the sum of the other rows.\n"
+        "- Return what is ASKED FOR: if the question asks for names, a list, "
+        "'who', 'which', or 'dame los nombres/quiénes', SELECT the identifying "
+        "column(s) (e.g. the name) and return the matching ROWS -- do NOT collapse "
+        "to a COUNT. Use COUNT/aggregates only when a count or total is requested. "
+        "If BOTH a count and the names are asked, return the names (the count is "
+        "derivable from the row count).\n"
+        "- HIERARCHY questions: when the question asks about a person's TEAM, "
+        "direct reports, the people 'at their charge' / under them, their org, or "
+        "movements in THEIR structure, it is a self-referencing hierarchy. A "
+        "column marked 'HIERARCHY: holds entities/people from column X' holds each "
+        "row's manager/owner. The person's team = the ROWS where such a column "
+        "equals that person (filter it with case-insensitive LIKE '%name%'), NOT "
+        "the person's own row. Try EVERY hierarchy column (a person may appear in "
+        "more than one), and match names tolerantly (accents/spacing).\n"
         "- Be a SINGLE statement (no multi-statement; no DDL).\n"
         "- Be a SELECT (DuckDB-flavored)."
     )
@@ -542,7 +622,11 @@ class QueryService:
             # into the persisted query record for reproducibility.
             metric_name = grounded.metrics[0].metric_name
             compiled, metric_version = await self._compiled_metric_sql(
-                metric_name, dataset_id, tenant_id=tenant_id, workspace_id=workspace_id
+                metric_name,
+                dataset_id,
+                tenant_id=tenant_id,
+                workspace_id=workspace_id,
+                extra_filter=getattr(grounded.metrics[0], "extra_filter", None),
             )
             if compiled:
                 chosen_sql = compiled
@@ -577,7 +661,17 @@ class QueryService:
             gen_run = await self._generation_agent.run(gen_prompt)
             gen_out = getattr(gen_run, "output", gen_run)
             candidates_json = [c.model_dump() for c in gen_out.candidates]
-            chosen_sql = gen_out.candidates[0].sql
+            # Don't blindly take the highest-confidence candidate: probe them
+            # (DuckDB only, no extra LLM) and prefer one that passes the firewall
+            # and returns non-empty, non-degenerate rows. Empty candidate list
+            # degrades to "" (FAILED) instead of raising an IndexError.
+            chosen_sql = await self._select_best_candidate(
+                [c.sql for c in gen_out.candidates if c.sql],
+                dataset_id=dataset_id,
+                scopes=scopes,
+                dataset_allowlist=dataset_allowlist,
+                pins=prior_snapshot_pins,
+            )
 
         # ------------------------------------------------------------------
         # 5. AST classify + scope guard
@@ -666,6 +760,7 @@ class QueryService:
             attached = await self._table_resolver.resolve(
                 dataset_id,
                 list(ast.table_refs),
+                pins=prior_snapshot_pins,
             )
             result = await self._executor.execute(chosen_sql, attached)
         retries = 0
@@ -715,7 +810,9 @@ class QueryService:
                 )
                 retries += 1
                 continue
-            attached = await self._table_resolver.resolve(dataset_id, list(ast.table_refs))
+            attached = await self._table_resolver.resolve(
+                dataset_id, list(ast.table_refs), pins=prior_snapshot_pins
+            )
             result = await self._executor.execute(chosen_sql, attached)
             retries += 1
 
@@ -747,6 +844,24 @@ class QueryService:
         # 9. Clarification frame (emitted alongside answer when confidence is low)
         # ------------------------------------------------------------------
         clarification = self._clarification(grounded)
+        # A syntactically-valid query that returns 0 rows (or a single
+        # all-NULL/zero aggregate) is suspicious: the usual cause is a
+        # filter literal that doesn't match how the data is encoded. Rather
+        # than report it as a confident empty answer, surface a clarification
+        # and downgrade confidence so the caller knows to verify.
+        suspicious_empty = isinstance(result, ExecutionResult) and self._is_suspicious_empty(result)
+        if clarification is None and suspicious_empty:
+            from flyquery.interfaces.query import ClarificationFrame
+
+            clarification = ClarificationFrame(
+                questions=[
+                    "The query executed successfully but returned no matching data "
+                    "(0 rows / empty result). The filter values may not match how the "
+                    "data is encoded -- please verify the exact column values (e.g. "
+                    "category labels or period format) or rephrase the question."
+                ],
+                reasons=[],
+            )
         clarification_emitted = clarification is not None
 
         # ------------------------------------------------------------------
@@ -796,7 +911,12 @@ class QueryService:
         # ------------------------------------------------------------------
         # 12. Auto-learn (only on first-shot OK + no PII + no clarification)
         # ------------------------------------------------------------------
-        if execution_status == "OK" and isinstance(result, ExecutionResult) and not clarification_emitted:
+        if (
+            execution_status == "OK"
+            and isinstance(result, ExecutionResult)
+            and result.row_count > 0
+            and not clarification_emitted
+        ):
             await self._auto_learner.maybe_propose(
                 tenant_id=tenant_id,
                 workspace_id=workspace_id,
@@ -811,6 +931,16 @@ class QueryService:
         # ------------------------------------------------------------------
         # 13. Persist conversation turn (Phase E drill-down)
         # ------------------------------------------------------------------
+        # THIS turn's snapshot pins: the snapshot each resolved table was
+        # answered against. Tables already pinned by an earlier turn keep
+        # their pin (prior wins); newly-referenced tables pin to current.
+        # Persisting THIS turn's pins (not the prior turn's) is what makes
+        # drill-down reproducible across a mid-conversation re-ingest.
+        this_turn_pins: dict[str, str] = {
+            **(await self._table_resolver.current_snapshots(dataset_id, list(ast.table_refs))),
+            **prior_snapshot_pins,
+        }
+
         if (
             conversation_id is not None
             and self._conversation_service is not None
@@ -824,7 +954,7 @@ class QueryService:
                 executed_sql=chosen_sql,
                 summary=explanation_obj.summary if explanation_obj else None,
                 table_qnames_json=list(ast.table_refs),
-                snapshot_pins_json=prior_snapshot_pins,
+                snapshot_pins_json=this_turn_pins,
                 elapsed_ms=elapsed,
             )
 
@@ -839,12 +969,84 @@ class QueryService:
             chart_hint=explanation_obj.chart_hint if explanation_obj else None,
             explanation=explanation_obj.summary if explanation_obj else None,
             clarification=clarification,
-            grounded_summary=self._grounded_summary(grounded),
+            grounded_summary=self._grounded_summary(
+                grounded, confidence_cap=0.4 if suspicious_empty else None
+            ),
+            snapshot_pins=this_turn_pins,
         )
 
     # ------------------------------------------------------------------
     # Internal helpers
     # ------------------------------------------------------------------
+
+    @staticmethod
+    def _is_suspicious_empty(result) -> bool:
+        """True when an executed result is empty/degenerate enough to doubt.
+
+        Catches the canonical wrong-literal symptom: a valid query that
+        matched nothing (0 rows), or a single-row single-column aggregate
+        whose only value is NULL / 0 / 0.0 (e.g. a SUM/CASE pivot where
+        every branch missed).
+        """
+        if result.row_count == 0:
+            return True
+        rows = getattr(result, "rows", None) or []
+        if result.row_count == 1 and len(rows) == 1 and isinstance(rows[0], dict) and len(rows[0]) == 1:
+            (only_value,) = rows[0].values()
+            return only_value is None or only_value == 0
+        return False
+
+    async def _select_best_candidate(
+        self,
+        candidate_sqls: list[str],
+        *,
+        dataset_id: uuid.UUID,
+        scopes: set[str],
+        dataset_allowlist: set[uuid.UUID] | None,
+        pins: dict[str, str],
+    ) -> str:
+        """Pick the candidate SQL that best answers the question.
+
+        Generation emits N candidates ranked by self-reported confidence, but
+        the top one sometimes filters on the wrong column (or under-searches a
+        set of hierarchy columns) and returns 0 rows while a lower-ranked
+        candidate is correct. So we probe the candidates and prefer the first
+        that (a) passes the firewall, (b) executes, and (c) returns non-empty,
+        non-degenerate rows. This is DuckDB-only -- NO extra LLM calls -- and
+        general: it just prefers a candidate that actually returns data.
+
+        Falls back to the first candidate that executed at all, else the first
+        candidate (so the existing scope/critic handling downstream is
+        unchanged when nothing is clearly better).
+        """
+        if len(candidate_sqls) <= 1:
+            return candidate_sqls[0] if candidate_sqls else ""
+
+        first_executed: str | None = None
+        for sql in candidate_sqls:
+            ast = self._ast_classifier.classify(sql)
+            table_kinds = await self._table_kinds_by_name(list(ast.table_refs), dataset_id)
+            dataset_of_table = await self._dataset_of_tables(list(ast.table_refs), dataset_id)
+            try:
+                self._scope_guard.check(
+                    classification=ast,
+                    scopes=scopes,
+                    table_kinds_by_name=table_kinds,
+                    dataset_allowlist=dataset_allowlist,
+                    dataset_of_table=dataset_of_table,
+                )
+            except ScopeGuardError:
+                continue  # unsafe candidate -- skip
+            if sorted({t for t in ast.table_refs if t} - set(table_kinds.keys())):
+                continue  # references a table not in the dataset -- skip
+            attached = await self._table_resolver.resolve(dataset_id, list(ast.table_refs), pins=pins)
+            result = await self._executor.execute(sql, attached)
+            if isinstance(result, ExecutionResult):
+                if not self._is_suspicious_empty(result):
+                    return sql  # passes firewall + returns real rows -- best
+                if first_executed is None:
+                    first_executed = sql  # remember first successful-but-empty
+        return first_executed or candidate_sqls[0]
 
     async def _table_kinds_by_name(
         self,
@@ -886,11 +1088,19 @@ class QueryService:
         *,
         tenant_id: str,
         workspace_id: uuid.UUID,
+        extra_filter: str | None = None,
     ) -> tuple[str | None, int | None]:
         """Fetch + bind the compiled SQL for a PUBLISHED metric.
 
         Returns ``(bound_sql, current_version)`` so the version can be pinned
         in the query record, or ``(None, None)`` when no usable metric is found.
+
+        ``extra_filter`` is the per-question slice the grounding agent derived
+        (e.g. ``Market = 'Brazil' AND Year = 'FY24'``) to be appended to the
+        metric's WHERE via the compiler's ``{extra_filter_clause}`` slot. It is
+        an LLM-supplied predicate, so it is re-run through the publish-time
+        firewall before binding; an unsafe filter is dropped (the metric still
+        returns its unfiltered value) rather than executed.
         """
         if self._semantic_repo is None:
             return None, None
@@ -903,8 +1113,30 @@ class QueryService:
             return None, None
         if not row or not row.get("compiled_sql_template"):
             return None, None
-        bound = SemanticCompiler.bind(row["compiled_sql_template"])
+
+        safe_filter = self._firewall_extra_filter(row["compiled_sql_template"], extra_filter)
+        bound = SemanticCompiler.bind(row["compiled_sql_template"], extra_filter=safe_filter)
         return bound, row.get("current_version")
+
+    @staticmethod
+    def _firewall_extra_filter(template: str, extra_filter: str | None) -> str | None:
+        """Validate an LLM-supplied metric filter via the publish-time firewall.
+
+        Returns the filter when the bound SQL passes ``assert_safe_template``,
+        else ``None`` (filter dropped). Defensive: any firewall/parse failure
+        also drops the filter rather than risking an unsafe predicate.
+        """
+        if not extra_filter:
+            return None
+        try:
+            from flyquery.core.services.semantic.firewall import assert_safe_template
+
+            probe = SemanticCompiler.bind(template, extra_filter=extra_filter)
+            assert_safe_template(probe)
+            return extra_filter
+        except Exception as exc:  # noqa: BLE001 -- any failure → drop the filter
+            logger.warning("dropping unsafe semantic extra_filter %r: %s", extra_filter, exc)
+            return None
 
     def _clarification(self, grounded) -> Any:
         """Build a ClarificationFrame if grounding confidence is low."""
@@ -917,11 +1149,19 @@ class QueryService:
             )
         return None
 
-    def _grounded_summary(self, grounded) -> dict:
-        """Convert GroundedContext to a summary dict for the response."""
+    def _grounded_summary(self, grounded, confidence_cap: float | None = None) -> dict:
+        """Convert GroundedContext to a summary dict for the response.
+
+        ``confidence_cap`` lets the caller lower the reported confidence when
+        the executed result is suspicious (e.g. 0 rows from a wrong literal),
+        so a confidently-wrong empty answer is not surfaced at high confidence.
+        """
+        confidence = grounded.confidence
+        if confidence_cap is not None:
+            confidence = min(confidence, confidence_cap)
         return {
             "path": grounded.path,
-            "confidence": grounded.confidence,
+            "confidence": confidence,
             "table_count": len(grounded.tables),
             "missing_info": grounded.missing_info,
         }

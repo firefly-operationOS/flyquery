@@ -76,8 +76,25 @@ class AstClassifier:
         # pyright does not unify with the public ``Expression`` base below.
         kind = self._kind(stmt)  # pyright: ignore[reportArgumentType]
 
-        # Collect table refs — skip anonymous subquery aliases
-        tables = tuple(sorted({t.name for t in stmt.find_all(sqlglot.expressions.Table) if t.name}))
+        # Collect table refs — skip anonymous subquery aliases AND
+        # CTE-defined names. sqlglot represents a reference to a CTE
+        # (``FROM base`` where ``WITH base AS (...)``) as an ``exp.Table``
+        # node, so without this filter the CTE alias leaks into
+        # ``table_refs``; the downstream bad-tables guard then flags it
+        # as a non-existent table and the (otherwise valid) query is
+        # rejected — see QueryService bad-tables set-difference.
+        cte_names = {
+            cte.alias_or_name for cte in stmt.find_all(sqlglot.expressions.CTE) if cte.alias_or_name
+        }
+        tables = tuple(
+            sorted(
+                {
+                    t.name
+                    for t in stmt.find_all(sqlglot.expressions.Table)
+                    if t.name and t.name not in cte_names
+                }
+            )
+        )
         columns = tuple(sorted({c.name for c in stmt.find_all(sqlglot.expressions.Column) if c.name}))
         has_subquery = bool(list(stmt.find_all(sqlglot.expressions.Subquery)))
 

@@ -73,6 +73,79 @@ _SECTION_RE = re.compile(r"^(?P<sheet>.+)#section\[(?P<start>\d+):(?P<end>\d+)\]
 # Heuristic constants
 _MIN_HEADER_NON_EMPTY = 2  # a row needs >= 2 non-empty cells to be a header
 _SECTION_BREAK_EMPTY_ROWS = 2  # >= 2 consecutive empty rows close a section
+# When the first header candidate looks like a numeric/spacer row, look this
+# many rows ahead for a clearly-better string-label row before settling.
+_HEADER_LOOKAHEAD = 3
+
+
+def _normalise_leading_blanks(rows: list[list[Any]]) -> list[list[Any]]:
+    """Drop leading rows that are *entirely* empty.
+
+    calamine's ``to_python(skip_empty_area=True)`` trims the used-range
+    bounding box, but the exact number of leading blank rows it keeps can
+    differ between near-identical re-ingests (HDR-UNSTABLE) -- which flips
+    every section's absolute row index and causes column-name churn. We
+    normalise here by consistently removing fully-empty leading rows so the
+    same logical sheet yields the same header index. This MUST be applied
+    identically in ``_enumerate_sync`` (where indices are computed) and
+    ``_materialise_sync`` (where they are sliced) for the indices to line up.
+    """
+    start = 0
+    n = len(rows)
+    while start < n and all(c in ("", None) for c in rows[start]):
+        start += 1
+    # Avoid a needless copy when nothing was trimmed.
+    return rows if start == 0 else rows[start:]
+
+
+def _looks_like_label_row(row: list[Any]) -> bool:
+    """True when a row's populated cells are predominantly non-empty STRINGS.
+
+    Header rows hold labels (text); spacer/index rows hold bare numbers
+    (1, 2, 3, ...). We require a strict string majority so genuinely numeric,
+    period, or date headers are not misclassified as data.
+    """
+    non_empty = [c for c in row if c not in ("", None)]
+    if not non_empty:
+        return False
+    str_cells = sum(1 for c in non_empty if isinstance(c, str) and c.strip() != "")
+    return str_cells * 2 > len(non_empty)
+
+
+def _is_numeric_spacer_row(row: list[Any]) -> bool:
+    """True when a header candidate looks like a numeric spacer, not labels.
+
+    A row is a spacer when every populated cell is numeric (int/float, or a
+    numeric-looking string) and none is a real text label. This includes the
+    classic contiguous ``1..k`` column-numbering run Excel exports sometimes
+    inject above the real header band. A row with any genuine string label is
+    never a spacer.
+    """
+    non_empty = [c for c in row if c not in ("", None)]
+    if len(non_empty) < _MIN_HEADER_NON_EMPTY:
+        return False
+
+    def _as_number(cell: Any) -> float | None:
+        if isinstance(cell, bool):
+            return None
+        if isinstance(cell, (int, float)):
+            return float(cell)
+        if isinstance(cell, str):
+            try:
+                return float(cell.strip())
+            except ValueError:
+                return None
+        return None
+
+    numbers = [_as_number(c) for c in non_empty]
+    if any(num is None for num in numbers):
+        # Some populated cell is a non-numeric string -> not a spacer.
+        return False
+
+    # Every populated cell is numeric and none is a text label. This covers
+    # both the all-numeric case and, as a strict subset, the contiguous
+    # ``1..k`` column-numbering run -- both are spacers, never label rows.
+    return True
 
 
 class ExcelReader:
@@ -146,9 +219,34 @@ class ExcelReader:
                 i += 1
                 continue
 
-            # Multi-cell row = section header
+            # Multi-cell row = section header candidate.
+            #
+            # A naive reader takes the FIRST >=2-non-empty row as the header.
+            # But dashboard exports sometimes inject a numeric spacer / column-
+            # numbering row (e.g. ``1 2 3 4``) just above the real label band
+            # (HDR-MULTIROW). If we treat that spacer as the header, the real
+            # labels become data and columns get opaque positional names. So
+            # when this candidate looks like a numeric/contiguous spacer, peek
+            # a small window ahead and prefer the first following row that is
+            # clearly a string-label row. We only skip the candidate when such
+            # a better row exists -- genuinely numeric / period / date headers
+            # (no string-label row just below) are left untouched, as are
+            # single-row sheets.
             header_idx = i
-            j = i + 1
+            if _is_numeric_spacer_row(row) and not _looks_like_label_row(row):
+                look_end = min(i + 1 + _HEADER_LOOKAHEAD, n)
+                for la in range(i + 1, look_end):
+                    la_ne = [c for c in rows[la] if c not in ("", None)]
+                    if len(la_ne) == 0:
+                        # A blank row before any label row means the spacer is
+                        # really the last populated row -- stop looking ahead.
+                        break
+                    if len(la_ne) >= _MIN_HEADER_NON_EMPTY and _looks_like_label_row(rows[la]):
+                        # Found a better string-label header just below; treat
+                        # the skipped numeric/title rows as pre-header.
+                        header_idx = la
+                        break
+            j = header_idx + 1
             consecutive_empty = 0
             data_end = j  # exclusive
             while j < n:
@@ -208,7 +306,10 @@ class ExcelReader:
             if allow is not None and sheet_name not in allow:
                 continue
             sheet = wb.get_sheet_by_name(sheet_name)
-            rows = sheet.to_python(skip_empty_area=True)
+            # Normalise leading fully-empty rows so section indices are stable
+            # across re-ingests (HDR-UNSTABLE). The SAME normalisation runs in
+            # ``_materialise_sync`` so the stored indices slice the same rows.
+            rows = _normalise_leading_blanks(sheet.to_python(skip_empty_area=True))
             if not rows:
                 continue
 
@@ -295,7 +396,9 @@ class ExcelReader:
         )
         wb = CalamineWorkbook.from_path(source_path)
         sheet = wb.get_sheet_by_name(sheet_name)
-        rows = sheet.to_python(skip_empty_area=True)
+        # Apply the SAME leading-blank normalisation used at enumerate time so
+        # the stored section indices slice the intended rows (HDR-UNSTABLE).
+        rows = _normalise_leading_blanks(sheet.to_python(skip_empty_area=True))
 
         if sec_start is not None and sec_end is not None:
             # Section-encoded path -- slice precisely.

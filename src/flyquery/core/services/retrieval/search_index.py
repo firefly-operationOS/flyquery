@@ -42,6 +42,115 @@ class Hit:
     metadata: dict = field(default_factory=dict)
 
 
+def value_fingerprint(
+    data_type: str | None,
+    sample_values_json: object,
+    profile_json: object,
+    *,
+    max_values: int = 40,
+    max_chars: int = 400,
+) -> str:
+    """Compact, human-readable summary of a column's ACTUAL values.
+
+    Surfaced into the grounding/generation prompts so the agents copy
+    WHERE / CASE literals verbatim from real values instead of guessing
+    -- e.g. a fiscal year stored as ``FY23`` (not ``2023``), the members
+    of a tall/EAV category column (``P&L Line System`` rows like
+    ``Total Revenue`` / ``Manpower``), or the magnitude gap between a
+    scaled-duplicate measure (``FY`` ~0.02 vs ``FY (Real)`` ~25748).
+
+    Returns ``""`` when there is nothing useful to show.
+    """
+    prof = profile_json if isinstance(profile_json, dict) else {}
+
+    # NOTE: profiling stores ``subtotal_values`` (name-based candidates for
+    # pre-aggregated rows). We deliberately do NOT surface them as an
+    # exclusion directive: a "Total_*" value in a dimension is just as often a
+    # legitimate additive bucket (e.g. unallocated/corporate) as a true rollup,
+    # and any hint makes the agent wrongly drop it. Whether to exclude requires
+    # the structural test (does the value's aggregate == the sum of the others?)
+    # which is not available per-column at profile time. The general "aggregate
+    # across ALL values / don't drop a value" prompt rule handles this safely.
+    subtotal_note = ""
+
+    # Self-referencing hierarchy hint: this column's values are entities from
+    # another (higher-cardinality) column -- e.g. a manager column whose values
+    # are people from the employee column. Surfaced even for high-cardinality
+    # columns that have no listable values, because that is exactly when the
+    # agent cannot otherwise tell who a person reports to.
+    ref_col = prof.get("references_column")
+    ref_note = (
+        f" | HIERARCHY: holds entities/people from column '{ref_col}' (e.g. each row's "
+        f"manager/owner/parent). To get a given person's group/team/reports, filter THIS "
+        f"column to that person (case-insensitive LIKE), not the person's own row."
+        if ref_col
+        else ""
+    )
+
+    # Categorical: the stored distinct value set (low-cardinality columns).
+    top_values = prof.get("top_values") or []
+    if top_values:
+        seen: set[str] = set()
+        uniq: list[str] = []
+        for tv in top_values:
+            v = tv.get("value") if isinstance(tv, dict) else tv
+            if v is None:
+                continue
+            s = str(v)
+            if s not in seen:
+                seen.add(s)
+                uniq.append(s)
+        shown = uniq[:max_values]
+        body = " | ".join(shown)
+        if len(body) > max_chars:
+            body = body[:max_chars].rsplit("|", 1)[0].strip() + " | …"
+        more = "" if len(uniq) <= len(shown) else f" (+{len(uniq) - len(shown)} more)"
+        return f"values: {body}{more}{subtotal_note}{ref_note}" if body else ref_note.strip(" |")
+
+    # Numeric / temporal: range + cardinality (exposes scaled duplicates).
+    col_min, col_max = prof.get("min"), prof.get("max")
+    if col_min is not None or col_max is not None:
+        rng = f"range: {col_min} .. {col_max}"
+        dist = prof.get("distinct_estimate")
+        if dist is not None:
+            rng += f" (~{dist} distinct)"
+        return rng + ref_note
+
+    # Fallback: a few raw sample values (high-cardinality columns).
+    samples = sample_values_json if isinstance(sample_values_json, list) else []
+    if samples:
+        seen2: set[str] = set()
+        uniq2: list[str] = []
+        for v in samples:
+            s = str(v)
+            if s not in seen2:
+                seen2.add(s)
+                uniq2.append(s)
+        if uniq2:
+            return "e.g.: " + " | ".join(uniq2[:8]) + ref_note
+    return ref_note.strip(" |")
+
+
+def _column_hit(r, score: float) -> "Hit":
+    """Build a ranked schema-object Hit, enriched with a value fingerprint.
+
+    Used by the BM25 + vector column searches so the ranked "Top-ranked
+    column matches" the grounding agent sees carry real values, not just
+    name + description.
+    """
+    fp = value_fingerprint(r.data_type, r.sample_values_json, r.profile_json)
+    text = f"{r.qualified_name}: {r.data_type}\n{r.description or ''}"
+    if fp:
+        text += f"\n{fp}"
+    return Hit(
+        source_kind="schema_object",
+        id=r.id,
+        text=text,
+        score=score,
+        metadata={"qualified_name": r.qualified_name, "table_id": str(r.table_id), "values": fp},
+    )
+
+
 class SearchIndex:
     """Read-only query helpers that operate on a shared ``AsyncSession``."""
 
@@ -60,10 +169,12 @@ class SearchIndex:
             sa.text(
                 """
                 SELECT o.id, o.qualified_name, o.description, o.data_type, o.table_id,
+                       o.sample_values_json, o.profile_json,
                        ts_rank(o.content_tsv, plainto_tsquery('english', :q)) AS score
                 FROM flyquery_schema_objects o
                 JOIN flyquery_tables t ON t.id = o.table_id
                 WHERE t.dataset_id = :ds AND o.is_active = true
+                  AND o.snapshot_id = t.current_snapshot_id
                   AND o.content_tsv @@ plainto_tsquery('english', :q)
                 ORDER BY score DESC
                 LIMIT :lim
@@ -71,16 +182,7 @@ class SearchIndex:
             ),
             {"q": query, "ds": dataset_id, "lim": limit},
         )
-        return [
-            Hit(
-                source_kind="schema_object",
-                id=r.id,
-                text=f"{r.qualified_name}: {r.data_type}\n{r.description or ''}",
-                score=float(r.score),
-                metadata={"qualified_name": r.qualified_name, "table_id": str(r.table_id)},
-            )
-            for r in rows.mappings()
-        ]
+        return [_column_hit(r, float(r.score)) for r in rows.mappings()]
 
     async def vector_schema_objects(
         self,
@@ -99,26 +201,19 @@ class SearchIndex:
             sa.text(
                 """
                 SELECT o.id, o.qualified_name, o.description, o.data_type, o.table_id,
+                       o.sample_values_json, o.profile_json,
                        1 - (o.embedding <=> CAST(:emb AS vector)) AS score
                 FROM flyquery_schema_objects o
                 JOIN flyquery_tables t ON t.id = o.table_id
-                WHERE t.dataset_id = :ds AND o.is_active = true AND o.embedding IS NOT NULL
+                WHERE t.dataset_id = :ds AND o.is_active = true
+                  AND o.snapshot_id = t.current_snapshot_id AND o.embedding IS NOT NULL
                 ORDER BY o.embedding <=> CAST(:emb AS vector)
                 LIMIT :lim
                 """
             ),
             {"emb": str(query_embedding), "ds": dataset_id, "lim": limit},
         )
-        return [
-            Hit(
-                source_kind="schema_object",
-                id=r.id,
-                text=f"{r.qualified_name}: {r.data_type}\n{r.description or ''}",
-                score=float(r.score),
-                metadata={"qualified_name": r.qualified_name, "table_id": str(r.table_id)},
-            )
-            for r in rows.mappings()
-        ]
+        return [_column_hit(r, float(r.score)) for r in rows.mappings()]
 
     async def all_schema_objects(
         self,
@@ -158,7 +253,9 @@ class SearchIndex:
                     ON c.table_id = o.table_id
                    AND c.kind = 'COLUMN'
                    AND c.is_active = true
+                   AND c.snapshot_id = t.current_snapshot_id
                 WHERE t.dataset_id = :ds AND o.is_active = true AND o.kind = 'TABLE'
+                  AND o.snapshot_id = t.current_snapshot_id
                 GROUP BY o.id, o.qualified_name, o.description, o.table_id, o.kind
                 ORDER BY o.qualified_name
                 """
@@ -175,10 +272,12 @@ class SearchIndex:
                 await self._session.execute(
                     sa.text(
                         """
-                SELECT o.id, o.qualified_name, o.description, o.data_type, o.table_id, o.kind
+                SELECT o.id, o.qualified_name, o.description, o.data_type, o.table_id, o.kind,
+                       o.sample_values_json, o.profile_json
                 FROM flyquery_schema_objects o
                 JOIN flyquery_tables t ON t.id = o.table_id
                 WHERE t.dataset_id = :ds AND o.is_active = true AND o.kind = 'COLUMN'
+                  AND o.snapshot_id = t.current_snapshot_id
                 ORDER BY o.qualified_name
                 LIMIT :lim
                 """
@@ -223,16 +322,21 @@ class SearchIndex:
             )
 
         for r in column_rows:
+            fp = value_fingerprint(r["data_type"], r["sample_values_json"], r["profile_json"])
+            text = f"{r['qualified_name']}: {r['data_type'] or ''}\n{r['description'] or ''}"
+            if fp:
+                text += f"\n{fp}"
             hits.append(
                 Hit(
                     source_kind="schema_object",
                     id=r["id"],
-                    text=f"{r['qualified_name']}: {r['data_type'] or ''}\n{r['description'] or ''}",
+                    text=text,
                     score=1.0,
                     metadata={
                         "qualified_name": r["qualified_name"],
                         "table_id": str(r["table_id"]),
                         "kind": "COLUMN",
+                        "values": fp,
                     },
                 )
             )
