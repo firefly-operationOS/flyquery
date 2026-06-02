@@ -389,9 +389,7 @@ class QueryController:
 
             grounding_agent = build_grounding_agent(self._settings)
             grounded_run = await grounding_agent.run(
-                _render_grounding_prompt(
-                    question=body.question, bundle=bundle, starting_point_sql=None
-                )
+                _render_grounding_prompt(question=body.question, bundle=bundle, starting_point_sql=None)
             )
             grounded = getattr(grounded_run, "output", grounded_run)
 
@@ -458,9 +456,7 @@ class QueryController:
 
             grounding_agent = build_grounding_agent(self._settings)
             grounded_run = await grounding_agent.run(
-                _render_grounding_prompt(
-                    question=body.question, bundle=bundle, starting_point_sql=None
-                )
+                _render_grounding_prompt(question=body.question, bundle=bundle, starting_point_sql=None)
             )
             grounded = getattr(grounded_run, "output", grounded_run)
 
@@ -576,9 +572,7 @@ class QueryController:
 
             grounding_agent = build_grounding_agent(self._settings)
             grounded_run = await grounding_agent.run(
-                _render_grounding_prompt(
-                    question=request.question, bundle=bundle, starting_point_sql=None
-                )
+                _render_grounding_prompt(question=request.question, bundle=bundle, starting_point_sql=None)
             )
             grounded = getattr(grounded_run, "output", grounded_run)
 
@@ -635,7 +629,7 @@ class QueryController:
             # isolation or run SQL against a non-existent/cross-dataset table.
             ast = self._ast_classifier.classify(chosen_sql)
             table_resolver = TableResolver(session=db_session, settings=self._settings)
-            table_kinds = await _table_kinds_by_name(db_session, list(ast.table_refs), request.dataset_id)
+            table_kinds = await table_resolver.table_kinds_by_name(request.dataset_id, list(ast.table_refs))
             exec_result = await self._guarded_execute(
                 chosen_sql, ast, table_kinds, table_resolver, request.dataset_id, bundle
             )
@@ -655,8 +649,8 @@ class QueryController:
                 refined = getattr(refined_run, "output", refined_run)
                 chosen_sql = refined.sql
                 ast = self._ast_classifier.classify(chosen_sql)
-                table_kinds = await _table_kinds_by_name(
-                    db_session, list(ast.table_refs), request.dataset_id
+                table_kinds = await table_resolver.table_kinds_by_name(
+                    request.dataset_id, list(ast.table_refs)
                 )
                 exec_result = await self._guarded_execute(
                     chosen_sql, ast, table_kinds, table_resolver, request.dataset_id, bundle
@@ -788,26 +782,6 @@ class QueryController:
                 },
             )
             yield _sse_frame("final", answer.model_dump(mode="json"))
-
-
-async def _table_kinds_by_name(
-    session: AsyncSession, table_names: list[str], dataset_id: uuid.UUID
-) -> dict[str, str]:
-    """Return {name: kind} for the active tables in the dataset (firewall input)."""
-    if not table_names:
-        return {}
-    import sqlalchemy as sa
-
-    rows = await session.execute(
-        sa.text(
-            """
-            SELECT name, kind FROM flyquery_tables
-            WHERE dataset_id = :ds AND name = ANY(:names) AND is_active = true
-            """
-        ),
-        {"ds": dataset_id, "names": list(table_names)},
-    )
-    return {r["name"]: r["kind"] for r in rows.mappings()}
 
 
 def _now_ms() -> int:

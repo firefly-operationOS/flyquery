@@ -138,14 +138,11 @@ def _is_numeric_spacer_row(row: list[Any]) -> bool:
         return None
 
     numbers = [_as_number(c) for c in non_empty]
-    if any(num is None for num in numbers):
-        # Some populated cell is a non-numeric string -> not a spacer.
-        return False
-
-    # Every populated cell is numeric and none is a text label. This covers
-    # both the all-numeric case and, as a strict subset, the contiguous
-    # ``1..k`` column-numbering run -- both are spacers, never label rows.
-    return True
+    # A spacer row has EVERY populated cell numeric and no text label. This
+    # covers both the all-numeric case and, as a strict subset, the contiguous
+    # ``1..k`` column-numbering run -- both are spacers, never label rows. Any
+    # non-numeric (None) populated cell means it is not a spacer.
+    return all(num is not None for num in numbers)
 
 
 class ExcelReader:

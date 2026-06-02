@@ -142,5 +142,5 @@ def build_describe_agent(settings):
         settings=settings,
         # Deterministic descriptions/semantic types: identical columns on
         # re-ingest must produce identical metadata, no schema-change churn.
-        temperature=0.0,
+        extra_settings={"temperature": 0.0},
     )

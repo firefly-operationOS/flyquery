@@ -337,9 +337,7 @@ def _profile_column_sync(
                 # to the subtotal drops detail). No measure join is available
                 # here, so this stays purely structural/textual.
                 if not _is_numeric(data_type) and not _is_temporal(data_type):
-                    subtotal_values = [
-                        str(r[0]) for r in top_rows if _looks_like_subtotal(str(r[0]))
-                    ]
+                    subtotal_values = [str(r[0]) for r in top_rows if _looks_like_subtotal(str(r[0]))]
                     if subtotal_values:
                         profile["subtotal_values"] = subtotal_values
 

@@ -48,7 +48,6 @@ def build_agent(
     instructions: str,
     settings: FlyquerySettings,
     max_output_tokens: int | None = None,
-    temperature: float | None = None,
     extra_settings: dict[str, Any] | None = None,
 ) -> Any:
     """Construct a :class:`FireflyAgent` with the standard knobs.
@@ -68,13 +67,6 @@ def build_agent(
             requiring callers to plumb the env var themselves.
         max_output_tokens: Optional override for this specific call.
             ``None`` falls back to ``settings.agent_max_output_tokens``.
-        temperature: Optional sampling temperature folded into
-            ``model_settings``. ``None`` (the default) leaves the
-            provider default untouched -- grounding / generation /
-            critic rely on that diversity (generation samples N
-            candidates). Naming / description stages pass ``0.0`` so
-            near-identical re-ingests yield identical names and avoid
-            schema-change churn.
         extra_settings: Optional extra ``model_settings`` entries.
             Caller-provided keys WIN on conflict so a stage can cap
             below the global budget (e.g. a 1-token classifier).
@@ -91,8 +83,6 @@ def build_agent(
 
     resolved_max = resolve_max_output_tokens(settings, override=max_output_tokens)
     model_settings: dict[str, Any] = {"max_tokens": resolved_max}
-    if temperature is not None:
-        model_settings["temperature"] = temperature
     if extra_settings:
         # Caller-provided settings win on conflict -- a stage can cap
         # itself below the default by passing ``max_tokens=128`` in

@@ -102,9 +102,24 @@ class TableResolver:
             out[r["name"]] = f"{base}/{key}"
         return out
 
-    async def current_snapshots(
-        self, dataset_id: uuid.UUID, table_names: list[str]
-    ) -> dict[str, str]:
+    async def table_kinds_by_name(self, dataset_id: uuid.UUID, table_names: list[str]) -> dict[str, str]:
+        """Return ``{name: kind}`` for the active tables in the dataset.
+
+        Used by the firewall/bad-tables guard. Lives here (service layer)
+        rather than in a controller so the raw SQL stays out of the web tier.
+        """
+        if not table_names:
+            return {}
+        rows = await self._session.execute(
+            sa.text("""
+                SELECT name, kind FROM flyquery_tables
+                WHERE dataset_id = :ds AND name = ANY(:names) AND is_active = true
+            """),
+            {"ds": dataset_id, "names": list(table_names)},
+        )
+        return {r["name"]: r["kind"] for r in rows.mappings()}
+
+    async def current_snapshots(self, dataset_id: uuid.UUID, table_names: list[str]) -> dict[str, str]:
         """Return ``{table_name: current_snapshot_id}`` for the given tables.
 
         Used to record THIS turn's snapshot pins so a later drill-down turn

@@ -131,7 +131,7 @@ def value_fingerprint(
     return ref_note.strip(" |")
 
 
-def _column_hit(r, score: float) -> "Hit":
+def _column_hit(r, score: float) -> Hit:
     """Build a ranked schema-object Hit, enriched with a value fingerprint.
 
     Used by the BM25 + vector column searches so the ranked "Top-ranked

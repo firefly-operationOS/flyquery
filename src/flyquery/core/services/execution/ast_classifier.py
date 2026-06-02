@@ -83,9 +83,7 @@ class AstClassifier:
         # ``table_refs``; the downstream bad-tables guard then flags it
         # as a non-existent table and the (otherwise valid) query is
         # rejected — see QueryService bad-tables set-difference.
-        cte_names = {
-            cte.alias_or_name for cte in stmt.find_all(sqlglot.expressions.CTE) if cte.alias_or_name
-        }
+        cte_names = {cte.alias_or_name for cte in stmt.find_all(sqlglot.expressions.CTE) if cte.alias_or_name}
         tables = tuple(
             sorted(
                 {

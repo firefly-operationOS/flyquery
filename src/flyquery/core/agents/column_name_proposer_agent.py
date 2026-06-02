@@ -118,7 +118,7 @@ def build_column_name_proposer_agent(settings):
         settings=settings,
         # Deterministic naming: identical re-ingests must yield identical
         # column names, otherwise reconcile sees phantom schema churn.
-        temperature=0.0,
+        extra_settings={"temperature": 0.0},
     )
 
 
