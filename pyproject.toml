@@ -15,7 +15,7 @@ authors = [
 dependencies = [
     # Firefly Framework runtime -- same extras canon uses so a fresh
     # `uv sync` boots the full stack.
-    "pyfly[fastapi,observability,security,data-relational,postgresql,eda,redis,client,scheduling,cli]>=26.5.4",
+    "pyfly[fastapi,observability,security,data-relational,postgresql,eda,redis,client,scheduling,cli]>=26.6.113",
     # GenAI metaframework -- FireflyAgent over pydantic-ai + the OpenAI
     # embeddings provider. flyquery builds its own pgvector hybrid retriever
     # and declares sqlglot directly below for its Text-to-SQL pipeline.
@@ -124,9 +124,9 @@ override-dependencies = [
 ]
 
 [tool.uv.sources]
-# Agentic is consumed from its published git tag so fresh clones / CI resolve
-# it without the sibling path; pyfly stays on the local checkout.
-pyfly = { path = "../../fireflyframework/fireflyframework-pyfly", editable = true }
+# pyfly and agentic are consumed from their published git tags so fresh
+# clones / CI resolve them without any sibling path.
+pyfly = { git = "https://github.com/fireflyframework/fireflyframework-pyfly.git", tag = "v26.06.113" }
 fireflyframework-agentic = { git = "https://github.com/fireflyframework/fireflyframework-agentic.git", tag = "v26.05.30" }
 
 [tool.hatch.build.targets.wheel]
