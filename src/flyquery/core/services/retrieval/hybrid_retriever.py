@@ -129,9 +129,15 @@ class HybridRetriever:
         # bypasses the top-K truncation.
         full_inventory = await self._index.all_schema_objects(dataset_id, limit=500)
 
+        # Per-column value catalogue (distinct/top values, range, semantic_type)
+        # for the whole dataset -- feeds value-anchored generation + entity
+        # resolution + the repair loop. Computed at ingest, just read here.
+        column_catalog = await self._index.column_value_catalog(dataset_id)
+
         return {
             "schema_objects": schema_objects,
             "schema_inventory": full_inventory,
+            "column_catalog": column_catalog,
             "examples": examples[:top_k_examples],
             "metrics": metrics[:top_k_metrics],
             "glossary": glossary,

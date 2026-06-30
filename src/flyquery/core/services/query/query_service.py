@@ -44,6 +44,7 @@ from typing import Any, Literal
 from flyquery.core.services.execution.ast_classifier import AstClassifier
 from flyquery.core.services.execution.duckdb_executor import ExecutionError, ExecutionResult
 from flyquery.core.services.execution.scope_guard import ScopeGuard, ScopeGuardError
+from flyquery.core.services.query import value_anchoring
 from flyquery.core.services.semantic.compiler import SemanticCompiler
 
 logger = logging.getLogger(__name__)
@@ -128,33 +129,6 @@ def _render_grounding_prompt(
             out.append(f"- `{qn}` :: {text}")
         out.append("")
 
-    # 2b. The "Column value catalogue" lists EVERY column with its real
-    #     values (distinct set for low-cardinality columns; numeric
-    #     range otherwise). This is the ground truth the agent must copy
-    #     filter/CASE literals from -- it prevents guessing wrong
-    #     literals (`Year IN (2023)` when the values are `FY23`), maps a
-    #     question entity to the column whose values contain it
-    #     (`DAPA` lives in a column's values, not a column name), and
-    #     reveals tall/EAV layouts (P&L line items are VALUES of a single
-    #     column) and scaled-duplicate measures (`FY` vs `FY (Real)`).
-    inv_columns = [h for h in inventory if (getattr(h, "metadata", {}) or {}).get("kind") == "COLUMN"]
-    cols_with_values = [h for h in inv_columns if (getattr(h, "metadata", {}) or {}).get("values")]
-    if cols_with_values:
-        out.append(f"# Column value catalogue ({len(cols_with_values)} columns)")
-        out.append(
-            "Real values per column. When the question names an entity (a brand, "
-            "year, market, category, P&L line, team…) that is NOT a column name, "
-            "find the column whose values contain it and filter THAT column. Copy "
-            "filter/CASE literals VERBATIM from these values (values may be encoded, "
-            "e.g. a year shown as `FY23`). If several columns share members, prefer "
-            "the one whose values match the question most precisely."
-        )
-        for h in cols_with_values:
-            md = getattr(h, "metadata", None) or {}
-            qn = md.get("qualified_name") or "?"
-            out.append(f"- `{qn}` :: {md.get('values')}")
-        out.append("")
-
     examples = bundle.get("examples", []) or []
     if examples:
         out.append(f"# Approved Q→SQL examples ({len(examples)})")
@@ -209,23 +183,47 @@ def _render_grounding_prompt(
     return "\n".join(out)
 
 
+def _lookup_col(qn: str, cat_by_qn: dict) -> dict | None:
+    if qn in cat_by_qn:
+        return cat_by_qn[qn]
+    # tolerate grounding returning a shorter/unqualified column name
+    tail = qn.rsplit(".", 1)[-1].lower()
+    for k, v in cat_by_qn.items():
+        if k.rsplit(".", 1)[-1].lower() == tail:
+            return v
+    return None
+
+
 def _render_generation_prompt(
     question: str,
     grounded: Any,
     starting_point_sql: str | None,
     *,
     schema_inventory: list[Any] | None = None,
+    col_catalog: list[dict] | None = None,
+    resolved_entities: list[dict] | None = None,
+    resolved_groups: list[dict] | None = None,
+    hierarchy_intent: bool = False,
+    examples: list[Any] | None = None,
+    n_candidates: int = 3,
+    max_columns: int = 80,
+    char_budget: int = 320,
 ) -> str:
-    """Pack the grounded context into a SQL-generation prompt.
+    """Pack the grounded context + the per-column VALUE CATALOGUE into a prompt.
 
-    The ``schema_inventory`` fallback is appended even when grounding
-    returned a non-empty tables list -- the inventory acts as a
-    safety net the generation agent can fall back on if it judges
-    the grounded set incomplete (e.g. needs a join to a table the
-    grounding agent missed). Without this fallback, generation
-    hallucinates plausible-but-nonexistent tables like
-    ``balance_sheet`` whenever grounding under-selects.
+    The generation prompt now shows, for each in-scope column, its data_type,
+    semantic role (measure/dimension/time), and the actual distinct VALUES (or
+    numeric range) the column holds -- so the SQL writer copies real filter
+    literals instead of inventing them. Question entities that were located in
+    the data are listed explicitly. All sourced from the dataset's own
+    ingest-time profiling; nothing is hardcoded.
     """
+    from collections import defaultdict
+
+    cat_by_qn = {c["qualified_name"]: c for c in (col_catalog or [])}
+    cols_by_table: dict[str, list[dict]] = defaultdict(list)
+    for c in col_catalog or []:
+        cols_by_table[c["qualified_name"].rsplit(".", 1)[0]].append(c)
 
     out: list[str] = []
     out.append("# User question")
@@ -239,15 +237,62 @@ def _render_generation_prompt(
         out.append("```")
         out.append("")
 
+    if resolved_entities:
+        out.append("# Resolved entities (literals located in the data)")
+        out.append(
+            "These exact question literals were FOUND as stored values. Filter on "
+            "the stated column with the stated value verbatim. When a literal was "
+            "found in MORE THAN ONE column, the number of rows it matches is shown:"
+        )
+        for e in resolved_entities[:24]:
+            cnt = e.get("match_count")
+            tag = ""
+            if cnt is not None:
+                role = "repeats → grouping/parent key" if cnt > 1 else "appears once → identity"
+                tag = f" — matches {cnt} row(s), {role}"
+            out.append(f"- '{e['literal']}' → column `{e['column']}` (stored value: {e['value']!r}){tag}")
+        if hierarchy_intent:
+            out.append(
+                "NOTE: this is a hierarchy / team / reporting question. Filter the column where the "
+                "entity REPEATS across rows (the parent/manager key), NOT where it appears once (its "
+                "own identity row). Prefer the table with the MOST matching rows over a stale one."
+            )
+            top = max(
+                (e for e in resolved_entities if (e.get("match_count") or 0) > 1),
+                key=lambda e: e.get("match_count") or 0,
+                default=None,
+            )
+            if top is not None:
+                out.append(
+                    f"  >> Best binding: filter on `{top['column']}` (the entity matches "
+                    f"{top['match_count']} rows there) — query THAT column in THAT table; ignore "
+                    f"tables/columns where the name appears only 0–1 times."
+                )
+        out.append("")
+
+    if resolved_groups:
+        out.append("# Resolved value groups (a term that spans several stored values)")
+        out.append(
+            "Each question term below is an umbrella over MULTIPLE values of one column — it "
+            "means the WHOLE set, never a subset:"
+        )
+        for g in resolved_groups[:12]:
+            col = g["column"].rsplit(".", 1)[-1]
+            vlist = ", ".join(repr(v) for v in g["values"])
+            if g.get("truncated"):
+                out.append(
+                    f"- '{g['literal']}' spans column `{col}` (the catalogued list is INCOMPLETE) — "
+                    f"use `{col} LIKE '{g['literal']}%'` to capture every member."
+                )
+            else:
+                out.append(
+                    f"- '{g['literal']}' spans these values in `{col}`: [{vlist}] — "
+                    f"use IN(all of them) or `{col} LIKE '{g['literal']}%'`; never a subset."
+                )
+        out.append("")
+
     inv = schema_inventory or []
     inv_tables = [h for h in inv if (getattr(h, "metadata", {}) or {}).get("kind") == "TABLE"]
-    # Map qualified_name -> value fingerprint so the generator copies
-    # filter/CASE literals verbatim from real values rather than guessing.
-    value_index: dict[str, str] = {}
-    for h in inv:
-        md = getattr(h, "metadata", None) or {}
-        if md.get("kind") == "COLUMN" and md.get("values"):
-            value_index[md.get("qualified_name")] = md.get("values")
     if inv_tables:
         out.append(f"# Complete dataset catalogue ({len(inv_tables)} tables)")
         out.append(
@@ -276,13 +321,54 @@ def _render_generation_prompt(
         for t in g_tables:
             out.append(f"- `{getattr(t, 'table_qualified_name', t)}`")
         out.append("")
-    if g_columns:
-        out.append("## Columns in scope (with real values — copy literals verbatim)")
+
+    # Full, value-anchored column listing for every in-scope table. This both
+    # raises recall (the right column may have ranked below top-12) and gives
+    # the SQL writer the real literal vocabulary for each column.
+    rendered = 0
+    table_qns = [getattr(t, "table_qualified_name", str(t)) for t in g_tables]
+    if not table_qns:
+        # No grounded tables: fall back to every table that has columns.
+        table_qns = list(cols_by_table.keys())
+    if table_qns:
+        out.append("## Columns with values (use these literals verbatim)")
+        for tqn in table_qns:
+            cols = cols_by_table.get(tqn) or []
+            if not cols:
+                # match by table-name tail when grounding used a short qn
+                tail = tqn.rsplit(".", 1)[-1].lower()
+                for k, v in cols_by_table.items():
+                    if k.rsplit(".", 1)[-1].lower() == tail:
+                        cols = v
+                        break
+            if not cols:
+                continue
+            out.append(f"### `{tqn}`")
+            for c in cols:
+                if rendered >= max_columns:
+                    out.append("- … (column list truncated)")
+                    break
+                out.append(
+                    "- "
+                    + value_anchoring.render_catalog_from_meta(
+                        c["qualified_name"], c, char_budget=char_budget
+                    )
+                )
+                rendered += 1
+            out.append("")
+            if rendered >= max_columns:
+                break
+    elif g_columns:
+        out.append("## Columns in scope")
         for c in g_columns:
-            cqn = getattr(c, "column_qualified_name", c)
-            vals = value_index.get(cqn)
-            out.append(f"- `{cqn}`" + (f" :: {vals}" if vals else ""))
+            qn = getattr(c, "column_qualified_name", str(c))
+            meta = _lookup_col(qn, cat_by_qn)
+            if meta:
+                out.append("- " + value_anchoring.render_catalog_from_meta(qn, meta, char_budget=char_budget))
+            else:
+                out.append(f"- `{qn}`")
         out.append("")
+
     if g_joins:
         out.append("## Approved joins")
         for j in g_joins:
@@ -293,62 +379,34 @@ def _render_generation_prompt(
             )
         out.append("")
 
-    # Full column-value catalogue -- the grounding agent may under-select
-    # columns, so expose every column's real values here too. This is the
-    # source of truth for WHERE / CASE literals.
-    if value_index:
-        out.append(f"# Column value catalogue ({len(value_index)} columns)")
-        out.append(
-            "Real values per column. Copy filter/CASE literals VERBATIM from these. "
-            "If the question names an entity that is not a column name, filter the "
-            "column whose values contain it."
-        )
-        for qn, vals in value_index.items():
-            out.append(f"- `{qn}` :: {vals}")
+    if examples:
+        out.append(f"# Worked examples (approved Q→SQL, {len(examples)})")
+        for h in examples[:5]:
+            md = getattr(h, "metadata", None) or {}
+            out.append(f"- Q: {md.get('question', '')}\n  SQL: `{md.get('generated_sql', '')}`")
         out.append("")
 
     out.append("# Task")
     out.append(
-        "Generate up to N candidate DuckDB SQL queries that answer the question, "
+        f"Generate {n_candidates} candidate DuckDB SQL queries that answer the question, "
         "ordered by confidence (highest first). Each candidate must:\n"
-        "- Use only the tables and columns listed above. "
-        "Reference each table by its **unqualified name** (the last segment of the "
-        "qualified name shown above), e.g. write `FROM IVI_MALAGA_SL__Activos` "
-        "rather than `FROM orbis_companies.IVI_MALAGA_SL__Activos`.\n"
-        "- Quote any column name that isn't a plain identifier (e.g. date-shaped "
-        'names like `2024-12-31` must be `"2024-12-31"`).\n'
-        "- Copy every WHERE / CASE / IN literal VERBATIM from the column value "
-        "catalogue above -- never invent or reformat a value (a year is `FY23`, "
-        "not `2023`; a market may be `Brazil` or `44000BR Brazil` -- use exactly "
-        "what is listed).\n"
-        "- When the metric the user names is not a column but appears among a "
-        "column's listed values, filter that column (tall/EAV layout): e.g. P&L "
-        "line items like `Total Revenue` / `Manpower` are VALUES of a single "
-        "category column, selected with `CASE WHEN \"<col>\" = 'Total Revenue' …`.\n"
-        "- When two numeric columns are near-duplicates whose ranges differ by a "
-        "constant factor (~10^k), they are the same measure at different scales -- "
-        "prefer the larger-magnitude one for monetary sums.\n"
-        "- Do NOT add a WHERE filter on a dimension the question did not ask to "
-        "slice by -- aggregate across ALL of its values, and do NOT drop a row "
-        "just because a category value's name contains 'total'/'all' (those are "
-        "usually legitimate, often 'unallocated', buckets). Exclude a value only "
-        "if you can confirm it is literally the sum of the other rows.\n"
-        "- Return what is ASKED FOR: if the question asks for names, a list, "
-        "'who', 'which', or 'dame los nombres/quiénes', SELECT the identifying "
-        "column(s) (e.g. the name) and return the matching ROWS -- do NOT collapse "
-        "to a COUNT. Use COUNT/aggregates only when a count or total is requested. "
-        "If BOTH a count and the names are asked, return the names (the count is "
-        "derivable from the row count).\n"
-        "- HIERARCHY questions: when the question asks about a person's TEAM, "
-        "direct reports, the people 'at their charge' / under them, their org, or "
-        "movements in THEIR structure, it is a self-referencing hierarchy. A "
-        "column marked 'HIERARCHY: holds entities/people from column X' holds each "
-        "row's manager/owner. The person's team = the ROWS where such a column "
-        "equals that person (filter it with case-insensitive LIKE '%name%'), NOT "
-        "the person's own row. Try EVERY hierarchy column (a person may appear in "
-        "more than one), and match names tolerantly (accents/spacing).\n"
-        "- Be a SINGLE statement (no multi-statement; no DDL).\n"
-        "- Be a SELECT (DuckDB-flavored)."
+        "- Use only the tables and columns listed above. Reference each table by its "
+        "**unqualified name** (the last segment of the qualified name).\n"
+        "- For every WHERE / GROUP BY / JOIN literal, COPY a value shown in the "
+        "'values:' list of that column VERBATIM (exact case + spelling). Do NOT invent "
+        "or translate filter literals. If the question's entity matches a value under a "
+        "DIFFERENT column than you expected, filter on the column that actually holds it "
+        "(see 'Resolved entities').\n"
+        "- For a year/period/time column whose values are strings (e.g. 'FY23'), filter "
+        "with the STRING form shown -- never an integer like 2023, and never use a numeric "
+        "measure column as the year axis.\n"
+        "- Aggregate measure columns; filter/group on dimension/time columns.\n"
+        "- NEVER emit a no-op query (e.g. `WHERE 1=0`, `SUM(CASE WHEN ... THEN 0 ELSE 0 END)`, "
+        "or a constant SELECT). If you cannot map a needed filter to a real value, widen or "
+        "omit that filter and lower your confidence rather than returning a placeholder.\n"
+        '- Quote any column name that isn\'t a plain identifier (e.g. `"2024-12-31"`, '
+        '`"P&L Line"`).\n'
+        "- Be a SINGLE SELECT statement (no multi-statement; no DDL)."
     )
     return "\n".join(out)
 
@@ -360,19 +418,29 @@ def _render_critic_prompt(
     error_message: str,
     grounded: Any,
     schema_inventory: list[Any] | None = None,
+    value_hints: list[str] | None = None,
 ) -> str:
     out: list[str] = []
     out.append("# User question")
     out.append(question.strip())
     out.append("")
-    out.append("# Failing SQL")
+    out.append("# Previous SQL (needs repair)")
     out.append("```sql")
     out.append(failing_sql.strip())
     out.append("```")
     out.append("")
-    out.append("# DuckDB execution error")
+    out.append("# Problem")
     out.append(error_message.strip())
     out.append("")
+
+    # The actual stored values of the columns the failing query filtered on --
+    # so the critic replaces wrong literals with real ones instead of guessing
+    # again (this is what fixes the silent 0-row failures).
+    if value_hints:
+        out.append("# Column value catalogue (verify EVERY filter literal against these)")
+        for line in value_hints:
+            out.append(f"- {line}")
+        out.append("")
 
     # Full dataset catalogue -- the critic's most common failure mode
     # is rewriting one hallucinated table name into another (e.g.
@@ -610,26 +678,28 @@ class QueryService:
         grounded = getattr(grounded_run, "output", grounded_run)
 
         # ------------------------------------------------------------------
-        # 4. SQL generation (semantic-layer fast path OR synthesis)
+        # 4. Value catalogue + entity / group resolution (G1/G3 + round-2 #1/#2)
+        # ------------------------------------------------------------------
+        col_catalog = bundle.get("column_catalog") or []
+        resolution = await self._resolve_entities(dataset_id, question, col_catalog, bundle)
+        resolved_entities = resolution["entities"]
+        resolved_groups = resolution["groups"]
+        hierarchy_intent = resolution["hierarchy_intent"]
+
+        # ------------------------------------------------------------------
+        # 5. SQL generation (semantic-layer fast path OR synthesis)
         # ------------------------------------------------------------------
         chosen_sql: str
         candidates_json: list = []
+        candidate_sqls: list[str] = []
 
         if grounded.path == "SEMANTIC_LAYER" and grounded.metrics:
-            # Fetch + bind the published metric's compiled SQL. When found, the
-            # bound SQL goes straight to the AST firewall + executor — the
-            # GenerationAgent is NOT invoked — and the metric version is pinned
-            # into the persisted query record for reproducibility.
             metric_name = grounded.metrics[0].metric_name
             compiled, metric_version = await self._compiled_metric_sql(
-                metric_name,
-                dataset_id,
-                tenant_id=tenant_id,
-                workspace_id=workspace_id,
-                extra_filter=getattr(grounded.metrics[0], "extra_filter", None),
+                metric_name, dataset_id, tenant_id=tenant_id, workspace_id=workspace_id
             )
             if compiled:
-                chosen_sql = compiled
+                candidate_sqls = [compiled]
                 candidates_json = [
                     {
                         "sql": compiled,
@@ -639,185 +709,177 @@ class QueryService:
                         "metric_version": metric_version,
                     }
                 ]
-            else:
-                # Fall through to synthesis if no compiled SQL found
-                gen_prompt = _render_generation_prompt(
-                    question,
-                    grounded,
-                    starting_point_sql,
-                    schema_inventory=bundle.get("schema_inventory"),
-                )
-                gen_run = await self._generation_agent.run(gen_prompt)
-                gen_out = getattr(gen_run, "output", gen_run)
-                candidates_json = [c.model_dump() for c in gen_out.candidates]
-                chosen_sql = gen_out.candidates[0].sql
-        else:
+        if not candidate_sqls:
             gen_prompt = _render_generation_prompt(
                 question,
                 grounded,
                 starting_point_sql,
                 schema_inventory=bundle.get("schema_inventory"),
+                col_catalog=col_catalog,
+                resolved_entities=resolved_entities,
+                resolved_groups=resolved_groups,
+                hierarchy_intent=hierarchy_intent,
+                examples=bundle.get("examples"),
+                n_candidates=self._settings.generation_candidates,
+                max_columns=self._settings.value_catalog_max_columns,
+                char_budget=self._settings.value_catalog_char_budget,
             )
             gen_run = await self._generation_agent.run(gen_prompt)
             gen_out = getattr(gen_run, "output", gen_run)
             candidates_json = [c.model_dump() for c in gen_out.candidates]
-            # Don't blindly take the highest-confidence candidate: probe them
-            # (DuckDB only, no extra LLM) and prefer one that passes the firewall
-            # and returns non-empty, non-degenerate rows. Empty candidate list
-            # degrades to "" (FAILED) instead of raising an IndexError.
-            chosen_sql = await self._select_best_candidate(
-                [c.sql for c in gen_out.candidates if c.sql],
-                dataset_id=dataset_id,
-                scopes=scopes,
-                dataset_allowlist=dataset_allowlist,
-                pins=prior_snapshot_pins,
-            )
+            candidate_sqls = [c.sql for c in gen_out.candidates if getattr(c, "sql", None)]
+        if not candidate_sqls:
+            candidate_sqls = [""]
 
         # ------------------------------------------------------------------
-        # 5. AST classify + scope guard
+        # 6. Candidate selection by EXECUTION (G5): drop degenerate, prefer a
+        #    candidate that runs AND returns rows. Each candidate passes the
+        #    scope guard + synthesis function firewall (G8) + table guard (G6).
         # ------------------------------------------------------------------
-        ast = self._ast_classifier.classify(chosen_sql)
-        table_kinds = await self._table_kinds_by_name(list(ast.table_refs), dataset_id)
-        dataset_of_table = await self._dataset_of_tables(list(ast.table_refs), dataset_id)
+        ordered = [s for s in candidate_sqls if not value_anchoring.is_degenerate_sql(s)] or candidate_sqls
+        select_pool = ordered if self._settings.candidate_exec_selection else ordered[:1]
 
-        try:
-            self._scope_guard.check(
-                classification=ast,
-                scopes=scopes,
-                table_kinds_by_name=table_kinds,
-                dataset_allowlist=dataset_allowlist,
-                dataset_of_table=dataset_of_table,
-            )
-        except ScopeGuardError as exc:
-            elapsed = (time.monotonic_ns() // 1_000_000) - start_ms
-            query_id = await self._query_repo.create_query(
-                tenant_id=tenant_id,
-                workspace_id=workspace_id,
-                dataset_id=dataset_id,
-                question=question,
-                semantic_path_taken=grounded.path,
-                candidates_json=candidates_json,
-                chosen_candidate_index=0,
-                executed_sql=chosen_sql,
-                ast_classification=ast.classification,
-                execution_status="REJECTED_BY_FIREWALL",
-                retries=0,
-                row_count=None,
-                elapsed_ms=elapsed,
-                clarification_emitted=False,
-                clarification_json=None,
-                pii_findings_json=None,
-                error_json={"scope_error": str(exc)},
-            )
-            return AnswerResult(
-                query_id=query_id,
-                sql=chosen_sql,
-                execution_status="REJECTED_BY_FIREWALL",
-                preview=None,
-                row_count=None,
-                truncated=False,
-                elapsed_ms=elapsed,
-                chart_hint=None,
-                explanation=None,
-                clarification=self._clarification(grounded),
-                grounded_summary=self._grounded_summary(grounded),
-            )
+        best: tuple[str, Any, Any] | None = None
+        scope_reject: ScopeGuardError | None = None
+        firewall_reject: str | None = None
+        for cand in select_pool:
+            run = await self._run_sql_once(cand, dataset_id, scopes, dataset_allowlist, bundle)
+            if run["status"] == "scope":
+                scope_reject = run["error"]
+                continue
+            if run["status"] == "firewall":
+                firewall_reject = run["error"]
+                continue
+            if best is None:
+                best = (cand, run["result"], run["ast"])
+            res = run["result"]
+            if (
+                isinstance(res, ExecutionResult)
+                and res.row_count > 0
+                and not value_anchoring.is_degenerate_sql(cand)
+            ):
+                best = (cand, res, run["ast"])
+                break
 
-        # ------------------------------------------------------------------
-        # 6. Resolve parquet paths + execute (with critic loop)
-        # ------------------------------------------------------------------
-        # Pre-execution guard: detect SQL that references a table not in
-        # the dataset. ``_table_kinds_by_name`` returns ONLY matching
-        # rows -- a missing table simply has no key in the dict. So
-        # the bad-tables check is set-difference against
-        # ``ast.table_refs``, not a None-value sweep.
-        #
-        # The LLM occasionally hallucinates ``balance_sheet`` /
-        # ``income_statement`` / ``financials.*`` despite the prompt
-        # rules; rather than waiting for DuckDB to emit a generic
-        # ``Catalog Error: Table does not exist``, we synthesise a
-        # sharp ExecutionError that the existing critic loop picks
-        # up. The critic prompt receives the full dataset catalogue
-        # so the rewrite has the real table names in scope.
-        ref_set = {t for t in ast.table_refs if t}
-        bad_tables = sorted(ref_set - set(table_kinds.keys()))
-        if bad_tables:
-            real_tables = sorted(table_kinds.keys()) + [
-                (getattr(h, "metadata", {}) or {}).get("qualified_name", "").rsplit(".", 1)[-1]
-                for h in (bundle.get("schema_inventory") or [])
-                if (getattr(h, "metadata", {}) or {}).get("kind") == "TABLE"
-            ]
-            real_tables = [t for t in dict.fromkeys(real_tables) if t]
-            result: ExecutionResult | ExecutionError = ExecutionError(
-                message=(
-                    f"Table(s) {bad_tables!r} do not exist in this dataset. "
-                    f"Pick ONLY from this catalogue (and translate as needed: "
-                    f"Spanish `Activos` = Assets, `Cuenta de Pérdidas y Ganancias` "
-                    f"= Profit & Loss): {real_tables[:80]!r}."
+        if best is None:
+            # Nothing executed. If the only blockers were scope/firewall, reject.
+            if scope_reject is not None or firewall_reject is not None:
+                reason = str(scope_reject) if scope_reject is not None else (firewall_reject or "")
+                chosen_sql = ordered[0]
+                ast = self._ast_classifier.classify(chosen_sql)
+                elapsed = (time.monotonic_ns() // 1_000_000) - start_ms
+                query_id = await self._query_repo.create_query(
+                    tenant_id=tenant_id,
+                    workspace_id=workspace_id,
+                    dataset_id=dataset_id,
+                    question=question,
+                    semantic_path_taken=grounded.path,
+                    candidates_json=candidates_json,
+                    chosen_candidate_index=0,
+                    executed_sql=chosen_sql,
+                    ast_classification=ast.classification,
+                    execution_status="REJECTED_BY_FIREWALL",
+                    retries=0,
+                    row_count=None,
+                    elapsed_ms=elapsed,
+                    clarification_emitted=False,
+                    clarification_json=None,
+                    pii_findings_json=None,
+                    error_json={"firewall_error": reason},
                 )
+                return AnswerResult(
+                    query_id=query_id,
+                    sql=chosen_sql,
+                    execution_status="REJECTED_BY_FIREWALL",
+                    preview=None,
+                    row_count=None,
+                    truncated=False,
+                    elapsed_ms=elapsed,
+                    chart_hint=None,
+                    explanation=None,
+                    clarification=self._clarification(grounded),
+                    grounded_summary=self._grounded_summary(grounded),
+                )
+            chosen_sql = ordered[0]
+            best = (
+                chosen_sql,
+                ExecutionError(message="generation produced no usable SQL"),
+                self._ast_classifier.classify(chosen_sql),
             )
-        else:
-            attached = await self._table_resolver.resolve(
-                dataset_id,
-                list(ast.table_refs),
-                pins=prior_snapshot_pins,
-            )
-            result = await self._executor.execute(chosen_sql, attached)
+
+        chosen_sql, result, ast = best
+        chosen_index = candidate_sqls.index(chosen_sql) if chosen_sql in candidate_sqls else 0
         retries = 0
 
-        while isinstance(result, ExecutionError) and retries < self._settings.max_refine_retries:
+        def _is_good(r, s) -> bool:
+            return (
+                isinstance(r, ExecutionResult)
+                and r.row_count > 0
+                and not value_anchoring.is_degenerate_sql(s)
+            )
+
+        # round-2 #4: remember the best correct result so an ADVISORY repair can
+        # never replace a correct answer with a worse one.
+        best_ok = (chosen_sql, result, ast) if _is_good(result, chosen_sql) else None
+
+        # round-2 #5B/#7: when the result is already OK, an advisory check may still
+        # ask the critic to reconsider (signed-measure double-subtraction; an IN-list
+        # that under-covers a value group). It rides the non-destructive loop below,
+        # so it can only ever improve the answer or be ignored.
+        adv_msg = None
+        if _is_good(result, chosen_sql):
+            adv_msg = await self._advisory_repair(chosen_sql, ast, col_catalog, question, dataset_id, bundle)
+
+        # ------------------------------------------------------------------
+        # 7. Repair loop: HARD repair (error / degenerate / 0-row-with-filter) OR an
+        #    ADVISORY reconsideration. The critic receives the REAL stored values of
+        #    the filtered columns so it replaces wrong literals/columns/signs instead
+        #    of guessing again, and MAY keep the original SQL if it is already correct.
+        # ------------------------------------------------------------------
+        while (
+            self._needs_repair(result, chosen_sql) or adv_msg
+        ) and retries < self._settings.max_refine_retries:
+            if self._needs_repair(result, chosen_sql):
+                critic_msg = self._repair_message(result, chosen_sql, ast, col_catalog)
+            else:
+                critic_msg = adv_msg
+            value_hints = self._build_value_hints(chosen_sql, col_catalog, ast)
             critic_prompt = _render_critic_prompt(
                 question=question,
                 failing_sql=chosen_sql,
-                error_message=result.message,
+                error_message=critic_msg,
                 grounded=grounded,
                 schema_inventory=bundle.get("schema_inventory"),
+                value_hints=value_hints,
             )
             refined_run = await self._critic_agent.run(critic_prompt)
             refined = getattr(refined_run, "output", refined_run)
-            chosen_sql = refined.sql
-            ast = self._ast_classifier.classify(chosen_sql)
-            table_kinds = await self._table_kinds_by_name(list(ast.table_refs), dataset_id)
-            dataset_of_table = await self._dataset_of_tables(list(ast.table_refs), dataset_id)
-            try:
-                self._scope_guard.check(
-                    classification=ast,
-                    scopes=scopes,
-                    table_kinds_by_name=table_kinds,
-                    dataset_allowlist=dataset_allowlist,
-                    dataset_of_table=dataset_of_table,
-                )
-            except ScopeGuardError:
+            new_sql = getattr(refined, "sql", None) or chosen_sql
+            if new_sql.strip() == chosen_sql.strip():
+                break  # critic kept the SQL -> accept it as already correct
+            if value_anchoring.is_degenerate_sql(new_sql):
+                break  # never adopt a placeholder; best_ok (if any) is restored below
+            chosen_sql = new_sql
+            run = await self._run_sql_once(chosen_sql, dataset_id, scopes, dataset_allowlist, bundle)
+            if run["status"] in ("scope", "firewall"):
                 break
-            # Re-apply the unknown-table guard on the refined SQL too --
-            # otherwise the critic could hallucinate a different
-            # non-existent table and DuckDB would catch it generically.
-            ref_set = {t for t in ast.table_refs if t}
-            bad_tables = sorted(ref_set - set(table_kinds.keys()))
-            if bad_tables:
-                real_tables = sorted(table_kinds.keys()) + [
-                    (getattr(h, "metadata", {}) or {}).get("qualified_name", "").rsplit(".", 1)[-1]
-                    for h in (bundle.get("schema_inventory") or [])
-                    if (getattr(h, "metadata", {}) or {}).get("kind") == "TABLE"
-                ]
-                real_tables = [t for t in dict.fromkeys(real_tables) if t]
-                result = ExecutionError(
-                    message=(
-                        f"Refined SQL still references missing table(s) "
-                        f"{bad_tables!r}. The dataset only contains: "
-                        f"{real_tables[:80]!r}."
-                    )
-                )
-                retries += 1
-                continue
-            attached = await self._table_resolver.resolve(
-                dataset_id, list(ast.table_refs), pins=prior_snapshot_pins
-            )
-            result = await self._executor.execute(chosen_sql, attached)
+            result = run["result"]
+            ast = run["ast"]
             retries += 1
+            if _is_good(result, chosen_sql):
+                best_ok = (chosen_sql, result, ast)
+                adv_msg = await self._advisory_repair(
+                    chosen_sql, ast, col_catalog, question, dataset_id, bundle
+                )
+            else:
+                adv_msg = None
+
+        # round-2 #4: if repair degraded a previously-correct answer, restore it.
+        if best_ok is not None and not _is_good(result, chosen_sql):
+            chosen_sql, result, ast = best_ok
 
         # ------------------------------------------------------------------
-        # 7. Determine execution status
+        # 8. Determine execution status
         # ------------------------------------------------------------------
         if isinstance(result, ExecutionResult) and retries == 0:
             execution_status: str = "OK"
@@ -841,27 +903,10 @@ class QueryService:
             explanation_obj = getattr(explanation_run, "output", explanation_run)
 
         # ------------------------------------------------------------------
-        # 9. Clarification frame (emitted alongside answer when confidence is low)
+        # 9. Clarification frame (low confidence, OR confident-but-still-empty)
         # ------------------------------------------------------------------
-        clarification = self._clarification(grounded)
-        # A syntactically-valid query that returns 0 rows (or a single
-        # all-NULL/zero aggregate) is suspicious: the usual cause is a
-        # filter literal that doesn't match how the data is encoded. Rather
-        # than report it as a confident empty answer, surface a clarification
-        # and downgrade confidence so the caller knows to verify.
-        suspicious_empty = isinstance(result, ExecutionResult) and self._is_suspicious_empty(result)
-        if clarification is None and suspicious_empty:
-            from flyquery.interfaces.query import ClarificationFrame
-
-            clarification = ClarificationFrame(
-                questions=[
-                    "The query executed successfully but returned no matching data "
-                    "(0 rows / empty result). The filter values may not match how the "
-                    "data is encoded -- please verify the exact column values (e.g. "
-                    "category labels or period format) or rephrase the question."
-                ],
-                reasons=[],
-            )
+        final_row_count = result.row_count if isinstance(result, ExecutionResult) else None
+        clarification = self._clarification(grounded, row_count=final_row_count)
         clarification_emitted = clarification is not None
 
         # ------------------------------------------------------------------
@@ -879,7 +924,7 @@ class QueryService:
             question=question,
             semantic_path_taken=grounded.path,
             candidates_json=candidates_json,
-            chosen_candidate_index=0,
+            chosen_candidate_index=chosen_index,
             executed_sql=chosen_sql,
             ast_classification=ast.classification,
             execution_status=execution_status,
@@ -911,12 +956,7 @@ class QueryService:
         # ------------------------------------------------------------------
         # 12. Auto-learn (only on first-shot OK + no PII + no clarification)
         # ------------------------------------------------------------------
-        if (
-            execution_status == "OK"
-            and isinstance(result, ExecutionResult)
-            and result.row_count > 0
-            and not clarification_emitted
-        ):
+        if execution_status == "OK" and isinstance(result, ExecutionResult) and not clarification_emitted:
             await self._auto_learner.maybe_propose(
                 tenant_id=tenant_id,
                 workspace_id=workspace_id,
@@ -926,21 +966,12 @@ class QueryService:
                 retries=retries,
                 pii_findings=[],
                 query_id=query_id,
+                row_count=result.row_count,
             )
 
         # ------------------------------------------------------------------
         # 13. Persist conversation turn (Phase E drill-down)
         # ------------------------------------------------------------------
-        # THIS turn's snapshot pins: the snapshot each resolved table was
-        # answered against. Tables already pinned by an earlier turn keep
-        # their pin (prior wins); newly-referenced tables pin to current.
-        # Persisting THIS turn's pins (not the prior turn's) is what makes
-        # drill-down reproducible across a mid-conversation re-ingest.
-        this_turn_pins: dict[str, str] = {
-            **(await self._table_resolver.current_snapshots(dataset_id, list(ast.table_refs))),
-            **prior_snapshot_pins,
-        }
-
         if (
             conversation_id is not None
             and self._conversation_service is not None
@@ -954,7 +985,7 @@ class QueryService:
                 executed_sql=chosen_sql,
                 summary=explanation_obj.summary if explanation_obj else None,
                 table_qnames_json=list(ast.table_refs),
-                snapshot_pins_json=this_turn_pins,
+                snapshot_pins_json=prior_snapshot_pins,
                 elapsed_ms=elapsed,
             )
 
@@ -969,84 +1000,12 @@ class QueryService:
             chart_hint=explanation_obj.chart_hint if explanation_obj else None,
             explanation=explanation_obj.summary if explanation_obj else None,
             clarification=clarification,
-            grounded_summary=self._grounded_summary(
-                grounded, confidence_cap=0.4 if suspicious_empty else None
-            ),
-            snapshot_pins=this_turn_pins,
+            grounded_summary=self._grounded_summary(grounded),
         )
 
     # ------------------------------------------------------------------
     # Internal helpers
     # ------------------------------------------------------------------
-
-    @staticmethod
-    def _is_suspicious_empty(result) -> bool:
-        """True when an executed result is empty/degenerate enough to doubt.
-
-        Catches the canonical wrong-literal symptom: a valid query that
-        matched nothing (0 rows), or a single-row single-column aggregate
-        whose only value is NULL / 0 / 0.0 (e.g. a SUM/CASE pivot where
-        every branch missed).
-        """
-        if result.row_count == 0:
-            return True
-        rows = getattr(result, "rows", None) or []
-        if result.row_count == 1 and len(rows) == 1 and isinstance(rows[0], dict) and len(rows[0]) == 1:
-            (only_value,) = rows[0].values()
-            return only_value is None or only_value == 0
-        return False
-
-    async def _select_best_candidate(
-        self,
-        candidate_sqls: list[str],
-        *,
-        dataset_id: uuid.UUID,
-        scopes: set[str],
-        dataset_allowlist: set[uuid.UUID] | None,
-        pins: dict[str, str],
-    ) -> str:
-        """Pick the candidate SQL that best answers the question.
-
-        Generation emits N candidates ranked by self-reported confidence, but
-        the top one sometimes filters on the wrong column (or under-searches a
-        set of hierarchy columns) and returns 0 rows while a lower-ranked
-        candidate is correct. So we probe the candidates and prefer the first
-        that (a) passes the firewall, (b) executes, and (c) returns non-empty,
-        non-degenerate rows. This is DuckDB-only -- NO extra LLM calls -- and
-        general: it just prefers a candidate that actually returns data.
-
-        Falls back to the first candidate that executed at all, else the first
-        candidate (so the existing scope/critic handling downstream is
-        unchanged when nothing is clearly better).
-        """
-        if len(candidate_sqls) <= 1:
-            return candidate_sqls[0] if candidate_sqls else ""
-
-        first_executed: str | None = None
-        for sql in candidate_sqls:
-            ast = self._ast_classifier.classify(sql)
-            table_kinds = await self._table_kinds_by_name(list(ast.table_refs), dataset_id)
-            dataset_of_table = await self._dataset_of_tables(list(ast.table_refs), dataset_id)
-            try:
-                self._scope_guard.check(
-                    classification=ast,
-                    scopes=scopes,
-                    table_kinds_by_name=table_kinds,
-                    dataset_allowlist=dataset_allowlist,
-                    dataset_of_table=dataset_of_table,
-                )
-            except ScopeGuardError:
-                continue  # unsafe candidate -- skip
-            if sorted({t for t in ast.table_refs if t} - set(table_kinds.keys())):
-                continue  # references a table not in the dataset -- skip
-            attached = await self._table_resolver.resolve(dataset_id, list(ast.table_refs), pins=pins)
-            result = await self._executor.execute(sql, attached)
-            if isinstance(result, ExecutionResult):
-                if not self._is_suspicious_empty(result):
-                    return sql  # passes firewall + returns real rows -- best
-                if first_executed is None:
-                    first_executed = sql  # remember first successful-but-empty
-        return first_executed or candidate_sqls[0]
 
     async def _table_kinds_by_name(
         self,
@@ -1088,19 +1047,11 @@ class QueryService:
         *,
         tenant_id: str,
         workspace_id: uuid.UUID,
-        extra_filter: str | None = None,
     ) -> tuple[str | None, int | None]:
         """Fetch + bind the compiled SQL for a PUBLISHED metric.
 
         Returns ``(bound_sql, current_version)`` so the version can be pinned
         in the query record, or ``(None, None)`` when no usable metric is found.
-
-        ``extra_filter`` is the per-question slice the grounding agent derived
-        (e.g. ``Market = 'Brazil' AND Year = 'FY24'``) to be appended to the
-        metric's WHERE via the compiler's ``{extra_filter_clause}`` slot. It is
-        an LLM-supplied predicate, so it is re-run through the publish-time
-        firewall before binding; an unsafe filter is dropped (the metric still
-        returns its unfiltered value) rather than executed.
         """
         if self._semantic_repo is None:
             return None, None
@@ -1113,55 +1064,438 @@ class QueryService:
             return None, None
         if not row or not row.get("compiled_sql_template"):
             return None, None
-
-        safe_filter = self._firewall_extra_filter(row["compiled_sql_template"], extra_filter)
-        bound = SemanticCompiler.bind(row["compiled_sql_template"], extra_filter=safe_filter)
+        bound = SemanticCompiler.bind(row["compiled_sql_template"])
         return bound, row.get("current_version")
 
-    @staticmethod
-    def _firewall_extra_filter(template: str, extra_filter: str | None) -> str | None:
-        """Validate an LLM-supplied metric filter via the publish-time firewall.
-
-        Returns the filter when the bound SQL passes ``assert_safe_template``,
-        else ``None`` (filter dropped). Defensive: any firewall/parse failure
-        also drops the filter rather than risking an unsafe predicate.
-        """
-        if not extra_filter:
-            return None
-        try:
-            from flyquery.core.services.semantic.firewall import assert_safe_template
-
-            probe = SemanticCompiler.bind(template, extra_filter=extra_filter)
-            assert_safe_template(probe)
-            return extra_filter
-        except Exception as exc:  # noqa: BLE001 -- any failure → drop the filter
-            logger.warning("dropping unsafe semantic extra_filter %r: %s", extra_filter, exc)
-            return None
-
-    def _clarification(self, grounded) -> Any:
-        """Build a ClarificationFrame if grounding confidence is low."""
+    def _clarification(self, grounded, *, row_count: int | None = None) -> Any:
+        """Build a ClarificationFrame if grounding confidence is low or the
+        (confident) query still returned 0 rows (G7 -- couple clarification to
+        the observed empty result instead of confidence alone)."""
         from flyquery.interfaces.query import ClarificationFrame
 
         if grounded.confidence < self._settings.grounding_min_confidence and grounded.missing_info:
+            return ClarificationFrame(questions=grounded.missing_info, reasons=[])
+        if row_count == 0:
             return ClarificationFrame(
-                questions=grounded.missing_info,
+                questions=[
+                    "The query executed but matched 0 rows -- a filter value, period, "
+                    "or entity may not match how it is stored in the data. Please confirm "
+                    "the exact value you mean."
+                ],
                 reasons=[],
             )
         return None
 
-    def _grounded_summary(self, grounded, confidence_cap: float | None = None) -> dict:
-        """Convert GroundedContext to a summary dict for the response.
-
-        ``confidence_cap`` lets the caller lower the reported confidence when
-        the executed result is suspicious (e.g. 0 rows from a wrong literal),
-        so a confidently-wrong empty answer is not surfaced at high confidence.
-        """
-        confidence = grounded.confidence
-        if confidence_cap is not None:
-            confidence = min(confidence, confidence_cap)
+    def _grounded_summary(self, grounded) -> dict:
+        """Convert GroundedContext to a summary dict for the response."""
         return {
             "path": grounded.path,
-            "confidence": confidence,
+            "confidence": grounded.confidence,
             "table_count": len(grounded.tables),
             "missing_info": grounded.missing_info,
         }
+
+    # ------------------------------------------------------------------
+    # Value-anchoring / repair helpers (G2/G3/G5/G6/G8)
+    # ------------------------------------------------------------------
+
+    async def _run_sql_once(
+        self,
+        sql: str,
+        dataset_id: uuid.UUID,
+        scopes: set[str],
+        dataset_allowlist: set[str] | None,
+        bundle: dict,
+    ) -> dict:
+        """Classify, guard, and execute one candidate SQL.
+
+        Returns ``{status, result, ast, error}`` where status is one of
+        ``ok`` / ``empty`` / ``error`` / ``scope`` / ``firewall``.
+        """
+        ast = self._ast_classifier.classify(sql)
+
+        # G8: block filesystem/exfiltration table-functions on the synthesis path.
+        if self._settings.synthesis_function_firewall:
+            dangerous = value_anchoring.find_dangerous_functions(sql)
+            if dangerous:
+                return {
+                    "status": "firewall",
+                    "result": None,
+                    "ast": ast,
+                    "error": f"disallowed function(s) in generated SQL: {sorted(dangerous)}",
+                }
+
+        table_kinds = await self._table_kinds_by_name(list(ast.table_refs), dataset_id)
+        dataset_of_table = await self._dataset_of_tables(list(ast.table_refs), dataset_id)
+        try:
+            self._scope_guard.check(
+                classification=ast,
+                scopes=scopes,
+                table_kinds_by_name=table_kinds,
+                dataset_allowlist=dataset_allowlist,
+                dataset_of_table=dataset_of_table,
+            )
+        except ScopeGuardError as exc:
+            return {"status": "scope", "result": None, "ast": ast, "error": exc}
+
+        # G6: CTE-aware unknown-table guard. CTE / derived-table aliases are NOT
+        # real tables, so subtract them before the set-difference -- otherwise a
+        # valid `WITH x AS (...) SELECT ... FROM x` is wrongly rejected.
+        synthetic = {n.lower() for n in value_anchoring.cte_and_derived_names(sql)}
+        ref_set = {t for t in ast.table_refs if t and t.lower() not in synthetic}
+        bad_tables = sorted(ref_set - set(table_kinds.keys()))
+        if bad_tables:
+            real_tables = sorted(table_kinds.keys()) + [
+                (getattr(h, "metadata", {}) or {}).get("qualified_name", "").rsplit(".", 1)[-1]
+                for h in (bundle.get("schema_inventory") or [])
+                if (getattr(h, "metadata", {}) or {}).get("kind") == "TABLE"
+            ]
+            real_tables = [t for t in dict.fromkeys(real_tables) if t]
+            return {
+                "status": "error",
+                "result": ExecutionError(
+                    message=(
+                        f"Table(s) {bad_tables!r} do not exist in this dataset. "
+                        f"Use ONLY these tables: {real_tables[:80]!r}."
+                    )
+                ),
+                "ast": ast,
+                "error": None,
+            }
+
+        attached = await self._table_resolver.resolve(dataset_id, list(ast.table_refs))
+        result = await self._executor.execute(sql, attached)
+        if isinstance(result, ExecutionResult):
+            status = "ok" if result.row_count > 0 else "empty"
+        else:
+            status = "error"
+        return {"status": status, "result": result, "ast": ast, "error": None}
+
+    def _needs_repair(self, result, sql: str) -> bool:
+        """A query needs repair if it errored, is degenerate, or ran to 0 rows
+        while filtering on equality/IN literals (G2/G5)."""
+        if isinstance(result, ExecutionError):
+            return True
+        if value_anchoring.is_degenerate_sql(sql):
+            return True
+        return bool(
+            self._settings.zero_row_repair_enabled
+            and isinstance(result, ExecutionResult)
+            and result.row_count == 0
+            and value_anchoring.equality_predicate_columns(sql)
+        )
+
+    def _repair_message(self, result, sql: str, ast, col_catalog: list[dict]) -> str:
+        unknown = self._unknown_columns(ast, col_catalog, sql)
+        suffix = ""
+        if unknown:
+            names = sorted({c.get("qualified_name", "").rsplit(".", 1)[-1] for c in col_catalog})
+            suffix = (
+                f" Also: column(s) {unknown!r} are not real columns -- use only these "
+                f"columns: {names[:80]!r}."
+            )
+        if isinstance(result, ExecutionError):
+            return result.message + suffix
+        if value_anchoring.is_degenerate_sql(sql):
+            return (
+                "The previous SQL is a no-op (constant/placeholder, e.g. WHERE 1=0 or "
+                "SUM(CASE..THEN 0 ELSE 0)). Rewrite it to actually compute the answer "
+                "using real columns and literal values from the catalogue below." + suffix
+            )
+        return (
+            "The previous SQL executed but returned 0 ROWS. One or more filter literals "
+            "or filtered columns is wrong. Replace each WHERE/IN literal with a value that "
+            "actually appears in that column (see the value catalogue). If the entity belongs "
+            "to a different column, filter THAT column instead." + suffix
+        )
+
+    def _build_value_hints(self, sql: str, col_catalog: list[dict], ast) -> list[str]:
+        """Render value-catalogue lines for the columns the failing SQL touched."""
+        wanted: set[str] = {c.lower() for c in value_anchoring.equality_predicate_columns(sql)}
+        wanted |= {c.lower() for c in (getattr(ast, "column_refs", ()) or ())}
+        hints: list[str] = []
+        seen: set[str] = set()
+        for c in col_catalog:
+            tail = c["qualified_name"].rsplit(".", 1)[-1].lower()
+            if tail in wanted and tail not in seen:
+                seen.add(tail)
+                hints.append(value_anchoring.render_catalog_from_meta(c["qualified_name"], c))
+        return hints[:40]
+
+    def _unknown_columns(self, ast, col_catalog: list[dict], sql: str) -> list[str]:
+        if not col_catalog:
+            return []
+        known = {c["qualified_name"].rsplit(".", 1)[-1].lower() for c in col_catalog}
+        aliases = value_anchoring.select_aliases(sql)
+        out: list[str] = []
+        for c in getattr(ast, "column_refs", ()) or ():
+            cl = c.lower()
+            if cl not in known and cl not in aliases and cl != "*":
+                out.append(c)
+        return out[:20]
+
+    async def _advisory_repair(self, sql, ast, col_catalog, question, dataset_id, bundle) -> str | None:
+        """Non-error reasons to ask the critic to reconsider an already-OK result.
+
+        Rides the non-destructive loop (round-2 #4): under-covered value groups (#7)
+        and signed-measure double-subtraction (#5B). Returns a combined message or None.
+        """
+        reasons: list[str] = []
+        if self._settings.group_coverage_repair_enabled:
+            lits = value_anchoring.extract_question_literals(question)
+            for g in value_anchoring.group_coverage_gaps(sql, col_catalog, lits):
+                col = g["column"].rsplit(".", 1)[-1]
+                reasons.append(
+                    f"The filter on `{col}` lists only SOME of the values the question's group "
+                    f"covers; it is MISSING {g['missing']!r}. Include ALL of them (IN-list) or use "
+                    f"an anchored LIKE; keep the original only if the exclusion is genuinely intended."
+                )
+        if self._settings.signed_measure_repair_enabled:
+            hint = await self._signed_measure_hint(sql, ast, col_catalog, dataset_id)
+            if hint:
+                reasons.append(hint)
+        return " ".join(reasons) if reasons else None
+
+    async def _signed_measure_hint(self, sql, ast, col_catalog, dataset_id) -> str | None:
+        """Probe whether the SQL subtracts a term whose SIGNED measure is already
+        stored negative (so subtracting double-counts the sign). Best-effort (#5B)."""
+        try:
+            mixed = {
+                c["qualified_name"].rsplit(".", 1)[-1].lower()
+                for c in col_catalog
+                if c.get("mixed_sign") and value_anchoring.semantic_role(c.get("semantic_type")) == "measure"
+            }
+            if not mixed:
+                return None
+            terms = value_anchoring.signed_subtraction_terms(sql)
+            subtracted = [
+                t
+                for t in terms
+                if t["sign"] < 0 and t["measure_col"].lower() in mixed and t["dim_col"] and t["literals"]
+            ]
+            if not subtracted:
+                return None
+            tables = [t for t in ast.table_refs if t]
+            if not tables:
+                return None
+            attached = await self._table_resolver.resolve(dataset_id, tables)
+            if not attached:
+                return None
+            import asyncio
+
+            offenders = await asyncio.to_thread(_probe_signed_terms, attached, subtracted)
+            if not offenders:
+                return None
+            parts = "; ".join(f"{o['dim']} IN {o['literals']} sums to {o['sum']:.0f}" for o in offenders[:6])
+            # build the corrected single-signed-sum pattern from ALL the formula's
+            # terms (the generic fix: the data already carries the sign).
+            all_terms = [
+                t for t in terms if t["measure_col"].lower() in mixed and t["dim_col"] and t["literals"]
+            ]
+            allowed = sorted({lit for t in all_terms for lit in t["literals"]})
+            dim = all_terms[0]["dim_col"]
+            meas = all_terms[0]["measure_col"]
+            lits_sql = ", ".join("'" + lit.replace("'", "''") + "'" for lit in allowed)
+            return (
+                f"SIGN ERROR (must fix): this formula SUBTRACTS terms whose measure is ALREADY STORED "
+                f"NEGATIVE ({parts}). Subtracting an already-negative value double-counts the sign and "
+                f"inflates the result above total revenue. The data already carries the economic sign, so "
+                f"REWRITE the whole +/- expression as ONE signed sum over all its line-items: "
+                f'SUM(CASE WHEN "{dim}" IN ({lits_sql}) THEN "{meas}" ELSE 0 END) -- keep the original '
+                f"WHERE filters and any GROUP BY. Do NOT keep the subtraction chain."
+            )
+        except Exception as exc:  # noqa: BLE001 - best-effort
+            logger.debug("signed-measure probe failed: %s", exc)
+            return None
+
+    async def _resolve_entities(
+        self,
+        dataset_id: uuid.UUID,
+        question: str,
+        col_catalog: list[dict],
+        bundle: dict,
+    ) -> dict:
+        """Map question literals to the columns that actually store them (G3).
+
+        First via the low-cardinality value catalogue (cheap), then -- for
+        unresolved entity-looking literals (e.g. person names in a high-card
+        column) -- via a bounded live DuckDB scan of the dataset's tables.
+        """
+        empty = {"entities": [], "groups": [], "hierarchy_intent": False}
+        if not self._settings.entity_resolution_enabled:
+            return empty
+        literals = value_anchoring.extract_question_literals(question)
+        if not literals:
+            return empty
+
+        hierarchy = value_anchoring.relationship_intent(question)
+        # round-2 #1: a term that umbrellas >=2 values of one column -> a group.
+        groups: list[dict] = []
+        if self._settings.group_resolution_enabled:
+            groups = value_anchoring.resolve_value_groups(literals, col_catalog)
+        group_keys = {(g["literal"].lower(), g["column"]) for g in groups}
+        group_lits = {g["literal"].lower() for g in groups}
+
+        resolved = value_anchoring.resolve_from_catalog(literals, col_catalog)
+        # a single value superseded by a group is dropped (the group is the truth)
+        resolved = [r for r in resolved if (r["literal"].lower(), r["column"]) not in group_keys]
+        done = {r["literal"].lower() for r in resolved} | group_lits
+        remaining = [lit for lit in literals if lit.lower() not in done][
+            : self._settings.entity_resolution_max_literals
+        ]
+        if remaining:
+            try:
+                resolved += await self._scan_columns_for_values(dataset_id, remaining, bundle)
+            except Exception as exc:  # noqa: BLE001 - resolution is best-effort
+                logger.warning("live entity resolution failed: %s", exc)
+
+        # de-dup entities by (literal, column), keeping the highest match_count
+        merged: dict[tuple[str, str], dict] = {}
+        for r in resolved:
+            key = (r["literal"].lower(), r["column"])
+            cur = merged.get(key)
+            if cur is None or (r.get("match_count") or 0) > (cur.get("match_count") or 0):
+                merged[key] = r
+        # de-dup groups by (literal, column)
+        gseen: set[tuple[str, str]] = set()
+        gout: list[dict] = []
+        for g in groups:
+            k = (g["literal"].lower(), g["column"])
+            if k not in gseen:
+                gseen.add(k)
+                gout.append(g)
+        entities = sorted(merged.values(), key=lambda r: r.get("match_count") or 0, reverse=True)[:25]
+        return {"entities": entities, "groups": gout[:12], "hierarchy_intent": hierarchy}
+
+    async def _scan_columns_for_values(
+        self,
+        dataset_id: uuid.UUID,
+        literals: list[str],
+        bundle: dict,
+    ) -> list[dict]:
+        table_names = [
+            (getattr(h, "metadata", {}) or {}).get("qualified_name", "").rsplit(".", 1)[-1]
+            for h in (bundle.get("schema_inventory") or [])
+            if (getattr(h, "metadata", {}) or {}).get("kind") == "TABLE"
+        ]
+        table_names = [t for t in dict.fromkeys(table_names) if t]
+        if not table_names:
+            return []
+        attached = await self._table_resolver.resolve(dataset_id, table_names)
+        if not attached:
+            return []
+        import asyncio
+
+        return await asyncio.to_thread(_scan_sync, attached, literals)
+
+
+def _probe_signed_terms(attached_tables: dict[str, str], terms: list[dict]) -> list[dict]:
+    """Sum each subtracted term's measure over its line-items; report the ones that
+    sum NEGATIVE (already stored negative → subtracting double-counts). Best-effort."""
+    try:
+        import duckdb
+    except ImportError:  # pragma: no cover
+        return []
+    paths = list(attached_tables.values())
+    if not paths:
+        return []
+    offenders: list[dict] = []
+    conn = None
+    try:
+        conn = duckdb.connect(":memory:")
+        conn.execute("SET threads=2")
+        for t in terms:
+            mq = t["measure_col"].replace(chr(34), chr(34) * 2)
+            dq = t["dim_col"].replace(chr(34), chr(34) * 2)
+            in_list = ", ".join("'" + str(lit).replace("'", "''") + "'" for lit in t["literals"])
+            total = None
+            for path in paths:
+                try:
+                    cols = {
+                        c[0].lower()
+                        for c in conn.execute(f"DESCRIBE SELECT * FROM read_parquet('{path}')").fetchall()
+                    }
+                    if t["measure_col"].lower() not in cols or t["dim_col"].lower() not in cols:
+                        continue
+                    s = conn.execute(
+                        f"SELECT SUM(TRY_CAST(\"{mq}\" AS DOUBLE)) FROM read_parquet('{path}') "
+                        f'WHERE CAST("{dq}" AS VARCHAR) IN ({in_list})'
+                    ).fetchone()
+                    if s and s[0] is not None:
+                        total = (total or 0.0) + float(s[0])
+                except Exception:  # noqa: BLE001
+                    continue
+            if total is not None and total < 0:
+                offenders.append({"dim": t["dim_col"], "literals": t["literals"], "sum": total})
+    except Exception:  # noqa: BLE001
+        return offenders
+    finally:
+        if conn is not None:
+            conn.close()
+    return offenders
+
+
+def _scan_sync(attached_tables: dict[str, str], literals: list[str]) -> list[dict]:
+    """Find which column stores each question literal: one bounded scan per table.
+
+    For each table we run a single pass that, per VARCHAR column, returns the
+    first stored value equal (case-insensitively) to any of the literals. This
+    resolves high-cardinality entities (person/brand names) the low-cardinality
+    value catalogue can't carry. Best-effort + dataset-agnostic.
+    """
+    try:
+        import duckdb
+    except ImportError:  # pragma: no cover
+        return []
+    lits = [s.lower() for s in literals if s]
+    if not lits:
+        return []
+    in_list = ", ".join("'" + s.replace("'", "''") + "'" for s in lits)
+    found: list[dict] = []
+    seen: set[tuple[str, str]] = set()
+    for tname, path in attached_tables.items():
+        conn = None
+        try:
+            conn = duckdb.connect(":memory:")
+            conn.execute("SET threads=2")
+            desc = conn.execute(f"DESCRIBE SELECT * FROM read_parquet('{path}')").fetchall()
+            vcols = [
+                d[0] for d in desc if str(d[1]).upper().startswith(("VARCHAR", "TEXT", "STRING", "CHAR"))
+            ][:80]
+            if not vcols:
+                continue
+            cols_sql = []
+            for i, c in enumerate(vcols):
+                cq = c.replace(chr(34), chr(34) * 2)
+                pred = f'lower(CAST("{cq}" AS VARCHAR)) IN ({in_list})'
+                cols_sql.append(f'MAX(CASE WHEN {pred} THEN CAST("{cq}" AS VARCHAR) END) AS m{i}')
+                # match_count: how many rows this column has the literal in. A value
+                # that REPEATS is a grouping/parent key; one that appears once is an
+                # identity. Same single scan -- no extra cost.
+                cols_sql.append(f"SUM(CASE WHEN {pred} THEN 1 ELSE 0 END) AS c{i}")
+            row = conn.execute(f"SELECT {', '.join(cols_sql)} FROM read_parquet('{path}')").fetchone()
+            if not row:
+                continue
+            for i, c in enumerate(vcols):
+                val = row[2 * i]
+                cnt = row[2 * i + 1]
+                if val is None:
+                    continue
+                key = (str(val).lower(), f"{tname}.{c}")
+                if key in seen:
+                    continue
+                seen.add(key)
+                found.append(
+                    {
+                        "literal": str(val),
+                        "column": f"{tname}.{c}",
+                        "value": val,
+                        "match_count": int(cnt or 0),
+                    }
+                )
+        except Exception:  # noqa: BLE001 - resolution is best-effort
+            continue
+        finally:
+            if conn is not None:
+                conn.close()
+    return found
