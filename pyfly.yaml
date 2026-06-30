@@ -26,6 +26,14 @@ pyfly:
     host: 0.0.0.0
     port: 8520
 
+  # pyfly v26.06 runs actuator + admin on a dedicated management port (9090)
+  # by default. Collapse it onto the application port so /actuator/* and /admin
+  # stay reachable on the single business port (Spring management.server.port
+  # parity). Set to -1 to disable, or a distinct port to split them out.
+  management:
+    server:
+      port: 8520
+
   observability:
     enabled: true
   metrics:

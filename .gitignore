@@ -139,3 +139,5 @@ docs/superpowers/
 assets_test
 .local
 SESSION_SUMMARY.md
+# Git worktrees
+.worktrees/
